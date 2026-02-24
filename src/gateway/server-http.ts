@@ -595,8 +595,12 @@ export function createGatewayHttpServer(opts: {
           );
           const data = (await apiRes.json()) as { oauth_url?: string };
           if (data.oauth_url) {
+            // Rewrite Supabase's redirect_to to point directly to our app,
+            // bypassing xplatform's callback which doesn't forward properly.
+            const oauthUrl = new URL(data.oauth_url);
+            oauthUrl.searchParams.set("redirect_to", redirectUri);
             res.statusCode = 302;
-            res.setHeader("Location", data.oauth_url);
+            res.setHeader("Location", oauthUrl.toString());
             res.end();
             return;
           }
