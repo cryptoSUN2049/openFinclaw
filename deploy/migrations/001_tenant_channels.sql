@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS tenant_channels (
   channel_type    TEXT NOT NULL,                    -- 'telegram', 'discord', 'slack', etc.
   label           TEXT,                             -- user-defined display name
   credentials     JSONB NOT NULL,                   -- { encrypted, iv, bot_id } (AES-256-GCM encrypted token)
+  bot_id          TEXT,                             -- extracted from credentials for uniqueness constraint
   config          JSONB DEFAULT '{}',               -- channel-specific config overrides
   status          TEXT DEFAULT 'inactive',          -- active | inactive | error
   last_error      TEXT,
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS tenant_channels (
   webhook_secret  TEXT NOT NULL,                    -- per-channel webhook secret for URL verification
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
-  UNIQUE (tenant_id, channel_type, (credentials->>'bot_id'))
+  UNIQUE (tenant_id, channel_type, bot_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_tc_tenant ON tenant_channels(tenant_id);

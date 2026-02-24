@@ -461,7 +461,7 @@ export const OpenClawSchema = z
             supabase: z
               .object({
                 url: z.string().url(),
-                anonKey: z.string().min(1),
+                anonKey: z.string().min(1).optional(),
                 jwtSecret: z.string().optional().register(sensitive),
                 required: z.boolean().optional(),
                 allowedDomains: z.array(z.string()).optional(),
@@ -515,6 +515,15 @@ export const OpenClawSchema = z
           .optional(),
         trustedProxies: z.array(z.string()).optional(),
         allowRealIpFallback: z.boolean().optional(),
+        tenantChannels: z
+          .object({
+            enabled: z.boolean().optional(),
+            supabaseServiceKey: z.string().optional().register(sensitive),
+            encryptionKey: z.string().optional().register(sensitive),
+            webhookBaseUrl: z.string().optional(),
+          })
+          .strict()
+          .optional(),
         tools: z
           .object({
             deny: z.array(z.string()).optional(),

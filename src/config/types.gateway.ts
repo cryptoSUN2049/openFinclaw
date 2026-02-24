@@ -64,8 +64,8 @@ export type TalkConfig = {
 export type SupabaseAuthConfig = {
   /** Supabase project URL (e.g. "https://xyz.supabase.co"). */
   url: string;
-  /** Supabase public anon key. */
-  anonKey: string;
+  /** Supabase public anon key (optional when using xplatform auth). */
+  anonKey?: string;
   /** JWT secret for HS256 verification (optional; falls back to JWKS). */
   jwtSecret?: string;
   /** When true, Supabase auth is required; unauthenticated users are rejected. */

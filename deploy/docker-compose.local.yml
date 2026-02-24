@@ -144,6 +144,11 @@ services:
       # Finance auto-auth
       - FINANCE_AUTH_EMAIL=${FINANCE_AUTH_EMAIL:-}
       - FINANCE_AUTH_PASSWORD=${FINANCE_AUTH_PASSWORD:-}
+      # Multi-tenant channel management (Supabase)
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - FINCLAW_CHANNEL_ENCRYPTION_KEY=${FINCLAW_CHANNEL_ENCRYPTION_KEY:-}
+      - FINCLAW_WEBHOOK_BASE_URL=${FINCLAW_WEBHOOK_BASE_URL:-}
       # 禁用代理 (容器内访问)
       - NO_PROXY=localhost,127.0.0.1,redis,postgres
       - HTTP_PROXY=

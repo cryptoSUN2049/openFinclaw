@@ -13,10 +13,19 @@
       "allowedOrigins": ["*"],
       "allowInsecureAuth": true,
       "dangerouslyDisableDeviceAuth": true,
+      "supabase": {
+        "url": "${SUPABASE_URL}"
+      },
       "xplatform": {
         "apiUrl": "${XPLATFORM_API_URL}",
         "required": false
       }
+    },
+    "tenantChannels": {
+      "enabled": true,
+      "supabaseServiceKey": "${SUPABASE_SERVICE_ROLE_KEY}",
+      "encryptionKey": "${FINCLAW_CHANNEL_ENCRYPTION_KEY}",
+      "webhookBaseUrl": "${FINCLAW_WEBHOOK_BASE_URL}"
     },
     "http": {
       "endpoints": {
