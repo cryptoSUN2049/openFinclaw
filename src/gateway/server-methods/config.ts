@@ -44,8 +44,28 @@ import {
 } from "../protocol/index.js";
 import { resolveBaseHashParam } from "./base-hash.js";
 import { parseRestartRequestParams } from "./restart-request.js";
-import type { GatewayRequestHandlers, RespondFn } from "./types.js";
+import type { GatewayClient, GatewayRequestHandlers, RespondFn } from "./types.js";
 import { assertValidParams } from "./validation.js";
+
+/**
+ * In cloud/multi-tenant mode, the gateway config is a shared resource.
+ * Block all config write operations for authenticated webchat users to prevent
+ * one user from modifying the shared configuration or triggering gateway restarts.
+ */
+function rejectCloudConfigWrite(client: GatewayClient | null, respond: RespondFn): boolean {
+  if (!client?.supabaseUser) {
+    return false; // Self-hosted mode — allow
+  }
+  respond(
+    false,
+    undefined,
+    errorShape(
+      ErrorCodes.INVALID_REQUEST,
+      "config modification is not available in cloud mode",
+    ),
+  );
+  return true;
+}
 
 function requireConfigBaseHash(
   params: unknown,
@@ -258,7 +278,10 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     respond(true, loadSchemaWithPlugins(), undefined);
   },
-  "config.set": async ({ params, respond }) => {
+  "config.set": async ({ params, respond, client }) => {
+    if (rejectCloudConfigWrite(client, respond)) {
+      return;
+    }
     if (!assertValidParams(params, validateConfigSetParams, "config.set", respond)) {
       return;
     }
@@ -282,6 +305,9 @@ export const configHandlers: GatewayRequestHandlers = {
     );
   },
   "config.patch": async ({ params, respond, client, context }) => {
+    if (rejectCloudConfigWrite(client, respond)) {
+      return;
+    }
     if (!assertValidParams(params, validateConfigPatchParams, "config.patch", respond)) {
       return;
     }
@@ -404,6 +430,9 @@ export const configHandlers: GatewayRequestHandlers = {
     );
   },
   "config.apply": async ({ params, respond, client, context }) => {
+    if (rejectCloudConfigWrite(client, respond)) {
+      return;
+    }
     if (!assertValidParams(params, validateConfigApplyParams, "config.apply", respond)) {
       return;
     }

@@ -34,3 +34,20 @@ CREATE TRIGGER trigger_tenant_channels_updated_at
   BEFORE UPDATE ON tenant_channels
   FOR EACH ROW
   EXECUTE FUNCTION update_tenant_channels_updated_at();
+
+-- Row Level Security (defense-in-depth for direct Supabase client access)
+-- Gateway uses service_role key which bypasses RLS, but this protects against
+-- compromised anon keys or misconfigured client access.
+ALTER TABLE tenant_channels ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_channels_select ON tenant_channels
+  FOR SELECT USING (auth.uid()::text = tenant_id);
+
+CREATE POLICY tenant_channels_insert ON tenant_channels
+  FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+
+CREATE POLICY tenant_channels_update ON tenant_channels
+  FOR UPDATE USING (auth.uid()::text = tenant_id);
+
+CREATE POLICY tenant_channels_delete ON tenant_channels
+  FOR DELETE USING (auth.uid()::text = tenant_id);

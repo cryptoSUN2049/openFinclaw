@@ -49,9 +49,30 @@ import {
 } from "../session-utils.js";
 import { applySessionsPatchToStore } from "../sessions-patch.js";
 import { resolveSessionKeyFromResolveParams } from "../sessions-resolve.js";
-import { extractUserIdFromSessionKey } from "../supabase-session.js";
+import { extractUserIdFromSessionKey, scopeSessionKeyToUser } from "../supabase-session.js";
 import type { GatewayClient, GatewayRequestHandlers, RespondFn } from "./types.js";
 import { assertValidParams } from "./validation.js";
+
+/**
+ * For authenticated cloud users, verify the session key belongs to them.
+ * Returns true if ownership is confirmed (or no auth in self-hosted mode).
+ * Returns false and sends error response if the key belongs to another user.
+ */
+function assertSessionOwnership(
+  key: string,
+  client: GatewayClient | null,
+  respond: RespondFn,
+): boolean {
+  if (!client?.supabaseUser) {
+    return true; // Self-hosted mode — no user scoping
+  }
+  const keyUserId = extractUserIdFromSessionKey(key);
+  if (keyUserId !== client.supabaseUser.id) {
+    respond(false, undefined, errorShape(ErrorCodes.NOT_PAIRED, "session not found"));
+    return false;
+  }
+  return true;
+}
 
 function requireSessionKey(key: unknown, respond: RespondFn): string | null {
   const raw =
@@ -227,16 +248,21 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     }
     respond(true, result, undefined);
   },
-  "sessions.preview": ({ params, respond }) => {
+  "sessions.preview": ({ params, respond, client }) => {
     if (!assertValidParams(params, validateSessionsPreviewParams, "sessions.preview", respond)) {
       return;
     }
     const p = params;
     const keysRaw = Array.isArray(p.keys) ? p.keys : [];
-    const keys = keysRaw
+    let keys = keysRaw
       .map((key) => String(key ?? "").trim())
       .filter(Boolean)
       .slice(0, 64);
+    // Filter to only keys owned by the authenticated user
+    if (client?.supabaseUser) {
+      const userId = client.supabaseUser.id;
+      keys = keys.filter((key) => extractUserIdFromSessionKey(key) === userId);
+    }
     const limit =
       typeof p.limit === "number" && Number.isFinite(p.limit) ? Math.max(1, p.limit) : 12;
     const maxChars =
@@ -289,16 +315,25 @@ export const sessionsHandlers: GatewayRequestHandlers = {
 
     respond(true, { ts: Date.now(), previews } satisfies SessionsPreviewResult, undefined);
   },
-  "sessions.resolve": async ({ params, respond }) => {
+  "sessions.resolve": async ({ params, respond, client }) => {
     if (!assertValidParams(params, validateSessionsResolveParams, "sessions.resolve", respond)) {
       return;
     }
     const p = params;
     const cfg = loadConfig();
 
+    // For authenticated users, scope the key input if provided
+    if (client?.supabaseUser && typeof p.key === "string" && p.key.trim()) {
+      p.key = scopeSessionKeyToUser(p.key.trim(), client.supabaseUser.id);
+    }
+
     const resolved = await resolveSessionKeyFromResolveParams({ cfg, p });
     if (!resolved.ok) {
       respond(false, undefined, resolved.error);
+      return;
+    }
+    // Verify the resolved key belongs to the authenticated user
+    if (!assertSessionOwnership(resolved.key, client, respond)) {
       return;
     }
     respond(true, { ok: true, key: resolved.key }, undefined);
@@ -310,6 +345,10 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     const p = params;
     const key = requireSessionKey(p.key, respond);
     if (!key) {
+      return;
+    }
+    // Verify the session key belongs to the authenticated user
+    if (!assertSessionOwnership(key, client, respond)) {
       return;
     }
     if (rejectWebchatSessionMutation({ action: "patch", client, isWebchatConnect, respond })) {
@@ -346,13 +385,17 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     };
     respond(true, result, undefined);
   },
-  "sessions.reset": async ({ params, respond }) => {
+  "sessions.reset": async ({ params, respond, client }) => {
     if (!assertValidParams(params, validateSessionsResetParams, "sessions.reset", respond)) {
       return;
     }
     const p = params;
     const key = requireSessionKey(p.key, respond);
     if (!key) {
+      return;
+    }
+    // Verify the session key belongs to the authenticated user
+    if (!assertSessionOwnership(key, client, respond)) {
       return;
     }
 
@@ -437,6 +480,10 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     if (!key) {
       return;
     }
+    // Verify the session key belongs to the authenticated user
+    if (!assertSessionOwnership(key, client, respond)) {
+      return;
+    }
     if (rejectWebchatSessionMutation({ action: "delete", client, isWebchatConnect, respond })) {
       return;
     }
@@ -491,13 +538,17 @@ export const sessionsHandlers: GatewayRequestHandlers = {
 
     respond(true, { ok: true, key: target.canonicalKey, deleted, archived }, undefined);
   },
-  "sessions.compact": async ({ params, respond }) => {
+  "sessions.compact": async ({ params, respond, client }) => {
     if (!assertValidParams(params, validateSessionsCompactParams, "sessions.compact", respond)) {
       return;
     }
     const p = params;
     const key = requireSessionKey(p.key, respond);
     if (!key) {
+      return;
+    }
+    // Verify the session key belongs to the authenticated user
+    if (!assertSessionOwnership(key, client, respond)) {
       return;
     }
 

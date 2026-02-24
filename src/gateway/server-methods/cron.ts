@@ -19,10 +19,30 @@ import {
   validateCronUpdateParams,
   validateWakeParams,
 } from "../protocol/index.js";
-import type { GatewayRequestHandlers } from "./types.js";
+import type { GatewayClient, GatewayRequestHandlers, RespondFn } from "./types.js";
+
+/**
+ * In cloud/multi-tenant mode, cron jobs are a gateway-level shared resource.
+ * Block all cron operations for authenticated webchat users until per-tenant
+ * cron isolation is implemented.
+ */
+function rejectCloudCronAccess(client: GatewayClient | null, respond: RespondFn): boolean {
+  if (!client?.supabaseUser) {
+    return false; // Self-hosted mode — allow
+  }
+  respond(
+    false,
+    undefined,
+    errorShape(ErrorCodes.INVALID_REQUEST, "cron is not available in cloud mode"),
+  );
+  return true;
+}
 
 export const cronHandlers: GatewayRequestHandlers = {
-  wake: ({ params, respond, context }) => {
+  wake: ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     if (!validateWakeParams(params)) {
       respond(
         false,
@@ -41,7 +61,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     const result = context.cron.wake({ mode: p.mode, text: p.text });
     respond(true, result, undefined);
   },
-  "cron.list": async ({ params, respond, context }) => {
+  "cron.list": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     if (!validateCronListParams(params)) {
       respond(
         false,
@@ -73,7 +96,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     });
     respond(true, page, undefined);
   },
-  "cron.status": async ({ params, respond, context }) => {
+  "cron.status": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     if (!validateCronStatusParams(params)) {
       respond(
         false,
@@ -88,7 +114,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     const status = await context.cron.status();
     respond(true, status, undefined);
   },
-  "cron.add": async ({ params, respond, context }) => {
+  "cron.add": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     const normalized = normalizeCronJobCreate(params) ?? params;
     if (!validateCronAddParams(normalized)) {
       respond(
@@ -114,7 +143,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     const job = await context.cron.add(jobCreate);
     respond(true, job, undefined);
   },
-  "cron.update": async ({ params, respond, context }) => {
+  "cron.update": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     const normalizedPatch = normalizeCronJobPatch((params as { patch?: unknown } | null)?.patch);
     const candidate =
       normalizedPatch && typeof params === "object" && params !== null
@@ -160,7 +192,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     const job = await context.cron.update(jobId, patch);
     respond(true, job, undefined);
   },
-  "cron.remove": async ({ params, respond, context }) => {
+  "cron.remove": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     if (!validateCronRemoveParams(params)) {
       respond(
         false,
@@ -185,7 +220,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     const result = await context.cron.remove(jobId);
     respond(true, result, undefined);
   },
-  "cron.run": async ({ params, respond, context }) => {
+  "cron.run": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     if (!validateCronRunParams(params)) {
       respond(
         false,
@@ -210,7 +248,10 @@ export const cronHandlers: GatewayRequestHandlers = {
     const result = await context.cron.run(jobId, p.mode ?? "force");
     respond(true, result, undefined);
   },
-  "cron.runs": async ({ params, respond, context }) => {
+  "cron.runs": async ({ params, respond, context, client }) => {
+    if (rejectCloudCronAccess(client, respond)) {
+      return;
+    }
     if (!validateCronRunsParams(params)) {
       respond(
         false,

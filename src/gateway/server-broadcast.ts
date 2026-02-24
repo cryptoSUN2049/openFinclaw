@@ -1,5 +1,6 @@
 import { MAX_BUFFERED_BYTES } from "./server-constants.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
+import { extractUserIdFromSessionKey } from "./supabase-session.js";
 import { logWs, shouldLogWs, summarizeAgentEventForWsLog } from "./ws-log.js";
 
 const ADMIN_SCOPE = "operator.admin";
@@ -14,6 +15,31 @@ const EVENT_SCOPE_GUARDS: Record<string, string[]> = {
   "node.pair.requested": [PAIRING_SCOPE],
   "node.pair.resolved": [PAIRING_SCOPE],
 };
+
+/**
+ * Events whose payload contains a `sessionKey` that should be used for
+ * per-tenant filtering. Only clients whose `supabaseUser.id` matches the
+ * userId encoded in the session key will receive these events.
+ */
+const USER_SCOPED_EVENTS = new Set(["chat", "agent"]);
+
+/**
+ * Extract the owning userId from a broadcast payload's sessionKey, if present.
+ * Returns null for system-wide events or payloads without a scoped session key.
+ */
+function extractPayloadUserId(event: string, payload: unknown): string | null {
+  if (!USER_SCOPED_EVENTS.has(event)) {
+    return null;
+  }
+  if (typeof payload !== "object" || payload === null) {
+    return null;
+  }
+  const sessionKey = (payload as Record<string, unknown>).sessionKey;
+  if (typeof sessionKey !== "string") {
+    return null;
+  }
+  return extractUserIdFromSessionKey(sessionKey);
+}
 
 export type GatewayBroadcastStateVersion = {
   presence?: number;
@@ -90,11 +116,18 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
       }
       logWs("out", "event", logMeta);
     }
+    // Tenant isolation: for user-scoped events, only deliver to the owning user
+    const payloadUserId = extractPayloadUserId(event, payload);
+
     for (const c of params.clients) {
       if (targetConnIds && !targetConnIds.has(c.connId)) {
         continue;
       }
       if (!hasEventScope(c, event)) {
+        continue;
+      }
+      // Skip clients that don't own this user-scoped event
+      if (payloadUserId && c.supabaseUser?.id !== payloadUserId) {
         continue;
       }
       const slow = c.socket.bufferedAmount > MAX_BUFFERED_BYTES;

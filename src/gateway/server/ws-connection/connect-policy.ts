@@ -68,6 +68,11 @@ export function evaluateMissingDeviceIdentity(params: {
       return { kind: "reject-control-ui-insecure-auth" };
     }
   }
+  // When dangerouslyDisableDeviceAuth is enabled and auth succeeded (JWT or
+  // shared secret), skip the device identity requirement entirely.
+  if (params.controlUiAuthPolicy.allowBypass && params.authOk) {
+    return { kind: "allow" };
+  }
   if (roleCanSkipDeviceIdentity(params.role, params.sharedAuthOk)) {
     return { kind: "allow" };
   }

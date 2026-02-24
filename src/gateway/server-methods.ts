@@ -34,6 +34,52 @@ import { webHandlers } from "./server-methods/web.js";
 import { wizardHandlers } from "./server-methods/wizard.js";
 
 const CONTROL_PLANE_WRITE_METHODS = new Set(["config.apply", "config.patch", "update.run"]);
+
+/**
+ * Methods allowed for authenticated cloud (Supabase) users.
+ * All methods NOT in this set are blocked for cloud users.
+ * Default-deny approach: new methods must be explicitly allowlisted.
+ */
+const CLOUD_USER_ALLOWED_METHODS = new Set([
+  // Chat (session-scoped via scopeSessionKeyToUser)
+  "chat.history",
+  "chat.send",
+  "chat.abort",
+  "chat.inject",
+  // Sessions (ownership-verified via assertSessionOwnership)
+  "sessions.list",
+  "sessions.preview",
+  "sessions.resolve",
+  "sessions.patch",
+  "sessions.reset",
+  "sessions.delete",
+  "sessions.compact",
+  // Config (read-only, values redacted)
+  "config.get",
+  "config.schema",
+  // System info (read-only, no sensitive data)
+  "health",
+  "models.list",
+  "tools.catalog",
+  // Agent identity (read-only, used by webchat UI for agent name/avatar)
+  "agent.identity.get",
+  // Connection lifecycle (stub — real connect handled in WS upgrade)
+  "connect",
+  // Auth flows
+  "web.login.start",
+  "web.login.wait",
+  // Usage metrics (read-only)
+  "usage.status",
+  "usage.cost",
+  "sessions.usage",
+  "sessions.usage.timeseries",
+  "sessions.usage.logs",
+  // Tenant channels (per-tenant, scoped by supabaseUser.id)
+  "tenant.channels.list",
+  "tenant.channels.test",
+  "tenant.channels.add",
+  "tenant.channels.remove",
+]);
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
   if (!client?.connect) {
     return null;
@@ -101,6 +147,18 @@ export async function handleGatewayRequest(
   const authError = authorizeGatewayMethod(req.method, client);
   if (authError) {
     respond(false, undefined, authError);
+    return;
+  }
+  // Cloud tenant isolation: block all methods not in the allowlist
+  if (client?.supabaseUser && !CLOUD_USER_ALLOWED_METHODS.has(req.method)) {
+    respond(
+      false,
+      undefined,
+      errorShape(
+        ErrorCodes.INVALID_REQUEST,
+        `method not available in cloud mode: ${req.method}`,
+      ),
+    );
     return;
   }
   if (CONTROL_PLANE_WRITE_METHODS.has(req.method)) {

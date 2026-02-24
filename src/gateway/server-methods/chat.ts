@@ -604,7 +604,7 @@ export const chatHandlers: GatewayRequestHandlers = {
       verboseLevel,
     });
   },
-  "chat.abort": ({ params, respond, context }) => {
+  "chat.abort": ({ params, respond, context, client }) => {
     if (!validateChatAbortParams(params)) {
       respond(
         false,
@@ -616,10 +616,15 @@ export const chatHandlers: GatewayRequestHandlers = {
       );
       return;
     }
-    const { sessionKey: rawSessionKey, runId } = params as {
+    const { sessionKey: paramSessionKey, runId } = params as {
       sessionKey: string;
       runId?: string;
     };
+    // Scope session to authenticated Supabase user for tenant isolation
+    let rawSessionKey = paramSessionKey;
+    if (client?.supabaseUser) {
+      rawSessionKey = scopeSessionKeyToUser(rawSessionKey, client.supabaseUser.id);
+    }
 
     const ops = createChatAbortOps(context);
 
@@ -990,7 +995,7 @@ export const chatHandlers: GatewayRequestHandlers = {
       });
     }
   },
-  "chat.inject": async ({ params, respond, context }) => {
+  "chat.inject": async ({ params, respond, context, client }) => {
     if (!validateChatInjectParams(params)) {
       respond(
         false,
@@ -1008,8 +1013,11 @@ export const chatHandlers: GatewayRequestHandlers = {
       label?: string;
     };
 
-    // Load session to find transcript file
-    const rawSessionKey = p.sessionKey;
+    // Load session to find transcript file — scope to authenticated user
+    let rawSessionKey = p.sessionKey;
+    if (client?.supabaseUser) {
+      rawSessionKey = scopeSessionKeyToUser(rawSessionKey, client.supabaseUser.id);
+    }
     const { cfg, storePath, entry } = loadSessionEntry(rawSessionKey);
     const sessionId = entry?.sessionId;
     if (!sessionId || !storePath) {
