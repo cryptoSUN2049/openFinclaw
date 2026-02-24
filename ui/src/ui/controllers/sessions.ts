@@ -65,6 +65,7 @@ export async function patchSession(
     thinkingLevel?: string | null;
     verboseLevel?: string | null;
     reasoningLevel?: string | null;
+    model?: string | null;
   },
 ) {
   if (!state.client || !state.connected) {
@@ -82,6 +83,9 @@ export async function patchSession(
   }
   if ("reasoningLevel" in patch) {
     params.reasoningLevel = patch.reasoningLevel;
+  }
+  if ("model" in patch) {
+    params.model = patch.model;
   }
   try {
     await state.client.request("sessions.patch", params);
@@ -124,4 +128,32 @@ export async function deleteSessionAndRefresh(state: SessionsState, key: string)
   }
   await loadSessions(state);
   return true;
+}
+
+export type ModelsState = {
+  client: GatewayBrowserClient | null;
+  connected: boolean;
+  availableModels: Array<{ id: string; name: string }>;
+};
+
+export async function loadModels(state: ModelsState) {
+  if (!state.client || !state.connected) {
+    return;
+  }
+  try {
+    const res = await state.client.request("models.list", {});
+    const models = (res as { models?: unknown[] } | null)?.models;
+    if (!Array.isArray(models)) {
+      state.availableModels = [];
+      return;
+    }
+    state.availableModels = models
+      .filter(
+        (m): m is { id: string; name?: string } =>
+          !!m && typeof m === "object" && typeof (m as Record<string, unknown>).id === "string",
+      )
+      .map((m) => ({ id: m.id, name: m.name ?? m.id }));
+  } catch {
+    state.availableModels = [];
+  }
 }

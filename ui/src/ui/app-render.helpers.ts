@@ -1,11 +1,12 @@
-import { html } from "lit";
+import { html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { t } from "../i18n/index.ts";
 import { refreshChat } from "./app-chat.ts";
 import { syncUrlWithSessionKey } from "./app-settings.ts";
 import type { AppViewState } from "./app-view-state.ts";
 import { OpenClawApp } from "./app.ts";
-import { ChatState, loadChatHistory } from "./controllers/chat.ts";
+import { loadChatHistory, ChatState } from "./controllers/chat.ts";
+import { patchSession } from "./controllers/sessions.ts";
 import { icons } from "./icons.ts";
 import { iconForTab, pathForTab, titleForTab, type Tab } from "./navigation.ts";
 import type { ThemeTransitionContext } from "./theme-transition.ts";
@@ -166,6 +167,41 @@ export function renderChatControls(state: AppViewState) {
           )}
         </select>
       </label>
+      ${
+        state.availableModels.length > 1
+          ? (() => {
+              const currentSession = state.sessionsResult?.sessions?.find(
+                (s) => s.key === state.sessionKey,
+              );
+              const currentModel = currentSession?.model || state.availableModels[0]?.id || "";
+              return html`
+              <label class="field chat-controls__model">
+                <select
+                  .value=${currentModel}
+                  ?disabled=${!state.connected}
+                  @change=${(e: Event) => {
+                    const model = (e.target as HTMLSelectElement).value;
+                    void patchSession(
+                      state as unknown as Parameters<typeof patchSession>[0],
+                      state.sessionKey,
+                      { model },
+                    );
+                  }}
+                >
+                  ${repeat(
+                    state.availableModels,
+                    (m) => m.id,
+                    (m) =>
+                      html`<option value=${m.id} ?selected=${m.id === currentModel}>
+                        ${m.name}
+                      </option>`,
+                  )}
+                </select>
+              </label>
+            `;
+            })()
+          : nothing
+      }
       <button
         class="btn btn--sm btn--icon"
         ?disabled=${state.chatLoading || !state.connected}
