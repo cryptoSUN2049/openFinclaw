@@ -29,7 +29,7 @@ export function resolveFcsDir(commonsDir?: string): string {
 export async function loadFcsConfig(commonsDir?: string): Promise<FcsConfig> {
   const fcsDir = resolveFcsDir(commonsDir);
   const raw = await readFile(join(fcsDir, "config.json"), "utf-8");
-  return FcsConfigSchema.parse(JSON.parse(raw));
+  return FcsConfigSchema.parse(JSON.parse(raw)) as FcsConfig;
 }
 
 /** Load current FCS scores. Returns an empty file structure if scores.json does not exist. */

@@ -7,14 +7,11 @@
  */
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { computeCommonsOverview } from "../../src/commons/dashboard-data.js";
 import type { CommonsOverview } from "../../src/commons/dashboard-data.js";
 import { loadCommonsIndexWithFcs, resolveCommonsDir } from "../../src/commons/registry.js";
 import type { CommonsEntryWithFcs } from "../../src/commons/types.fcs.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type GeneratorOptions = {
   /** Output directory for the generated site. Defaults to commons/site/. */
@@ -27,17 +24,18 @@ export type GeneratorOptions = {
 export async function generateDashboardSite(options: GeneratorOptions = {}): Promise<string> {
   const commonsDir = options.commonsDir ?? resolveCommonsDir();
   const outputDir = options.outputDir ?? join(commonsDir, "site");
+  const dashboardDir = join(commonsDir, "dashboard");
 
   // Load data
   const entries = await loadCommonsIndexWithFcs(commonsDir);
   const overview = computeCommonsOverview(entries);
 
-  // Read template
-  const templatePath = join(__dirname, "template.html");
+  // Read template (always relative to commons/dashboard/)
+  const templatePath = join(dashboardDir, "template.html");
   let template = await readFile(templatePath, "utf-8");
 
   // Read CSS
-  const cssPath = join(__dirname, "assets", "style.css");
+  const cssPath = join(dashboardDir, "assets", "style.css");
   const css = await readFile(cssPath, "utf-8");
 
   // Inject data and inline CSS

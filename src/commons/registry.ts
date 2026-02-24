@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,8 +9,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Resolve the commons directory at the repository root. */
 export function resolveCommonsDir(): string {
-  // src/commons/registry.ts → repo root
-  return resolve(__dirname, "..", "..", "commons");
+  // Source layout: src/commons/registry.ts → ../../commons
+  const fromSrc = resolve(__dirname, "..", "..", "commons");
+  if (existsSync(join(fromSrc, "index.json"))) {
+    return fromSrc;
+  }
+  // Built layout: dist/<chunk>.js → ../commons
+  const fromDist = resolve(__dirname, "..", "commons");
+  if (existsSync(join(fromDist, "index.json"))) {
+    return fromDist;
+  }
+  // Fallback: cwd-relative
+  return resolve(process.cwd(), "commons");
 }
 
 /** Load and parse the commons index.json registry manifest. */
