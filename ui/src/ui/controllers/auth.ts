@@ -136,7 +136,7 @@ export async function handleWalletLogin(host: OpenClawApp) {
 }
 
 export function handleGoogleLogin(_host: OpenClawApp) {
-  const redirectUri = window.location.origin + window.location.pathname;
+  const redirectUri = window.location.pathname;
   // Gateway proxies the xplatform call server-side (no CORS/CSP issues)
   window.location.href = `/__auth__/google/redirect?redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
