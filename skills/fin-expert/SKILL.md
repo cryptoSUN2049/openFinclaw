@@ -2,13 +2,7 @@
 name: fin-expert
 description: "In-depth financial analysis: technical analysis, fundamental research, sentiment analysis, and research reports. Use when: user asks for analysis, opinions, or research on specific assets or market conditions."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🔬",
-        "requires": { "extensions": ["fin-core", "fin-market-data"] },
-      },
-  }
+  { "openclaw": { "emoji": "🔬", "requires": { "extensions": ["fin-core", "fin-market-data"] } } }
 ---
 
 # Expert Analysis Skill

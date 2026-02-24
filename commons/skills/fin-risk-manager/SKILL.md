@@ -73,8 +73,8 @@ Position sizing, Value-at-Risk, stress testing, correlation analysis, and risk-a
 Calculate optimal allocation using one of four methods:
 
 - **Fixed Fractional Risk**: Risk a fixed percentage (1-3%) of total capital per trade. Position size = (Capital x Risk%) / (Entry - StopLoss).
-- **Kelly Criterion**: f* = (bp - q) / b where b = avg_win/avg_loss, p = win_rate, q = 1 - p. Maximizes long-term geometric growth.
-- **Half-Kelly** (recommended): f*/2. Sacrifices ~25% of growth for ~50% less volatility. Default recommendation for most users.
+- **Kelly Criterion**: f\* = (bp - q) / b where b = avg_win/avg_loss, p = win_rate, q = 1 - p. Maximizes long-term geometric growth.
+- **Half-Kelly** (recommended): f\*/2. Sacrifices ~25% of growth for ~50% less volatility. Default recommendation for most users.
 - **Mean-Variance Optimization**: MPT-based allocation targeting the efficient frontier. Requires return estimates and covariance matrix.
 
 Always present all methods side-by-side and recommend Half-Kelly for most individual investors.
@@ -84,7 +84,7 @@ Always present all methods side-by-side and recommend Half-Kelly for most indivi
 Three calculation approaches:
 
 - **Historical VaR**: Sort portfolio returns over lookback window, find the loss at the chosen percentile. Non-parametric, captures fat tails.
-- **Parametric VaR**: Assume normal distribution, VaR = mu - z * sigma. Fast but underestimates tail risk in crypto.
+- **Parametric VaR**: Assume normal distribution, VaR = mu - z \* sigma. Fast but underestimates tail risk in crypto.
 - **Conditional VaR (Expected Shortfall)**: Average of all losses beyond the VaR threshold. Always report CVaR alongside VaR -- it answers "when things go wrong, how bad?"
 
 Default: 95% confidence, 1-day horizon. Always report in both absolute ($) and percentage terms.
@@ -93,13 +93,13 @@ Default: 95% confidence, 1-day horizon. Always report in both absolute ($) and p
 
 Five predefined scenarios plus custom:
 
-| Scenario | BTC | ETH | Alts | Stables | Description |
-|----------|-----|-----|------|---------|-------------|
-| Crypto Winter | -60% | -70% | -80% | -1% | Prolonged bear market (2022 analog) |
-| Flash Crash | -30% | -35% | -50% | 0% | Sudden liquidation cascade |
-| DeFi Contagion | -20% | -40% | -60% | -5% | Smart contract exploit / protocol failure |
-| Rate Hike Shock | -15% | -20% | -30% | 0% | Unexpected Fed tightening |
-| Black Swan | -50% | -60% | -90% | -10% | Exchange collapse / systemic event |
+| Scenario        | BTC  | ETH  | Alts | Stables | Description                               |
+| --------------- | ---- | ---- | ---- | ------- | ----------------------------------------- |
+| Crypto Winter   | -60% | -70% | -80% | -1%     | Prolonged bear market (2022 analog)       |
+| Flash Crash     | -30% | -35% | -50% | 0%      | Sudden liquidation cascade                |
+| DeFi Contagion  | -20% | -40% | -60% | -5%     | Smart contract exploit / protocol failure |
+| Rate Hike Shock | -15% | -20% | -30% | 0%      | Unexpected Fed tightening                 |
+| Black Swan      | -50% | -60% | -90% | -10%    | Exchange collapse / systemic event        |
 
 For custom scenarios, accept per-asset percentage shocks and compute aggregate portfolio impact.
 

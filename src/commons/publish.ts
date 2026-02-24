@@ -15,18 +15,31 @@ export type PublishOptions = {
 };
 
 /** Extract name and description from SKILL.md frontmatter. */
-function parseSkillFrontmatter(content: string): { name?: string; description?: string; tags?: string[] } {
+function parseSkillFrontmatter(content: string): {
+  name?: string;
+  description?: string;
+  tags?: string[];
+} {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return {};
 
   const fm = match[1];
-  const name = fm.match(/^name:\s*(.+)$/m)?.[1]?.trim().replace(/^["']|["']$/g, "");
-  const desc = fm.match(/^description:\s*(.+)$/m)?.[1]?.trim().replace(/^["']|["']$/g, "");
+  const name = fm
+    .match(/^name:\s*(.+)$/m)?.[1]
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
+  const desc = fm
+    .match(/^description:\s*(.+)$/m)?.[1]
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
 
   // Simple tag extraction from tags: [a, b, c] format
   const tagsMatch = fm.match(/^tags:\s*\[([^\]]*)\]/m);
   const tags = tagsMatch
-    ? tagsMatch[1].split(",").map((t) => t.trim().replace(/^["']|["']$/g, "")).filter(Boolean)
+    ? tagsMatch[1]
+        .split(",")
+        .map((t) => t.trim().replace(/^["']|["']$/g, ""))
+        .filter(Boolean)
     : [];
 
   return { name, description: desc, tags };

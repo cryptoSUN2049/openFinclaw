@@ -1,14 +1,7 @@
 ---
 name: fin-portfolio
 description: "View portfolio positions, balances, P&L, and allocation breakdowns. Use when: user asks about their holdings, account balance, profit/loss, or portfolio composition."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "💼",
-        "requires": { "extensions": ["fin-core"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "💼", "requires": { "extensions": ["fin-core"] } } }
 ---
 
 # Portfolio Skill

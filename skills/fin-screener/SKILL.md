@@ -2,13 +2,7 @@
 name: fin-screener
 description: "Screen and filter financial instruments by criteria: top gainers/losers, volume leaders, price ranges, and custom filters. Use when: user wants to discover or filter assets based on specific conditions."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🔍",
-        "requires": { "extensions": ["fin-core", "fin-market-data"] },
-      },
-  }
+  { "openclaw": { "emoji": "🔍", "requires": { "extensions": ["fin-core", "fin-market-data"] } } }
 ---
 
 # Screener Skill
@@ -66,14 +60,14 @@ fin_ticker_info({
 
 Common screening criteria:
 
-| Filter              | How to Evaluate                                    |
-| ------------------- | -------------------------------------------------- |
-| Top gainers         | Sort by 24h change percentage (descending)         |
-| Top losers          | Sort by 24h change percentage (ascending)          |
-| Volume leaders      | Sort by 24h volume (descending)                    |
-| Price range         | Filter by price (e.g. under $1, over $100)         |
-| Volatility          | Filter by 24h high-low range as percentage of price|
-| Volume surge        | Compare current volume to average                  |
+| Filter         | How to Evaluate                                     |
+| -------------- | --------------------------------------------------- |
+| Top gainers    | Sort by 24h change percentage (descending)          |
+| Top losers     | Sort by 24h change percentage (ascending)           |
+| Volume leaders | Sort by 24h volume (descending)                     |
+| Price range    | Filter by price (e.g. under $1, over $100)          |
+| Volatility     | Filter by 24h high-low range as percentage of price |
+| Volume surge   | Compare current volume to average                   |
 
 ### Step 4: Present Results
 

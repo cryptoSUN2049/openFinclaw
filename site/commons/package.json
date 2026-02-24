@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "tsx scripts/build-content.ts",
-    "dev": "tsx scripts/build-content.ts && astro dev",
     "build": "tsx scripts/build-content.ts && astro build",
+    "dev": "tsx scripts/build-content.ts && astro dev",
+    "prebuild": "tsx scripts/build-content.ts",
     "preview": "astro preview"
   },
   "dependencies": {

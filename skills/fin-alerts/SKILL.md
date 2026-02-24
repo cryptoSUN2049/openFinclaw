@@ -1,14 +1,7 @@
 ---
 name: fin-alerts
 description: "Set, manage, and view price and P&L alerts. Use when: user wants to be notified when a price target is hit or portfolio P&L crosses a threshold."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🔔",
-        "requires": { "extensions": ["fin-monitoring"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "🔔", "requires": { "extensions": ["fin-monitoring"] } } }
 ---
 
 # Alerts Skill

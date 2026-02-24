@@ -76,25 +76,25 @@ OpenFinClaw is different:
 
 ### Core Financial Capabilities
 
-| Feature | Description | Status |
-|---------|-------------|--------|
+| Feature                        | Description                                                                                                                                   | Status  |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | **Evolvable Financial Skills** | Self-improving skill plugins for portfolio analysis, risk assessment, tax optimization, budgeting, and more. Skills grow and adapt over time. | Planned |
-| **Proactive Financial Butler** | Not just reactive — monitors markets, schedules health checks, sends predictive alerts, generates automated reports. | Planned |
-| **Autonomous Trading (CCXT)** | Execute trades across Hyperliquid, Binance, OKX, Bybit with human-in-the-loop safety guardrails. | Planned |
-| **Deep Financial Expert SDK** | Professional-grade analysis, institutional-level insights, and quantitative tools via registered SDK keys. | Planned |
-| **Smart Information Flow SDK** | Curated real-time market intelligence, sentiment analysis, earnings data, and macro indicators. | Planned |
-| **User Memory Engine** | Remembers your financial profile, risk tolerance, investment preferences, and decision history. Gets smarter with every interaction. | Planned |
+| **Proactive Financial Butler** | Not just reactive — monitors markets, schedules health checks, sends predictive alerts, generates automated reports.                          | Planned |
+| **Autonomous Trading (CCXT)**  | Execute trades across Hyperliquid, Binance, OKX, Bybit with human-in-the-loop safety guardrails.                                              | Planned |
+| **Deep Financial Expert SDK**  | Professional-grade analysis, institutional-level insights, and quantitative tools via registered SDK keys.                                    | Planned |
+| **Smart Information Flow SDK** | Curated real-time market intelligence, sentiment analysis, earnings data, and macro indicators.                                               | Planned |
+| **User Memory Engine**         | Remembers your financial profile, risk tolerance, investment preferences, and decision history. Gets smarter with every interaction.          | Planned |
 
 ### Advanced Intelligence
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Self-Review Engine** | After every trade/decision, automatically reviews outcomes vs. expectations, identifies cognitive biases, and updates its own decision parameters. | Planned |
-| **Predictive Alerts** | Goes beyond price alerts — detects whale movements, correlates historical patterns, predicts budget overruns based on spending behavior. | Planned |
-| **Behavioral Finance Guard** | Detects emotional trading patterns (revenge trading, FOMO, panic selling) and provides calm, evidence-based guidance. | Planned |
-| **Financial Digital Twin** | Simulates your complete financial future — "What if I buy this house?", "When can I retire?", "How does this investment change my 10-year outlook?" | Planned |
-| **Multi-Agent Financial Team** | Researcher, Trader, Risk Officer, and Compliance Auditor — each with their own personality, permissions, and memory, working together as your personal financial team. | Planned |
-| **Regulatory Compliance Autopilot** | Automated tax event tracking, large-position reporting, cross-border compliance checks (CRS/FATCA), and audit trail generation. | Planned |
+| Feature                             | Description                                                                                                                                                            | Status  |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| **Self-Review Engine**              | After every trade/decision, automatically reviews outcomes vs. expectations, identifies cognitive biases, and updates its own decision parameters.                     | Planned |
+| **Predictive Alerts**               | Goes beyond price alerts — detects whale movements, correlates historical patterns, predicts budget overruns based on spending behavior.                               | Planned |
+| **Behavioral Finance Guard**        | Detects emotional trading patterns (revenge trading, FOMO, panic selling) and provides calm, evidence-based guidance.                                                  | Planned |
+| **Financial Digital Twin**          | Simulates your complete financial future — "What if I buy this house?", "When can I retire?", "How does this investment change my 10-year outlook?"                    | Planned |
+| **Multi-Agent Financial Team**      | Researcher, Trader, Risk Officer, and Compliance Auditor — each with their own personality, permissions, and memory, working together as your personal financial team. | Planned |
+| **Regulatory Compliance Autopilot** | Automated tax event tracking, large-position reporting, cross-border compliance checks (CRS/FATCA), and audit trail generation.                                        | Planned |
 
 ### Powered by OpenClaw
 
@@ -140,19 +140,20 @@ All of the above is built on OpenClaw's proven infrastructure:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-| Dimension | What you contribute | Format | Example |
-|-----------|-------------------|--------|---------|
-| **Skills** | Financial analysis methods, planning techniques | `SKILL.md` | Portfolio rebalancing skill, tax-loss harvesting skill |
-| **Strategies** | Backtestable, executable trading strategies | Strategy YAML + logic | Weekly BTC DCA, mean-reversion grid, cross-exchange arb |
-| **Connectors** | Data source plugins for markets, chains, news | OpenClaw Plugin (TS) | Dune Analytics connector, FRED macro data, social sentiment |
-| **Personas** | Agent personality templates for different roles | `SOUL.md` | Conservative long-term investor, aggressive crypto scalper |
-| **Workspaces** | Full workspace configs (rules + persona + tools + crons) | Directory template | `workspace-crypto-trader/`, `workspace-retirement-planner/` |
-| **Knowledge Packs** | Pre-built domain knowledge for agent memory | Markdown / JSONL | US tax code essentials, crypto regulatory landscape by country |
-| **Compliance Rulesets** | Jurisdiction-specific regulatory rules | Structured rules | FATCA reporting thresholds, MiFID II suitability checks |
+| Dimension               | What you contribute                                      | Format                | Example                                                        |
+| ----------------------- | -------------------------------------------------------- | --------------------- | -------------------------------------------------------------- |
+| **Skills**              | Financial analysis methods, planning techniques          | `SKILL.md`            | Portfolio rebalancing skill, tax-loss harvesting skill         |
+| **Strategies**          | Backtestable, executable trading strategies              | Strategy YAML + logic | Weekly BTC DCA, mean-reversion grid, cross-exchange arb        |
+| **Connectors**          | Data source plugins for markets, chains, news            | OpenClaw Plugin (TS)  | Dune Analytics connector, FRED macro data, social sentiment    |
+| **Personas**            | Agent personality templates for different roles          | `SOUL.md`             | Conservative long-term investor, aggressive crypto scalper     |
+| **Workspaces**          | Full workspace configs (rules + persona + tools + crons) | Directory template    | `workspace-crypto-trader/`, `workspace-retirement-planner/`    |
+| **Knowledge Packs**     | Pre-built domain knowledge for agent memory              | Markdown / JSONL      | US tax code essentials, crypto regulatory landscape by country |
+| **Compliance Rulesets** | Jurisdiction-specific regulatory rules                   | Structured rules      | FATCA reporting thresholds, MiFID II suitability checks        |
 
 ### How it works
 
 **Publishing** — Contributors package their work and submit to the commons:
+
 ```bash
 # Example: publish a skill
 finclaw commons publish --type skill --path ./skills/tax-loss-harvest/
@@ -162,6 +163,7 @@ finclaw commons publish --type workspace --path ./workspaces/crypto-trader/
 ```
 
 **Discovering** — Users browse, search, and install from the commons:
+
 ```bash
 # Search for skills
 finclaw commons search "portfolio rebalancing"
@@ -220,13 +222,13 @@ We chose the word **Commons** deliberately — not "marketplace" or "store." Fin
 
 ## Supported Exchanges (via CCXT)
 
-| Exchange | Spot | Futures | Options | Status |
-|----------|------|---------|---------|--------|
-| Hyperliquid | Yes | Yes | - | Planned |
-| Binance | Yes | Yes | Yes | Planned |
-| OKX | Yes | Yes | Yes | Planned |
-| Bybit | Yes | Yes | - | Planned |
-| _More via CCXT..._ | - | - | - | Future |
+| Exchange           | Spot | Futures | Options | Status  |
+| ------------------ | ---- | ------- | ------- | ------- |
+| Hyperliquid        | Yes  | Yes     | -       | Planned |
+| Binance            | Yes  | Yes     | Yes     | Planned |
+| OKX                | Yes  | Yes     | Yes     | Planned |
+| Bybit              | Yes  | Yes     | -       | Planned |
+| _More via CCXT..._ | -    | -       | -       | Future  |
 
 ## Quick Start
 
@@ -242,6 +244,7 @@ pnpm install
 ## Roadmap
 
 ### Phase 1 — Foundation `Q1 2026`
+
 - [x] Fork OpenClaw core, establish project vision
 - [ ] Financial skill plugin framework and SKILL.md spec for finance
 - [ ] CCXT trading bridge (Hyperliquid, Binance, OKX, Bybit)
@@ -250,6 +253,7 @@ pnpm install
 - [ ] Publish first 10 financial skills and 3 workspace templates to Commons
 
 ### Phase 2 — Intelligence `Q2 2026`
+
 - [ ] Deep Financial Expert SDK integration
 - [ ] Smart Information Flow SDK
 - [ ] Self-review engine (trade journaling + cognitive bias detection)
@@ -258,6 +262,7 @@ pnpm install
 - [ ] FinClaw Commons registry (publish, search, install)
 
 ### Phase 3 — Proactive `Q3 2026`
+
 - [ ] Proactive monitoring and alert engine
 - [ ] Automated financial reporting (daily/weekly/monthly)
 - [ ] Cross-exchange portfolio management
@@ -266,6 +271,7 @@ pnpm install
 - [ ] Community-contributed strategy backtesting and rating
 
 ### Phase 4 — Ecosystem `Q4 2026`
+
 - [ ] FinClaw Commons web portal (browse, rate, fork)
 - [ ] Third-party data connector marketplace
 - [ ] DeFi cross-chain operations
@@ -296,15 +302,15 @@ OpenFinClaw is an open community project. The **FinClaw Commons** is built by co
 
 ### 7 Ways to Contribute
 
-| What | Who | How |
-|------|-----|-----|
-| **Financial Skills** | Analysts, advisors, domain experts | Write a `SKILL.md` for your area of expertise (tax planning, risk analysis, etc.) |
-| **Trading Strategies** | Quant developers, traders | Package a backtestable strategy with performance data |
-| **Data Connectors** | Developers, data engineers | Build an OpenClaw plugin for a financial data source |
-| **Agent Personas** | Anyone with financial domain insight | Write a `SOUL.md` that captures a specific investment philosophy |
-| **Workspace Templates** | Power users, financial professionals | Share a complete workspace config for a specific use case |
-| **Knowledge Packs** | Researchers, legal/tax professionals | Curate domain knowledge (tax codes, regulations, market history) |
-| **Compliance Rulesets** | Legal/compliance professionals | Document jurisdiction-specific financial regulations |
+| What                    | Who                                  | How                                                                               |
+| ----------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
+| **Financial Skills**    | Analysts, advisors, domain experts   | Write a `SKILL.md` for your area of expertise (tax planning, risk analysis, etc.) |
+| **Trading Strategies**  | Quant developers, traders            | Package a backtestable strategy with performance data                             |
+| **Data Connectors**     | Developers, data engineers           | Build an OpenClaw plugin for a financial data source                              |
+| **Agent Personas**      | Anyone with financial domain insight | Write a `SOUL.md` that captures a specific investment philosophy                  |
+| **Workspace Templates** | Power users, financial professionals | Share a complete workspace config for a specific use case                         |
+| **Knowledge Packs**     | Researchers, legal/tax professionals | Curate domain knowledge (tax codes, regulations, market history)                  |
+| **Compliance Rulesets** | Legal/compliance professionals       | Document jurisdiction-specific financial regulations                              |
 
 You can also contribute **code, documentation, translations, bug reports, and feature ideas** — all are welcome.
 

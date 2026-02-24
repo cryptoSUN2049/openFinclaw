@@ -2,13 +2,7 @@
 name: fin-watchlist
 description: "Manage a personal watchlist of symbols to track. Use when: user wants to add, remove, or view their watchlist of tracked assets."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "👁",
-        "requires": { "extensions": ["fin-core", "fin-market-data"] },
-      },
-  }
+  { "openclaw": { "emoji": "👁", "requires": { "extensions": ["fin-core", "fin-market-data"] } } }
 ---
 
 # Watchlist Skill

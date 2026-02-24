@@ -1,14 +1,7 @@
 ---
 name: fin-trading
 description: "Execute trades: place market/limit orders, cancel orders, and manage open orders. Use when: user wants to buy, sell, or manage orders on connected exchanges. ALWAYS confirm with user before executing."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "⚡",
-        "requires": { "extensions": ["fin-core"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "⚡", "requires": { "extensions": ["fin-core"] } } }
 ---
 
 # Trading Skill

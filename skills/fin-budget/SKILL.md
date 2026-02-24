@@ -1,14 +1,7 @@
 ---
 name: fin-budget
 description: "Budget and spending management: set monthly budgets, track expenses, categorize spending, and review financial habits. Use when: user asks about budgeting, spending, or expense tracking."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "💰",
-        "requires": { "extensions": ["fin-core"] },
-      },
-  }
+metadata: { "openclaw": { "emoji": "💰", "requires": { "extensions": ["fin-core"] } } }
 ---
 
 # Budget Skill

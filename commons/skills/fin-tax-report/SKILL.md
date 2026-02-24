@@ -1,13 +1,7 @@
 ---
 name: fin-tax-report
 description: "Tax reporting assistant - generates tax summaries from transaction history including capital gains, income categorization, and jurisdiction-specific rules."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🧾",
-      },
-  }
+metadata: { "openclaw": { "emoji": "🧾" } }
 ---
 
 # Tax Reporting Assistant

@@ -2,13 +2,7 @@
 name: fin-backtest
 description: "Strategy backtesting engine - test trading strategies against historical data, compute performance metrics, optimize parameters, and run Monte Carlo simulations."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🧪",
-        "requires": { "extensions": ["fin-core", "fin-market-data"] },
-      },
-  }
+  { "openclaw": { "emoji": "🧪", "requires": { "extensions": ["fin-core", "fin-market-data"] } } }
 ---
 
 # Strategy Backtester
@@ -138,18 +132,18 @@ AI interprets natural language strategy descriptions into structured rules.
 
 Every backtest produces these metrics:
 
-| Metric | Description |
-|--------|-------------|
-| Total Return | End-to-end percentage gain/loss |
-| CAGR | Compound Annual Growth Rate |
-| Sharpe Ratio | Risk-adjusted return (annualized) |
-| Sortino Ratio | Downside-risk-adjusted return |
-| Max Drawdown | Largest peak-to-trough decline |
-| Win Rate | Percentage of profitable trades |
-| Profit Factor | Gross profits / gross losses |
-| Avg Win / Avg Loss | Mean winning vs losing trade size |
-| Exposure Time | Percentage of time with an open position |
-| Trade Count | Total number of round-trip trades |
+| Metric             | Description                              |
+| ------------------ | ---------------------------------------- |
+| Total Return       | End-to-end percentage gain/loss          |
+| CAGR               | Compound Annual Growth Rate              |
+| Sharpe Ratio       | Risk-adjusted return (annualized)        |
+| Sortino Ratio      | Downside-risk-adjusted return            |
+| Max Drawdown       | Largest peak-to-trough decline           |
+| Win Rate           | Percentage of profitable trades          |
+| Profit Factor      | Gross profits / gross losses             |
+| Avg Win / Avg Loss | Mean winning vs losing trade size        |
+| Exposure Time      | Percentage of time with an open position |
+| Trade Count        | Total number of round-trip trades        |
 
 ## Parameter Optimization
 

@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, readFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { installCommonsEntry } from "./install.js";
 import type { CommonsEntry } from "./types.js";
 
@@ -97,8 +97,8 @@ describe("installCommonsEntry", () => {
       path: "skills/nonexistent-skill",
     };
 
-    await expect(
-      installCommonsEntry(badEntry, { targetDir: tempDir, commonsDir }),
-    ).rejects.toThrow("source not found");
+    await expect(installCommonsEntry(badEntry, { targetDir: tempDir, commonsDir })).rejects.toThrow(
+      "source not found",
+    );
   });
 });

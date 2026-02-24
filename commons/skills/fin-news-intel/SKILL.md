@@ -2,13 +2,7 @@
 name: fin-news-intel
 description: "Financial news intelligence - multi-source sentiment scoring, event impact analysis, historical analogies, and personalized portfolio-aware digests."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📰",
-        "requires": { "extensions": ["fin-core", "fin-info-feed"] },
-      },
-  }
+  { "openclaw": { "emoji": "📰", "requires": { "extensions": ["fin-core", "fin-info-feed"] } } }
 ---
 
 # News Intelligence
@@ -64,14 +58,14 @@ AI-powered news analysis that goes beyond headlines. Multi-source sentiment scor
 
 Aggregate sentiment from 6 sources with quality-weighted scoring:
 
-| Source | Weight | Signal Type |
-|--------|--------|-------------|
-| News Articles | 30% | Editorial sentiment, headline tone, publication tier |
-| Social Media | 20% | Volume spikes, influencer signals, hashtag momentum |
-| On-Chain Data | 15% | Exchange flows, active addresses, whale movements |
-| Options Market | 15% | Put/call ratio, implied volatility skew, max pain |
-| Funding Rates | 10% | Perpetual futures funding (positive = longs paying) |
-| Analyst Ratings | 10% | Consensus changes, price target revisions |
+| Source          | Weight | Signal Type                                          |
+| --------------- | ------ | ---------------------------------------------------- |
+| News Articles   | 30%    | Editorial sentiment, headline tone, publication tier |
+| Social Media    | 20%    | Volume spikes, influencer signals, hashtag momentum  |
+| On-Chain Data   | 15%    | Exchange flows, active addresses, whale movements    |
+| Options Market  | 15%    | Put/call ratio, implied volatility skew, max pain    |
+| Funding Rates   | 10%    | Perpetual futures funding (positive = longs paying)  |
+| Analyst Ratings | 10%    | Consensus changes, price target revisions            |
 
 Composite score ranges:
 
@@ -93,12 +87,12 @@ Flag when price action diverges from sentiment:
 
 ### Impact Tiers
 
-| Tier | Category | Typical Impact | Examples |
-|------|----------|---------------|----------|
-| S | Systemic | 10-50%+ | Exchange collapse, major regulatory ban, protocol hack >$500M |
-| A | Major | 3-10% | Fed rate decision surprise, ETF approval/rejection, earnings miss |
-| B | Moderate | 1-3% | Analyst upgrades, partnership announcements, minor protocol updates |
-| C | Minor | 0-1% | Rumors, influencer posts, minor news |
+| Tier | Category | Typical Impact | Examples                                                            |
+| ---- | -------- | -------------- | ------------------------------------------------------------------- |
+| S    | Systemic | 10-50%+        | Exchange collapse, major regulatory ban, protocol hack >$500M       |
+| A    | Major    | 3-10%          | Fed rate decision surprise, ETF approval/rejection, earnings miss   |
+| B    | Moderate | 1-3%           | Analyst upgrades, partnership announcements, minor protocol updates |
+| C    | Minor    | 0-1%           | Rumors, influencer posts, minor news                                |
 
 ### Historical Analogy Engine
 

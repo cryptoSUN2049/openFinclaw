@@ -72,29 +72,29 @@ Economic calendar tracking, earnings dates, macro regime classification using th
 
 Classify the current macroeconomic environment into one of four regimes:
 
-| Regime | Growth | Inflation | Favored Assets | Hurt Assets |
-|--------|--------|-----------|----------------|-------------|
-| **Goldilocks** | Rising | Falling | Equities, Growth Tech, Crypto | Gold, Commodities |
-| **Reflation** | Rising | Rising | Commodities, Value, TIPS, Real Assets | Long Bonds, Growth Tech |
-| **Stagflation** | Falling | Rising | Gold, Cash, Commodities, Short Vol | Equities, Bonds, Crypto |
-| **Deflation** | Falling | Falling | Long Bonds, Cash, Quality | Equities, Commodities, Crypto |
+| Regime          | Growth  | Inflation | Favored Assets                        | Hurt Assets                   |
+| --------------- | ------- | --------- | ------------------------------------- | ----------------------------- |
+| **Goldilocks**  | Rising  | Falling   | Equities, Growth Tech, Crypto         | Gold, Commodities             |
+| **Reflation**   | Rising  | Rising    | Commodities, Value, TIPS, Real Assets | Long Bonds, Growth Tech       |
+| **Stagflation** | Falling | Rising    | Gold, Cash, Commodities, Short Vol    | Equities, Bonds, Crypto       |
+| **Deflation**   | Falling | Falling   | Long Bonds, Cash, Quality             | Equities, Commodities, Crypto |
 
 ### Regime Input Indicators
 
 Monitor these key indicators to determine the current regime:
 
-| Indicator | Growth Signal | Inflation Signal |
-|-----------|--------------|-----------------|
-| ISM PMI | >50 = expansion, <50 = contraction | Prices Paid sub-index |
-| NFP (Nonfarm Payrolls) | >150K = healthy, <0 = recession risk | Wage growth YoY |
-| GDP | >2% = solid, <0% = recession | GDP deflator |
-| CPI | -- | >3% = hot, <2% = cool |
-| Core PCE | -- | Fed's preferred gauge, target 2% |
-| 2Y-10Y Spread | Inverted = recession warning | -- |
-| VIX | <15 = complacency, >30 = fear | -- |
-| DXY (Dollar Index) | Strong = tightening conditions | Weak = inflationary impulse |
-| M2 Money Supply | Growing = expansionary | Rapid growth = inflationary |
-| HY Spreads | <400bps = healthy, >600bps = stress | -- |
+| Indicator              | Growth Signal                        | Inflation Signal                 |
+| ---------------------- | ------------------------------------ | -------------------------------- |
+| ISM PMI                | >50 = expansion, <50 = contraction   | Prices Paid sub-index            |
+| NFP (Nonfarm Payrolls) | >150K = healthy, <0 = recession risk | Wage growth YoY                  |
+| GDP                    | >2% = solid, <0% = recession         | GDP deflator                     |
+| CPI                    | --                                   | >3% = hot, <2% = cool            |
+| Core PCE               | --                                   | Fed's preferred gauge, target 2% |
+| 2Y-10Y Spread          | Inverted = recession warning         | --                               |
+| VIX                    | <15 = complacency, >30 = fear        | --                               |
+| DXY (Dollar Index)     | Strong = tightening conditions       | Weak = inflationary impulse      |
+| M2 Money Supply        | Growing = expansionary               | Rapid growth = inflationary      |
+| HY Spreads             | <400bps = healthy, >600bps = stress  | --                               |
 
 ### Regime Transition Signals
 
@@ -110,29 +110,29 @@ Watch for these early indicators of regime change:
 
 ### FOMC Decision
 
-| Scenario | Equities | Bonds | USD | Crypto | Gold |
-|----------|----------|-------|-----|--------|------|
-| Hawkish Surprise | -2 to -5% | -1 to -3% | +1 to +2% | -5 to -15% | -1 to -3% |
-| Dovish Surprise | +2 to +5% | +1 to +3% | -1 to -2% | +5 to +15% | +1 to +3% |
-| Inline | -0.5 to +0.5% | flat | flat | -1 to +1% | flat |
+| Scenario         | Equities      | Bonds     | USD       | Crypto     | Gold      |
+| ---------------- | ------------- | --------- | --------- | ---------- | --------- |
+| Hawkish Surprise | -2 to -5%     | -1 to -3% | +1 to +2% | -5 to -15% | -1 to -3% |
+| Dovish Surprise  | +2 to +5%     | +1 to +3% | -1 to -2% | +5 to +15% | +1 to +3% |
+| Inline           | -0.5 to +0.5% | flat      | flat      | -1 to +1%  | flat      |
 
 ### CPI Release
 
-| Scenario | Equities | Bonds | USD | Crypto | Gold |
-|----------|----------|-------|-----|--------|------|
-| Hot (>0.3% above consensus) | -1 to -3% | -1 to -2% | +0.5 to +1% | -3 to -8% | +0.5 to +1% |
-| Cool (<0.2% below consensus) | +1 to +3% | +1 to +2% | -0.5 to -1% | +3 to +8% | -0.5 to +0.5% |
-| Inline | -0.5 to +0.5% | flat | flat | -1 to +1% | flat |
+| Scenario                     | Equities      | Bonds     | USD         | Crypto    | Gold          |
+| ---------------------------- | ------------- | --------- | ----------- | --------- | ------------- |
+| Hot (>0.3% above consensus)  | -1 to -3%     | -1 to -2% | +0.5 to +1% | -3 to -8% | +0.5 to +1%   |
+| Cool (<0.2% below consensus) | +1 to +3%     | +1 to +2% | -0.5 to -1% | +3 to +8% | -0.5 to +0.5% |
+| Inline                       | -0.5 to +0.5% | flat      | flat        | -1 to +1% | flat          |
 
 ### NFP (Nonfarm Payrolls)
 
-| Scenario | Equities | Bonds | USD | Crypto |
-|----------|----------|-------|-----|--------|
-| Strong (>50K above consensus) | -1 to +1%* | -0.5 to -1.5% | +0.5 to +1% | -2 to -5% |
-| Weak (<50K below consensus) | -1 to +1%* | +0.5 to +1.5% | -0.5 to -1% | +1 to +3% |
-| Goldilocks (within 20K of consensus) | +0.5 to +1.5% | flat | flat | +1 to +3% |
+| Scenario                             | Equities      | Bonds         | USD         | Crypto    |
+| ------------------------------------ | ------------- | ------------- | ----------- | --------- |
+| Strong (>50K above consensus)        | -1 to +1%\*   | -0.5 to -1.5% | +0.5 to +1% | -2 to -5% |
+| Weak (<50K below consensus)          | -1 to +1%\*   | +0.5 to +1.5% | -0.5 to -1% | +1 to +3% |
+| Goldilocks (within 20K of consensus) | +0.5 to +1.5% | flat          | flat        | +1 to +3% |
 
-*Equity reaction depends on regime: strong jobs in Goldilocks = positive; strong jobs in Reflation = negative (more hikes).
+\*Equity reaction depends on regime: strong jobs in Goldilocks = positive; strong jobs in Reflation = negative (more hikes).
 
 ## Cross-Market Cascade Analysis
 

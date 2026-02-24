@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 import { listEntries, loadCommonsIndex, searchEntries, findEntry } from "./registry.js";
 import type { CommonsIndex } from "./types.js";
 

@@ -2,13 +2,7 @@
 name: fin-onchain
 description: "On-chain analytics - blockchain valuation metrics, DeFi protocol analysis, whale tracking, yield comparison, and token unlock impact assessment."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "🔗",
-        "requires": { "extensions": ["fin-core", "fin-market-data"] },
-      },
-  }
+  { "openclaw": { "emoji": "🔗", "requires": { "extensions": ["fin-core", "fin-market-data"] } } }
 ---
 
 # On-Chain Analytics
@@ -72,13 +66,13 @@ Blockchain-native intelligence: on-chain valuation metrics, DeFi protocol risk s
 
 ### Key Metrics and Interpretation
 
-| Metric | Formula | Overvalued | Fair Value | Undervalued |
-|--------|---------|------------|------------|-------------|
-| NVT Ratio | Network Value / Daily Transaction Volume | >95 | 65-95 | <65 |
-| MVRV Ratio | Market Cap / Realized Cap | >3.5 (cycle top) | 1.0-3.5 | <1.0 (cycle bottom) |
-| SOPR | Spent Output Profit Ratio | >1.05 (profit taking) | ~1.0 | <0.95 (capitulation) |
-| Puell Multiple | Daily Issuance USD / 365-day MA | >4.0 (top) | 0.5-4.0 | <0.5 (bottom) |
-| Stablecoin Supply Ratio | BTC Market Cap / Stablecoin Supply | High (low buying power) | -- | Low (dry powder available) |
+| Metric                  | Formula                                  | Overvalued              | Fair Value | Undervalued                |
+| ----------------------- | ---------------------------------------- | ----------------------- | ---------- | -------------------------- |
+| NVT Ratio               | Network Value / Daily Transaction Volume | >95                     | 65-95      | <65                        |
+| MVRV Ratio              | Market Cap / Realized Cap                | >3.5 (cycle top)        | 1.0-3.5    | <1.0 (cycle bottom)        |
+| SOPR                    | Spent Output Profit Ratio                | >1.05 (profit taking)   | ~1.0       | <0.95 (capitulation)       |
+| Puell Multiple          | Daily Issuance USD / 365-day MA          | >4.0 (top)              | 0.5-4.0    | <0.5 (bottom)              |
+| Stablecoin Supply Ratio | BTC Market Cap / Stablecoin Supply       | High (low buying power) | --         | Low (dry powder available) |
 
 ### Signal Aggregation
 
@@ -92,11 +86,11 @@ Combine multiple metrics for higher-confidence signals:
 
 ### Classification Tiers
 
-| Tier | BTC Amount | ETH Amount | Label |
-|------|-----------|------------|-------|
-| Mega Whale | >10,000 BTC | >100,000 ETH | Institutional / Exchange |
-| Large Whale | 1,000-10,000 BTC | 10,000-100,000 ETH | Fund / Major Holder |
-| Whale | 100-1,000 BTC | 1,000-10,000 ETH | High Net Worth |
+| Tier        | BTC Amount       | ETH Amount         | Label                    |
+| ----------- | ---------------- | ------------------ | ------------------------ |
+| Mega Whale  | >10,000 BTC      | >100,000 ETH       | Institutional / Exchange |
+| Large Whale | 1,000-10,000 BTC | 10,000-100,000 ETH | Fund / Major Holder      |
+| Whale       | 100-1,000 BTC    | 1,000-10,000 ETH   | High Net Worth           |
 
 ### Movement Interpretation
 
@@ -119,15 +113,15 @@ Rate each whale movement by:
 
 Each factor scored 0-10, weighted to produce a composite risk-adjusted yield score:
 
-| Factor | Weight | Scoring Criteria |
-|--------|--------|-----------------|
-| APY | 20% | Higher = better, but flag >100% APY as likely unsustainable |
-| TVL | 20% | >$100M = 10, $10M-100M = 7, $1M-10M = 4, <$1M = 1 |
-| Audit Status | 15% | Multiple audits = 10, single audit = 7, unaudited = 2 |
-| Protocol Age | 10% | >2 years = 10, 1-2 years = 7, 6-12 months = 4, <6 months = 1 |
-| IL Risk | 15% | No IL (single-sided) = 10, low IL (stablecoin pair) = 7, high IL (volatile pair) = 3 |
-| Chain Security | 10% | L1 mainnet = 10, established L2 = 7, new L2/sidechain = 4 |
-| IL-Adjusted Yield | 10% | Net yield after estimated IL |
+| Factor            | Weight | Scoring Criteria                                                                     |
+| ----------------- | ------ | ------------------------------------------------------------------------------------ |
+| APY               | 20%    | Higher = better, but flag >100% APY as likely unsustainable                          |
+| TVL               | 20%    | >$100M = 10, $10M-100M = 7, $1M-10M = 4, <$1M = 1                                    |
+| Audit Status      | 15%    | Multiple audits = 10, single audit = 7, unaudited = 2                                |
+| Protocol Age      | 10%    | >2 years = 10, 1-2 years = 7, 6-12 months = 4, <6 months = 1                         |
+| IL Risk           | 15%    | No IL (single-sided) = 10, low IL (stablecoin pair) = 7, high IL (volatile pair) = 3 |
+| Chain Security    | 10%    | L1 mainnet = 10, established L2 = 7, new L2/sidechain = 4                            |
+| IL-Adjusted Yield | 10%    | Net yield after estimated IL                                                         |
 
 ### Impermanent Loss Calculator
 
@@ -150,7 +144,7 @@ Where `price_ratio` = current_price / entry_price.
 For each upcoming unlock event, evaluate:
 
 1. **Size Impact**: Unlock amount as % of circulating supply
-   - >5% = Major (likely significant selling pressure)
+   - > 5% = Major (likely significant selling pressure)
    - 2-5% = Moderate (notable but manageable)
    - <2% = Minor (likely absorbed by market)
 

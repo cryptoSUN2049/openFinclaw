@@ -2,13 +2,7 @@
 name: fin-market-data
 description: "Fetch real-time market data: prices, tickers, orderbooks, and market overviews for crypto, stocks, forex, and commodities. Use when: user asks about current prices, market conditions, or trading pair information."
 metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📈",
-        "requires": { "extensions": ["fin-core", "fin-market-data"] },
-      },
-  }
+  { "openclaw": { "emoji": "📈", "requires": { "extensions": ["fin-core", "fin-market-data"] } } }
 ---
 
 # Market Data Skill

@@ -1,13 +1,7 @@
 ---
 name: fin-dca-strategy
 description: "Dollar-cost averaging strategy - analyzes portfolios and recommends DCA plans based on risk tolerance and market conditions."
-metadata:
-  {
-    "openclaw":
-      {
-        "emoji": "📊",
-      },
-  }
+metadata: { "openclaw": { "emoji": "📊" } }
 ---
 
 # DCA Strategy Assistant

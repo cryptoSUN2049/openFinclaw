@@ -62,15 +62,17 @@ export function formatCommonsList(entries: CommonsEntry[], opts: CommonsListOpti
   ];
 
   const lines: string[] = [];
-  lines.push(
-    `${theme.heading("FinClaw Commons")} ${theme.muted(`(${entries.length} entries)`)}`,
-  );
+  lines.push(`${theme.heading("FinClaw Commons")} ${theme.muted(`(${entries.length} entries)`)}`);
   lines.push(renderTable({ width: tableWidth, columns, rows }).trimEnd());
 
   return lines.join("\n");
 }
 
-export function formatCommonsSearch(entries: CommonsEntry[], query: string, opts: CommonsSearchOptions): string {
+export function formatCommonsSearch(
+  entries: CommonsEntry[],
+  query: string,
+  opts: CommonsSearchOptions,
+): string {
   if (opts.json) {
     return JSON.stringify({ query, results: entries }, null, 2);
   }
@@ -153,7 +155,9 @@ export function formatInstallSuccess(
 
 export function formatPublishSuccess(entryId: string, registryPath: string): string {
   const lines: string[] = [];
-  lines.push(`${theme.success("Published")} ${theme.command(entryId)} ${theme.muted("to commons")}`);
+  lines.push(
+    `${theme.success("Published")} ${theme.command(entryId)} ${theme.muted("to commons")}`,
+  );
   lines.push(`${theme.muted("  Registry path:")} ${registryPath}`);
 
   return lines.join("\n");

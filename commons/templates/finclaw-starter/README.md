@@ -32,15 +32,15 @@ A starter workspace for financial intelligence with OpenClaw. This template incl
 
 ## Recommended Skills
 
-| Skill | Description |
-|-------|-------------|
-| fin-market-data | Real-time prices, charts, and market data |
-| fin-portfolio | Portfolio tracking and P&L analysis |
-| fin-trading | Order execution with safety confirmations |
-| fin-dca-strategy | Dollar-cost averaging plan builder |
-| fin-tax-report | Tax reporting and capital gains calculation |
-| fin-alerts | Price and portfolio alert monitoring |
-| fin-expert | Deep financial analysis and research |
+| Skill            | Description                                 |
+| ---------------- | ------------------------------------------- |
+| fin-market-data  | Real-time prices, charts, and market data   |
+| fin-portfolio    | Portfolio tracking and P&L analysis         |
+| fin-trading      | Order execution with safety confirmations   |
+| fin-dca-strategy | Dollar-cost averaging plan builder          |
+| fin-tax-report   | Tax reporting and capital gains calculation |
+| fin-alerts       | Price and portfolio alert monitoring        |
+| fin-expert       | Deep financial analysis and research        |
 
 ## Learn More
 

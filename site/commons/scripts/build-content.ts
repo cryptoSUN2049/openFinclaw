@@ -94,9 +94,7 @@ function main(): void {
   const indexRaw = fs.readFileSync(INDEX_PATH, "utf-8");
   const index: IndexFile = JSON.parse(indexRaw);
 
-  console.log(
-    `[build-content] Found ${index.entries.length} entries in index.json`
-  );
+  console.log(`[build-content] Found ${index.entries.length} entries in index.json`);
 
   // Ensure output directories exist
   fs.mkdirSync(ENTRIES_EN_DIR, { recursive: true });
@@ -115,7 +113,7 @@ function main(): void {
 
     if (enSource === null) {
       console.warn(
-        `[build-content] WARN: Missing source file ${enSourceFile} for entry "${entry.id}", skipping.`
+        `[build-content] WARN: Missing source file ${enSourceFile} for entry "${entry.id}", skipping.`,
       );
       continue;
     }
@@ -127,10 +125,7 @@ function main(): void {
     console.log(`  [en] ${entry.id}.md`);
 
     // ── zh-CN ────────────────────────────────────────────────────────────
-    const zhSourceFile = path.join(
-      entryDir,
-      getSourceFilename(entry, "zh-CN")
-    );
+    const zhSourceFile = path.join(entryDir, getSourceFilename(entry, "zh-CN"));
     const zhSource = readFileOrNull(zhSourceFile);
 
     let zhBody: string;
@@ -160,14 +155,8 @@ function main(): void {
   }
 
   // Write registry.json
-  fs.writeFileSync(
-    REGISTRY_PATH,
-    JSON.stringify(registryEntries, null, 2) + "\n",
-    "utf-8"
-  );
-  console.log(
-    `[build-content] Wrote ${registryEntries.length} entries to registry.json`
-  );
+  fs.writeFileSync(REGISTRY_PATH, JSON.stringify(registryEntries, null, 2) + "\n", "utf-8");
+  console.log(`[build-content] Wrote ${registryEntries.length} entries to registry.json`);
 
   console.log("[build-content] Done.");
 }
