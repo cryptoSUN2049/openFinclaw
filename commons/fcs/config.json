@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "weights": { "quality": 0.35, "usage": 0.3, "social": 0.2, "freshness": 0.15 },
+  "typeOverrides": {
+    "strategy": {
+      "quality": 0.45,
+      "usage": 0.2,
+      "social": 0.15,
+      "freshness": 0.2,
+      "backtestSharpeFloor": 0.5,
+      "backtestDrawdownCeiling": 40
+    },
+    "connector": {
+      "quality": 0.4,
+      "usage": 0.3,
+      "social": 0.1,
+      "freshness": 0.2,
+      "uptimeFloor": 95,
+      "latencyCeiling": 1000
+    }
+  },
+  "decayHalfLifeDays": 90,
+  "antiGaming": { "maxDailyScoreChange": 5, "installVelocityCap": 50, "minUniqueInstallers": 3 },
+  "lifecycle": {
+    "seedlingToGrowingThreshold": 30,
+    "growingToEstablishedThreshold": 65,
+    "degradationThreshold": 20,
+    "archivalGracePeriodDays": 90
+  }
+}

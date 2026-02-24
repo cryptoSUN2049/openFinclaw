@@ -44,3 +44,14 @@ export type CommonsPublishResult = {
   entry: CommonsEntry;
   registryPath: string;
 };
+
+// Re-export FCS types for convenience
+export type {
+  FcsScore,
+  FcsConfig,
+  LifecycleState,
+  LifecycleTier,
+  LifecycleStatus,
+  CommonsEntryWithFcs,
+  AuthorReputation,
+} from "./types.fcs.js";
