@@ -1,0 +1,16 @@
+{
+  "id": "fin-info-feed",
+  "name": "Info Feed",
+  "description": "Intelligent financial information streaming — news search, subscriptions, and digests",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiKey": { "type": "string" },
+      "endpoint": { "type": "string" }
+    }
+  },
+  "uiHints": {
+    "apiKey": { "label": "Info Feed SDK Key", "sensitive": true }
+  }
+}

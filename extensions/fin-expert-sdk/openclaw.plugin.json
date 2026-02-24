@@ -1,0 +1,17 @@
+{
+  "id": "fin-expert-sdk",
+  "name": "Expert SDK",
+  "description": "Deep financial analysis via Expert API — fundamental, technical, and risk analysis",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiKey": { "type": "string", "description": "Expert SDK API key" },
+      "endpoint": { "type": "string", "description": "Expert API endpoint URL" },
+      "tier": { "type": "string", "enum": ["basic", "pro", "enterprise"] }
+    }
+  },
+  "uiHints": {
+    "apiKey": { "label": "Expert SDK Key", "sensitive": true }
+  }
+}

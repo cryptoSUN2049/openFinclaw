@@ -1,0 +1,19 @@
+{
+  "name": "@openfinclaw/fin-core",
+  "version": "2026.2.23",
+  "private": true,
+  "description": "OpenFinClaw core financial infrastructure — types, exchange registry, risk controller",
+  "type": "module",
+  "dependencies": {
+    "ccxt": "^4.4.0"
+  },
+  "devDependencies": {
+    "openfinclaw": "workspace:*"
+  },
+  "peerDependencies": {
+    "openfinclaw": ">=2026.2.23"
+  },
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  }
+}

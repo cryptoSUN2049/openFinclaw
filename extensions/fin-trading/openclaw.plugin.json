@@ -1,0 +1,6 @@
+{
+  "id": "fin-trading",
+  "name": "Trading Engine",
+  "description": "Risk-gated trade execution via CCXT: place, cancel, modify orders with tiered risk control",
+  "kind": "financial"
+}
