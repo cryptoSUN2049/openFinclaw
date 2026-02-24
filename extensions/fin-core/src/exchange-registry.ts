@@ -57,7 +57,10 @@ export class ExchangeRegistry {
       },
     });
 
-    if (config.testnet && typeof (instance as Record<string, unknown>).setSandboxMode === "function") {
+    if (
+      config.testnet &&
+      typeof (instance as Record<string, unknown>).setSandboxMode === "function"
+    ) {
       (instance as { setSandboxMode: (v: boolean) => void }).setSandboxMode(true);
     }
 

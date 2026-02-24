@@ -15,6 +15,7 @@ export const CONFIGURE_WIZARD_SECTIONS = [
   "daemon",
   "channels",
   "skills",
+  "financial",
   "health",
 ] as const;
 
@@ -65,6 +66,11 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
     hint: "Link WhatsApp/Telegram/etc and defaults",
   },
   { value: "skills", label: "Skills", hint: "Install/enable workspace skills" },
+  {
+    value: "financial",
+    label: "Financial",
+    hint: "Exchange API keys, trading risk limits",
+  },
   {
     value: "health",
     label: "Health check",

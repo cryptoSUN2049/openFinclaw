@@ -11,6 +11,7 @@ import { createClackPrompter } from "../wizard/clack-prompter.js";
 import { WizardCancelledError } from "../wizard/prompts.js";
 import { removeChannelConfigWizard } from "./configure.channels.js";
 import { maybeInstallDaemon } from "./configure.daemon.js";
+import { promptFinancialConfig } from "./configure.financial.js";
 import { promptAuthConfig } from "./configure.gateway-auth.js";
 import { promptGatewayConfig } from "./configure.gateway.js";
 import type {
@@ -407,6 +408,10 @@ export async function runConfigureWizard(
         nextConfig = await setupSkills(nextConfig, wsDir, runtime, prompter);
       }
 
+      if (selected.includes("financial")) {
+        nextConfig = await promptFinancialConfig(nextConfig, runtime);
+      }
+
       await persistConfig();
 
       if (selected.includes("daemon")) {
@@ -463,6 +468,11 @@ export async function runConfigureWizard(
         if (choice === "skills") {
           const wsDir = resolveUserPath(workspaceDir);
           nextConfig = await setupSkills(nextConfig, wsDir, runtime, prompter);
+          await persistConfig();
+        }
+
+        if (choice === "financial") {
+          nextConfig = await promptFinancialConfig(nextConfig, runtime);
           await persistConfig();
         }
 

@@ -37,7 +37,9 @@ async function expertRequest(
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   if (!config.apiKey) {
-    throw new Error("Expert SDK API key not configured. Set fin-expert-sdk.apiKey in plugin config.");
+    throw new Error(
+      "Expert SDK API key not configured. Set fin-expert-sdk.apiKey in plugin config.",
+    );
   }
   if (!config.endpoint) {
     throw new Error(

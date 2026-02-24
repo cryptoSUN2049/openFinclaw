@@ -2,7 +2,15 @@
   "name": "openfinclaw",
   "version": "2026.2.23",
   "description": "AI-powered financial assistant gateway — trading, portfolio, market data across 35+ channels",
-  "keywords": ["finance", "trading", "ai", "gateway", "portfolio", "ccxt", "crypto"],
+  "keywords": [
+    "ai",
+    "ccxt",
+    "crypto",
+    "finance",
+    "gateway",
+    "portfolio",
+    "trading"
+  ],
   "homepage": "https://github.com/cryptoSUN2049/openFinclaw#readme",
   "bugs": {
     "url": "https://github.com/AICoinvestor/openfinclaw/issues"

@@ -32,9 +32,7 @@ async function feedRequest(
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   if (!config.apiKey) {
-    throw new Error(
-      "Info Feed API key not configured. Set fin-info-feed.apiKey in plugin config.",
-    );
+    throw new Error("Info Feed API key not configured. Set fin-info-feed.apiKey in plugin config.");
   }
   if (!config.endpoint) {
     throw new Error(
@@ -92,9 +90,7 @@ const finInfoFeedPlugin = {
               enum: ["1h", "24h", "7d", "30d"],
             }),
           ),
-          limit: Type.Optional(
-            Type.Number({ description: "Maximum number of results to return" }),
-          ),
+          limit: Type.Optional(Type.Number({ description: "Maximum number of results to return" })),
         }),
         async execute(_toolCallId: string, params: Record<string, unknown>) {
           try {

@@ -6,7 +6,8 @@ import type { AlertCondition } from "./src/alert-engine.js";
 const finMonitoringPlugin = {
   id: "fin-monitoring",
   name: "Financial Monitoring",
-  description: "Proactive financial monitoring: price alerts, portfolio health checks, scheduled reports",
+  description:
+    "Proactive financial monitoring: price alerts, portfolio health checks, scheduled reports",
   kind: "financial" as const,
 
   register(api: OpenClawPluginApi) {
@@ -38,7 +39,8 @@ const finMonitoringPlugin = {
           ),
           price: Type.Optional(
             Type.Number({
-              description: "Target price that triggers the alert. Required for price_above / price_below.",
+              description:
+                "Target price that triggers the alert. Required for price_above / price_below.",
             }),
           ),
           threshold: Type.Optional(

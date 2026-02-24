@@ -28,7 +28,10 @@ export class RiskController {
   /** Evaluate a trade request against risk rules. */
   evaluate(order: OrderRequest, estimatedValueUsd: number): RiskEvaluation {
     if (!this.config.enabled) {
-      return { tier: "reject", reason: "Trading is disabled. Set financial.trading.enabled=true in config." };
+      return {
+        tier: "reject",
+        reason: "Trading is disabled. Set financial.trading.enabled=true in config.",
+      };
     }
 
     this.resetDailyIfNeeded();

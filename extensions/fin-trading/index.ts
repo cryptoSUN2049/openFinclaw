@@ -2,6 +2,21 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { CcxtBridge } from "./src/ccxt-bridge.js";
 
+type RiskController = {
+  evaluate: (
+    order: {
+      exchange: string;
+      symbol: string;
+      side: string;
+      type: string;
+      amount: number;
+      leverage?: number;
+    },
+    estimatedValueUsd: number,
+  ) => { tier: "auto" | "confirm" | "reject"; reason?: string };
+  recordLoss: (usdAmount: number) => void;
+};
+
 const json = (payload: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
   details: payload,
@@ -12,7 +27,8 @@ const json = (payload: unknown) => ({
  * then wrap it in a CcxtBridge for unified access.
  */
 async function resolveBridge(api: OpenClawPluginApi, exchangeId: string): Promise<CcxtBridge> {
-  const registry = api.runtime.services?.get?.("fin-exchange-registry") as
+  const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+  const registry = runtime.services?.get?.("fin-exchange-registry") as
     | { getInstance: (id: string) => Promise<unknown> }
     | undefined;
   if (!registry) {
@@ -22,10 +38,17 @@ async function resolveBridge(api: OpenClawPluginApi, exchangeId: string): Promis
   return new CcxtBridge(instance);
 }
 
+/** Resolve the RiskController service from fin-core. Returns undefined if not available. */
+function getRiskController(api: OpenClawPluginApi): RiskController | undefined {
+  const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+  return runtime.services?.get?.("fin-risk-controller") as RiskController | undefined;
+}
+
 const finTradingPlugin = {
   id: "fin-trading",
   name: "Trading Engine",
-  description: "Risk-gated trade execution via CCXT: place, cancel, modify orders with tiered risk control",
+  description:
+    "Risk-gated trade execution via CCXT: place, cancel, modify orders with tiered risk control",
   kind: "financial" as const,
 
   register(api: OpenClawPluginApi) {
@@ -43,7 +66,9 @@ const finTradingPlugin = {
           side: Type.Unsafe<"buy" | "sell">({ type: "string", enum: ["buy", "sell"] }),
           type: Type.Unsafe<"market" | "limit">({ type: "string", enum: ["market", "limit"] }),
           amount: Type.Number({ description: "Order amount in base currency" }),
-          price: Type.Optional(Type.Number({ description: "Limit price (required for limit orders)" })),
+          price: Type.Optional(
+            Type.Number({ description: "Limit price (required for limit orders)" }),
+          ),
           leverage: Type.Optional(Type.Number({ description: "Leverage multiplier" })),
           stopLoss: Type.Optional(Type.Number({ description: "Stop-loss price" })),
           takeProfit: Type.Optional(Type.Number({ description: "Take-profit price" })),
@@ -60,19 +85,55 @@ const finTradingPlugin = {
               throw new Error("exchange, symbol, side, type, and amount are required");
             }
 
-            // TODO: Risk evaluation flow (tiered system):
-            //   1. Fetch current ticker to estimate USD value of the order.
-            //   2. Call riskController.evaluate(orderRequest, estimatedValueUsd).
-            //   3. If tier === "auto" => proceed with execution.
-            //   4. If tier === "confirm" => return confirmation prompt to the LLM
-            //      so the user can approve/reject before execution.
-            //   5. If tier === "reject" => return rejection reason, do NOT execute.
-            //   6. After execution, if order results in a loss, call riskController.recordLoss().
-
             const bridge = await resolveBridge(api, exchange);
 
-            // TODO: Apply leverage via exchange-specific params if provided.
-            // TODO: Set stop-loss and take-profit as conditional orders after main fill.
+            // Risk evaluation: fetch current price to estimate USD value
+            const riskCtrl = getRiskController(api);
+            if (riskCtrl) {
+              const ticker = await bridge.fetchTicker(symbol);
+              const currentPrice = Number(ticker.last ?? 0);
+              const estimatedValueUsd = currentPrice * amount;
+
+              const evaluation = riskCtrl.evaluate(
+                {
+                  exchange,
+                  symbol,
+                  side,
+                  type,
+                  amount,
+                  leverage: typeof params.leverage === "number" ? params.leverage : undefined,
+                },
+                estimatedValueUsd,
+              );
+
+              if (evaluation.tier === "reject") {
+                return json({
+                  success: false,
+                  rejected: true,
+                  reason: evaluation.reason,
+                  estimatedValueUsd,
+                  currentPrice,
+                });
+              }
+
+              if (evaluation.tier === "confirm") {
+                return json({
+                  success: false,
+                  requiresConfirmation: true,
+                  reason: evaluation.reason,
+                  estimatedValueUsd,
+                  currentPrice,
+                  order: { exchange, symbol, side, type, amount, price: params.price },
+                  hint: "User must confirm this trade before execution. Re-call with the same parameters after user approval.",
+                });
+              }
+            }
+
+            // Apply leverage if provided
+            const extraParams: Record<string, unknown> = {};
+            if (typeof params.leverage === "number" && params.leverage > 1) {
+              extraParams.leverage = params.leverage;
+            }
 
             const result = await bridge.placeOrder({
               symbol,
@@ -80,6 +141,7 @@ const finTradingPlugin = {
               type,
               amount,
               price: typeof params.price === "number" ? params.price : undefined,
+              params: Object.keys(extraParams).length > 0 ? extraParams : undefined,
             });
 
             return json({ success: true, order: result });
@@ -154,12 +216,39 @@ const finTradingPlugin = {
               throw new Error("at least one of amount or price must be provided for modification");
             }
 
-            // TODO: Risk evaluation flow for modifications:
-            //   1. Fetch the original order details to compute the delta.
-            //   2. Evaluate the new estimated USD value through riskController.
-            //   3. Apply tiered gating (auto / confirm / reject) same as place_order.
-
             const bridge = await resolveBridge(api, exchange);
+
+            // Risk evaluation for modifications
+            const riskCtrl = getRiskController(api);
+            if (riskCtrl && typeof params.amount === "number") {
+              const ticker = await bridge.fetchTicker(symbol);
+              const currentPrice = Number(ticker.last ?? 0);
+              const estimatedValueUsd = currentPrice * (params.amount as number);
+
+              const evaluation = riskCtrl.evaluate(
+                { exchange, symbol, side: "buy", type: "limit", amount: params.amount as number },
+                estimatedValueUsd,
+              );
+
+              if (evaluation.tier === "reject") {
+                return json({
+                  success: false,
+                  rejected: true,
+                  reason: evaluation.reason,
+                  estimatedValueUsd,
+                });
+              }
+
+              if (evaluation.tier === "confirm") {
+                return json({
+                  success: false,
+                  requiresConfirmation: true,
+                  reason: evaluation.reason,
+                  estimatedValueUsd,
+                  hint: "User must confirm this modification before execution.",
+                });
+              }
+            }
 
             // Cancel-and-replace: cancel the existing order, then place a new one.
             const cancelled = await bridge.cancelOrder(orderId, symbol);
