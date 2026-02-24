@@ -14,9 +14,16 @@ const finMonitoringPlugin = {
     const alertEngine = new AlertEngine();
 
     // Expose the alert engine for other fin-* plugins to consume.
+    const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+    if (!runtime.services) {
+      runtime.services = new Map();
+    }
+    runtime.services.set("fin-alert-engine", alertEngine);
     api.registerService({
       id: "fin-alert-engine",
-      instance: alertEngine,
+      start: () => {
+        /* instance already created above */
+      },
     });
 
     // --- fin_set_alert ---
@@ -78,6 +85,7 @@ const finMonitoringPlugin = {
                     }),
                   },
                 ],
+                details: { error: "symbol and price are required for price alerts" },
               };
             }
             condition = { kind, symbol, price };
@@ -94,6 +102,7 @@ const finMonitoringPlugin = {
                     }),
                   },
                 ],
+                details: { error: "threshold is required for pnl_threshold alerts" },
               };
             }
             condition = { kind, threshold, direction };
@@ -102,17 +111,15 @@ const finMonitoringPlugin = {
               content: [
                 { type: "text", text: JSON.stringify({ error: `Unknown alert kind: ${kind}` }) },
               ],
+              details: { error: `Unknown alert kind: ${kind}` },
             };
           }
 
           const id = alertEngine.addAlert(condition, message);
+          const payload = { id, condition, message, status: "active" };
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ id, condition, message, status: "active" }, null, 2),
-              },
-            ],
+            content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+            details: payload,
           };
         },
       },
@@ -128,22 +135,15 @@ const finMonitoringPlugin = {
         parameters: Type.Object({}),
         async execute() {
           const alerts = alertEngine.listAlerts();
+          const payload = {
+            total: alerts.length,
+            active: alerts.filter((a) => !a.triggeredAt).length,
+            triggered: alerts.filter((a) => !!a.triggeredAt).length,
+            alerts,
+          };
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    total: alerts.length,
-                    active: alerts.filter((a) => !a.triggeredAt).length,
-                    triggered: alerts.filter((a) => !!a.triggeredAt).length,
-                    alerts,
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
+            content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+            details: payload,
           };
         },
       },
@@ -162,17 +162,14 @@ const finMonitoringPlugin = {
         async execute(_id: string, params: Record<string, unknown>) {
           const alertId = params.id as string;
           const removed = alertEngine.removeAlert(alertId);
+          const payload = {
+            id: alertId,
+            removed,
+            message: removed ? "Alert removed" : "Alert not found",
+          };
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  id: alertId,
-                  removed,
-                  message: removed ? "Alert removed" : "Alert not found",
-                }),
-              },
-            ],
+            content: [{ type: "text", text: JSON.stringify(payload) }],
+            details: payload,
           };
         },
       },

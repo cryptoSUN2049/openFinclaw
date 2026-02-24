@@ -216,6 +216,12 @@ const sectionIcons = {
       <line x1="8" y1="23" x2="16" y2="23"></line>
     </svg>
   `,
+  financial: html`
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <line x1="12" y1="1" x2="12" y2="23"></line>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+    </svg>
+  `,
   plugins: html`
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <path d="M12 2v6"></path>
@@ -271,6 +277,10 @@ export const SECTION_META: Record<string, { label: string; description: string }
   discovery: { label: "Discovery", description: "Service discovery and networking" },
   canvasHost: { label: "Canvas Host", description: "Canvas rendering and display" },
   talk: { label: "Talk", description: "Voice and speech settings" },
+  financial: {
+    label: "Financial",
+    description: "Exchange accounts, trading risk limits, and market data integrations",
+  },
   plugins: { label: "Plugins", description: "Plugin management and extensions" },
 };
 

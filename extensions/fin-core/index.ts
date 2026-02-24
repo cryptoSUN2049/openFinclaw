@@ -16,6 +16,19 @@ const DEFAULT_RISK_CONFIG: TradingRiskConfig = {
   maxLeverage: 5,
 };
 
+/**
+ * Attach a shared services Map to the plugin runtime so other fin-* plugins
+ * can discover instances via `(api.runtime as any).services.get("id")`.
+ * This is the inter-plugin communication channel for financial plugins.
+ */
+function ensureServicesMap(api: OpenClawPluginApi): Map<string, unknown> {
+  const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+  if (!runtime.services) {
+    runtime.services = new Map();
+  }
+  return runtime.services;
+}
+
 const finCorePlugin = {
   id: "fin-core",
   name: "Financial Core",
@@ -24,17 +37,55 @@ const finCorePlugin = {
 
   register(api: OpenClawPluginApi) {
     const registry = new ExchangeRegistry();
-    const riskController = new RiskController(DEFAULT_RISK_CONFIG);
+    const riskController = new RiskController({ ...DEFAULT_RISK_CONFIG });
 
-    // Expose services for other fin-* plugins to consume.
+    // Hydrate registry + risk controller from persisted config.
+    const financialCfg = api.config.financial;
+    if (financialCfg?.exchanges) {
+      for (const [id, acct] of Object.entries(financialCfg.exchanges)) {
+        registry.addExchange(id, {
+          exchange: acct.exchange,
+          apiKey: acct.apiKey ?? "",
+          secret: acct.secret ?? "",
+          passphrase: acct.passphrase,
+          testnet: acct.testnet,
+          subaccount: acct.subaccount,
+        });
+      }
+    }
+    if (financialCfg?.trading) {
+      const t = financialCfg.trading;
+      riskController.updateConfig({
+        enabled: t.enabled ?? DEFAULT_RISK_CONFIG.enabled,
+        maxAutoTradeUsd: t.maxAutoTradeUsd ?? DEFAULT_RISK_CONFIG.maxAutoTradeUsd,
+        confirmThresholdUsd: t.confirmThresholdUsd ?? DEFAULT_RISK_CONFIG.confirmThresholdUsd,
+        maxDailyLossUsd: t.maxDailyLossUsd ?? DEFAULT_RISK_CONFIG.maxDailyLossUsd,
+        maxPositionPct: t.maxPositionPct ?? DEFAULT_RISK_CONFIG.maxPositionPct,
+        maxLeverage: t.maxLeverage ?? DEFAULT_RISK_CONFIG.maxLeverage,
+        allowedPairs: t.allowedPairs,
+        blockedPairs: t.blockedPairs,
+      });
+    }
+
+    // Expose instances on the runtime services Map for other fin-* plugins.
+    const services = ensureServicesMap(api);
+    services.set("fin-exchange-registry", registry);
+    services.set("fin-risk-controller", riskController);
+
+    // Register lifecycle services (proper OpenClawPluginService shape).
     api.registerService({
       id: "fin-exchange-registry",
-      instance: registry,
+      start: () => {
+        /* instance already created above */
+      },
+      stop: () => registry.closeAll(),
     });
 
     api.registerService({
       id: "fin-risk-controller",
-      instance: riskController,
+      start: () => {
+        /* instance already created above */
+      },
     });
 
     // Register CLI commands for exchange management.
@@ -87,15 +138,15 @@ const finCorePlugin = {
         });
     });
 
-    // Risk control hook: intercept all fin_* tool calls.
-    api.registerHook("before_tool_call", async (ctx) => {
-      const toolName = ctx.toolName;
-      if (!toolName.startsWith("fin_place_order") && !toolName.startsWith("fin_modify_order")) {
+    // Risk control hook: intercept trading tool calls.
+    api.registerHook("before_tool_call", (event) => {
+      const ev = event as unknown as { toolName?: string };
+      const name = ev.toolName ?? "";
+      if (!name.startsWith("fin_place_order") && !name.startsWith("fin_modify_order")) {
         return; // Only gate trading actions.
       }
-
-      // Risk evaluation happens in fin-trading; this hook provides the controller.
-      ctx.riskController = riskController;
+      // Attach risk controller to the event for fin-trading to consume.
+      (event as unknown as Record<string, unknown>).riskController = riskController;
     });
   },
 };

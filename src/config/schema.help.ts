@@ -817,6 +817,33 @@ export const FIELD_HELP: Record<string, string> = {
     "Display name shown for the assistant in UI views, chat chrome, and status contexts. Keep this stable so operators can reliably identify which assistant persona is active.",
   "ui.assistant.avatar":
     "Assistant avatar image source used in UI surfaces (URL, path, or data URI depending on runtime support). Use trusted assets and consistent branding dimensions for clean rendering.",
+  financial:
+    "Financial configuration for exchange connections, trading risk limits, and market data integrations. API keys are stored locally and never transmitted.",
+  "financial.exchanges":
+    "Named exchange accounts (key = user-chosen alias like 'my-binance'). Each entry holds credentials and connection settings for a single exchange.",
+  "financial.exchanges.*.exchange": "Exchange type: binance, okx, bybit, or hyperliquid.",
+  "financial.exchanges.*.apiKey": "API key for this exchange account. Stored locally only.",
+  "financial.exchanges.*.secret": "API secret for this exchange account. Stored locally only.",
+  "financial.exchanges.*.passphrase": "API passphrase (required by OKX). Stored locally only.",
+  "financial.exchanges.*.testnet":
+    "Connect to the exchange testnet/sandbox instead of production. Enable for testing before live trading.",
+  "financial.exchanges.*.subaccount": "Sub-account name for exchanges that support it.",
+  "financial.trading":
+    "Trading risk limits that control automated trade execution. Three tiers: auto (small trades execute immediately), confirm (medium trades need user approval), reject (large trades are blocked).",
+  "financial.trading.enabled": "Master switch for automated trading capabilities.",
+  "financial.trading.maxAutoTradeUsd":
+    "Orders at or below this USD value execute automatically without confirmation.",
+  "financial.trading.confirmThresholdUsd":
+    "Orders above the auto-trade limit but at or below this require explicit user confirmation before execution.",
+  "financial.trading.maxDailyLossUsd":
+    "Hard daily loss limit in USD. When cumulative realized losses reach this, all trading halts until the next day.",
+  "financial.trading.maxPositionPct":
+    "Maximum single-position size as a percentage of total account equity (0-100).",
+  "financial.trading.maxLeverage": "Maximum leverage the agent may use for any trade.",
+  "financial.trading.allowedPairs": "If set, only these trading pairs are allowed. Empty = all allowed.",
+  "financial.trading.blockedPairs": "If set, these trading pairs are never traded.",
+  "financial.expertSdk": "Expert SDK connection for advanced financial analysis capabilities.",
+  "financial.infoFeedSdk": "Info Feed SDK connection for news and market intelligence.",
   plugins:
     "Plugin system controls for enabling extensions, constraining load scope, configuring entries, and tracking installs. Keep plugin policy explicit and least-privilege in production environments.",
   "plugins.enabled":
