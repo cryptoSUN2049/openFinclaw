@@ -1,0 +1,65 @@
+---
+import Base from "../../layouts/Base.astro";
+import EntryCard from "../../components/EntryCard.astro";
+import SearchBar from "../../components/SearchBar.astro";
+import TypeFilter from "../../components/TypeFilter.astro";
+import { t } from "../../i18n/utils";
+import { getCollection } from "astro:content";
+import "../../styles/cards.css";
+
+const lang = "en";
+const i = t(lang);
+
+const allEntries = await getCollection("entries");
+const entries = allEntries.filter((e) => e.id.startsWith("en/"));
+
+const types = [...new Set(entries.map((e) => e.data.type))];
+---
+
+<Base title={i.hero.title} description={i.site.description}>
+  <section class="hero">
+    <h1 class="hero__title">{i.hero.title}</h1>
+    <p class="hero__subtitle">{i.hero.subtitle}</p>
+  </section>
+
+  <section class="content-area">
+    <SearchBar lang={lang} placeholder={i.search.placeholder} />
+    <TypeFilter types={types} lang={lang} allLabel={i.filter.all} />
+
+    <div class="card-grid">
+      {entries.map((entry) => (
+        <EntryCard entry={entry.data} lang={lang} />
+      ))}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    text-align: center;
+    padding: 4rem 1.5rem 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .hero__title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-strong);
+    margin-bottom: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .hero__subtitle {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .content-area {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+</style>

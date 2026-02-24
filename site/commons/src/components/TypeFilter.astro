@@ -1,0 +1,94 @@
+---
+interface Props {
+  types: string[];
+  lang: string;
+  allLabel?: string;
+}
+
+const { types, lang, allLabel = "All" } = Astro.props;
+---
+
+<div class="type-filter" role="group" aria-label="Filter by type">
+  <button class="type-filter__btn type-filter__btn--active" data-filter-type="all">
+    {allLabel}
+  </button>
+  {types.map((type) => (
+    <button class="type-filter__btn" data-filter-type={type}>
+      {type}
+    </button>
+  ))}
+</div>
+
+<style>
+  .type-filter {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 1.5rem 0;
+  }
+
+  .type-filter__btn {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-body);
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .type-filter__btn:hover {
+    color: var(--text);
+    border-color: var(--border-strong);
+  }
+
+  .type-filter__btn--active {
+    background: var(--accent-subtle);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .type-filter__btn--active:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+</style>
+
+<script>
+  const filterContainer = document.querySelector<HTMLElement>(".type-filter");
+  if (filterContainer) {
+    filterContainer.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
+        ".type-filter__btn"
+      );
+      if (!btn) return;
+
+      // Update active state
+      filterContainer
+        .querySelectorAll(".type-filter__btn")
+        .forEach((b) => b.classList.remove("type-filter__btn--active"));
+      btn.classList.add("type-filter__btn--active");
+
+      // Filter cards
+      const filterType = btn.dataset.filterType || "all";
+      const cards = document.querySelectorAll<HTMLElement>(".entry-card-link");
+
+      cards.forEach((card) => {
+        if (filterType === "all") {
+          card.style.display = "";
+        } else {
+          const cardType = card.dataset.type || "";
+          card.style.display = cardType === filterType ? "" : "none";
+        }
+      });
+    });
+  }
+</script>

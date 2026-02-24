@@ -1,0 +1,98 @@
+/* ============================================
+   FinClaw Commons — Detail Page Layout
+   ============================================ */
+
+/* --- Two-column grid --- */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 3rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.detail-content {
+  min-width: 0; /* prevent overflow from pre/code blocks */
+}
+
+/* --- Sidebar --- */
+.detail-sidebar {
+  position: sticky;
+  top: 2rem;
+  align-self: start;
+}
+
+.sidebar-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.375rem;
+}
+
+.sidebar-value {
+  color: var(--text-strong);
+  font-weight: 500;
+}
+
+/* --- Install command box --- */
+.install-box {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  position: relative;
+  overflow-x: auto;
+}
+
+.install-box code {
+  color: var(--text);
+  white-space: pre;
+}
+
+/* --- Breadcrumb --- */
+.breadcrumb {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+.breadcrumb a {
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.breadcrumb a:hover {
+  color: var(--accent);
+}
+
+.breadcrumb__separator {
+  color: var(--border-strong);
+  user-select: none;
+}
+
+/* --- Responsive: single column below 768px --- */
+@media (max-width: 768px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .detail-sidebar {
+    position: static;
+  }
+}

@@ -1,0 +1,57 @@
+---
+interface Props {
+  text: string;
+}
+
+const { text } = Astro.props;
+---
+
+<button class="copy-btn" data-copy-text={text} aria-label="Copy to clipboard">
+  <span class="copy-btn__label">Copy</span>
+</button>
+
+<style>
+  .copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    line-height: 1.4;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .copy-btn:hover {
+    color: var(--text-strong);
+    border-color: var(--border-strong);
+  }
+</style>
+
+<script>
+  document.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".copy-btn");
+    if (!btn) return;
+
+    const text = btn.dataset.copyText;
+    if (!text) return;
+
+    const label = btn.querySelector<HTMLSpanElement>(".copy-btn__label");
+    if (!label) return;
+
+    navigator.clipboard.writeText(text).then(() => {
+      const original = label.textContent;
+      label.textContent = "Copied!";
+      setTimeout(() => {
+        label.textContent = original;
+      }, 1500);
+    });
+  });
+</script>

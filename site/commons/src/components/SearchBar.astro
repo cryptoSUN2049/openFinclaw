@@ -1,0 +1,114 @@
+---
+interface Props {
+  lang: string;
+  placeholder?: string;
+}
+
+const { lang, placeholder = "Search skills, strategies, connectors..." } = Astro.props;
+---
+
+<div class="search-wrapper">
+  <svg
+    class="search-icon"
+    xmlns="http://www.w3.org/2000/svg"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="11" cy="11" r="8"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  </svg>
+  <input
+    type="text"
+    class="search-input"
+    data-search-input
+    placeholder={placeholder}
+    autocomplete="off"
+    spellcheck="false"
+  />
+</div>
+
+<style>
+  .search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    display: block;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: var(--font-body);
+    transition: border-color 0.15s ease;
+  }
+
+  .search-input::placeholder {
+    color: var(--muted);
+  }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+</style>
+
+<script>
+  function debounce(fn: (query: string) => void, ms: number) {
+    let timer: ReturnType<typeof setTimeout>;
+    return (query: string) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(query), ms);
+    };
+  }
+
+  function filterCards(query: string) {
+    const q = query.toLowerCase().trim();
+    const cards = document.querySelectorAll<HTMLElement>(".entry-card-link");
+
+    cards.forEach((card) => {
+      if (!q) {
+        card.style.display = "";
+        return;
+      }
+
+      const name = card.dataset.name || "";
+      const description = card.dataset.description || "";
+      const tags = card.dataset.tags || "";
+
+      const matches =
+        name.includes(q) || description.includes(q) || tags.includes(q);
+
+      card.style.display = matches ? "" : "none";
+    });
+  }
+
+  const input = document.querySelector<HTMLInputElement>("[data-search-input]");
+  if (input) {
+    const debouncedFilter = debounce(filterCards, 150);
+    input.addEventListener("input", () => {
+      debouncedFilter(input.value);
+    });
+  }
+</script>

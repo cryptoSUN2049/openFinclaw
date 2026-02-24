@@ -1,0 +1,10 @@
+# Build output
+dist/
+node_modules/
+
+# Generated content (rebuilt from commons/ on every build)
+src/content/entries/
+src/data/registry.json
+
+# Astro
+.astro/

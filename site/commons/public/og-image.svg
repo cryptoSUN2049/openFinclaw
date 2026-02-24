@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="40%">
+      <stop offset="0%" stop-color="#ff5c5c" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#12141a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#12141a"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Shark fin icon (centered, scaled up) -->
+  <g transform="translate(540, 160) scale(3.5)">
+    <path d="M16 4 C16 4, 14.5 12, 14 16 C13.2 21.5, 10 26, 7 28 C12 26.5, 16 24, 18.5 20 C21 16, 22 12, 20 7 C19 5, 17.5 4, 16 4Z" fill="#ff5c5c"/>
+  </g>
+
+  <!-- Title text -->
+  <text x="600" y="420" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="56" font-weight="700" fill="#e4e4e7" letter-spacing="-1">FinClaw Commons</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="475" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#a1a1aa" letter-spacing="2">Open Financial Intelligence</text>
+
+  <!-- Accent line -->
+  <rect x="520" y="500" width="160" height="2" rx="1" fill="#ff5c5c" opacity="0.6"/>
+</svg>

@@ -1,0 +1,75 @@
+---
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+
+const currentPath = Astro.url.pathname;
+
+// Build alternate language paths by replacing the lang segment
+// Handles both index pages (e.g. /en/) and detail pages (e.g. /en/some-skill/)
+function buildLangPath(targetLang: string): string {
+  // Match /en/... or /zh-CN/... at the start of the path
+  const langPattern = /^\/(en|zh-CN)(\/.*)?$/;
+  const match = currentPath.match(langPattern);
+
+  if (match) {
+    const rest = match[2] || "/";
+    return `/${targetLang}${rest}`;
+  }
+
+  // Fallback: just link to the language root
+  return `/${targetLang}/`;
+}
+
+const enPath = buildLangPath("en");
+const zhPath = buildLangPath("zh-CN");
+---
+
+<nav class="lang-switcher" aria-label="Language switcher">
+  <a
+    href={enPath}
+    class:list={["lang-switcher__link", { "lang-switcher__link--active": lang === "en" }]}
+  >
+    EN
+  </a>
+  <span class="lang-switcher__sep" aria-hidden="true">|</span>
+  <a
+    href={zhPath}
+    class:list={["lang-switcher__link", { "lang-switcher__link--active": lang === "zh-CN" }]}
+  >
+    中文
+  </a>
+</nav>
+
+<style>
+  .lang-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .lang-switcher__link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 400;
+    transition: color 0.15s ease;
+  }
+
+  .lang-switcher__link:hover {
+    color: var(--text);
+  }
+
+  .lang-switcher__link--active {
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .lang-switcher__sep {
+    color: var(--border-strong);
+    font-size: 0.85rem;
+    user-select: none;
+  }
+</style>

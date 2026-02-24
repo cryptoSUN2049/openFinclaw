@@ -1,0 +1,21 @@
+---
+import EntryDetail from "../../layouts/EntryDetail.astro";
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+  const allEntries = await getCollection("entries");
+  return allEntries
+    .filter((e) => e.id.startsWith("en/"))
+    .map((entry) => ({
+      params: { slug: entry.id.replace("en/", "").replace(/\.md$/, "") },
+      props: { entry },
+    }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await entry.render();
+---
+
+<EntryDetail entry={entry.data} lang="en">
+  <Content />
+</EntryDetail>

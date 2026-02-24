@@ -1,0 +1,43 @@
+---
+interface Props {
+  type: string;
+}
+
+const { type } = Astro.props;
+
+const colorMap: Record<string, string> = {
+  skill: "var(--accent)",
+  strategy: "var(--accent-2)",
+  connector: "var(--info)",
+  workspace: "var(--ok)",
+  persona: "var(--warn)",
+  "knowledge-pack": "var(--info)",
+  "compliance-ruleset": "var(--accent-2)",
+};
+
+const color = colorMap[type] || "var(--muted)";
+---
+
+<span
+  class="type-badge"
+  style={`--badge-color: ${color};`}
+>
+  {type}
+</span>
+
+<style>
+  .type-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--badge-color) 15%, transparent);
+    color: var(--badge-color);
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+</style>

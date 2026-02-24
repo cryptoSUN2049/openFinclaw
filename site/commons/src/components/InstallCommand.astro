@@ -1,0 +1,16 @@
+---
+import CopyButton from "./CopyButton.astro";
+
+interface Props {
+  entryId: string;
+}
+
+const { entryId } = Astro.props;
+
+const command = `openfinclaw commons install ${entryId}`;
+---
+
+<div class="install-box">
+  <code>{command}</code>
+  <CopyButton text={command} />
+</div>

@@ -1,0 +1,61 @@
+---
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+
+interface Props {
+  lang?: string;
+}
+
+const { lang = "en" } = Astro.props;
+---
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href={`/${lang}/`} class="header-logo">
+      <span class="header-logo__icon" aria-hidden="true">🦈</span>
+      <span class="header-logo__text">FinClaw Commons</span>
+    </a>
+    <LanguageSwitcher lang={lang} />
+  </div>
+</header>
+
+<style>
+  .site-header {
+    width: 100%;
+    background: var(--bg-accent);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 64px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--text-strong);
+  }
+
+  .header-logo:hover {
+    color: var(--text-strong);
+    text-decoration: none;
+  }
+
+  .header-logo__icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .header-logo__text {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+</style>

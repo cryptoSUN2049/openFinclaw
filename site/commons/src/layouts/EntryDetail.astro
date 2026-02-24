@@ -1,0 +1,84 @@
+---
+import Base from "./Base.astro";
+import TypeBadge from "../components/TypeBadge.astro";
+import TagList from "../components/TagList.astro";
+import CopyButton from "../components/CopyButton.astro";
+import { t } from "../i18n/utils";
+import "../styles/detail.css";
+import "../styles/prose.css";
+
+interface Props {
+  entry: {
+    id: string;
+    name: string;
+    type: string;
+    description: string;
+    version: string;
+    author: string;
+    tags: string[];
+  };
+  lang: string;
+}
+
+const { entry, lang } = Astro.props;
+const i = t(lang);
+const installCommand = `openfinclaw commons install ${entry.id}`;
+const basePath = lang === "en" ? "/en" : "/zh-CN";
+---
+
+<Base title={entry.name} description={entry.description}>
+  <div class="detail-layout" style="padding: 2rem 1.5rem;">
+    <!-- Breadcrumb -->
+    <div style="grid-column: 1 / -1;">
+      <nav class="breadcrumb">
+        <a href={`${basePath}/`}>{i.detail.home}</a>
+        <span class="breadcrumb__separator">/</span>
+        <span>{entry.name}</span>
+      </nav>
+    </div>
+
+    <!-- Main content -->
+    <div class="detail-content">
+      <div class="prose">
+        <slot />
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="detail-sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">{i.detail.type}</div>
+        <div class="sidebar-value">
+          <TypeBadge type={entry.type} />
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">{i.detail.version}</div>
+        <div class="sidebar-value" style="font-family: var(--mono);">{entry.version}</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">{i.detail.author}</div>
+        <div class="sidebar-value">{entry.author}</div>
+      </div>
+
+      {entry.tags.length > 0 && (
+        <div class="sidebar-section">
+          <div class="sidebar-label">{i.detail.tags}</div>
+          <div class="sidebar-value">
+            <TagList tags={entry.tags} />
+          </div>
+        </div>
+      )}
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">{i.detail.install}</div>
+        <div class="install-box">
+          <code>{installCommand}</code>
+          <CopyButton text={installCommand} />
+        </div>
+      </div>
+    </aside>
+  </div>
+</Base>

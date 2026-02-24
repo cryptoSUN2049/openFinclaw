@@ -1,0 +1,128 @@
+/* ============================================
+   FinClaw Commons — Prose / Markdown Styles
+   ============================================ */
+
+.prose {
+  color: var(--text);
+  line-height: 1.75;
+  max-width: 65ch;
+}
+
+/* --- Headings --- */
+.prose h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 2rem 0 1rem;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 1.75rem 0 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* --- Body text --- */
+.prose p {
+  margin: 0.75rem 0;
+}
+
+/* --- Lists --- */
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.prose li {
+  margin: 0.25rem 0;
+}
+
+/* --- Inline code --- */
+.prose code {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.875em;
+}
+
+/* --- Code blocks --- */
+.prose pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+/* --- Emphasis --- */
+.prose strong {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+/* --- Links --- */
+.prose a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: text-decoration 0.15s ease;
+}
+
+.prose a:hover {
+  text-decoration: underline;
+}
+
+/* --- Tables --- */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.prose th {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.prose td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- Blockquote --- */
+.prose blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--muted);
+}
+
+/* --- Horizontal rule --- */
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}

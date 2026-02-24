@@ -1,0 +1,76 @@
+---
+import TypeBadge from "./TypeBadge.astro";
+import TagList from "./TagList.astro";
+
+interface Props {
+  entry: {
+    id: string;
+    name: string;
+    type: string;
+    description: string;
+    version: string;
+    author: string;
+    tags: string[];
+  };
+  lang: string;
+}
+
+const { entry, lang } = Astro.props;
+
+const emojiMap: Record<string, string> = {
+  skill: "\u{1F4CA}",
+  strategy: "\u{1F4C8}",
+  connector: "\u{1F517}",
+  workspace: "\u{1F4C1}",
+  persona: "\u{1F3AD}",
+  "knowledge-pack": "\u{1F4DA}",
+  "compliance-ruleset": "\u{1F4CB}",
+};
+
+const emoji = emojiMap[entry.type] || "\u{1F4E6}";
+---
+
+<a
+  href={`/${lang}/${entry.id}/`}
+  class="entry-card-link"
+  data-name={entry.name.toLowerCase()}
+  data-description={entry.description.toLowerCase()}
+  data-tags={entry.tags.join(",").toLowerCase()}
+  data-type={entry.type}
+>
+  <div class="entry-card">
+    <div class="entry-card__header">
+      <span class="entry-card__emoji">{emoji}</span>
+      <span class="entry-card__title">{entry.name}</span>
+    </div>
+    <div class="entry-card__description">
+      {entry.description}
+    </div>
+    <div class="entry-card__footer">
+      <div class="entry-card__footer-left">
+        <span class="entry-card__version">v{entry.version}</span>
+        <TypeBadge type={entry.type} />
+      </div>
+      <TagList tags={entry.tags} />
+    </div>
+  </div>
+</a>
+
+<style>
+  .entry-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .entry-card-link:hover {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .entry-card__footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>

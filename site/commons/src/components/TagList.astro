@@ -1,0 +1,38 @@
+---
+interface Props {
+  tags: string[];
+  limit?: number;
+}
+
+const { tags, limit = 3 } = Astro.props;
+
+const visibleTags = tags.slice(0, limit);
+---
+
+{visibleTags.length > 0 && (
+  <div class="tag-list">
+    {visibleTags.map((tag) => (
+      <span class="tag-pill">{tag}</span>
+    ))}
+  </div>
+)}
+
+<style>
+  .tag-list {
+    display: flex;
+    flex-direction: row;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+
+  .tag-pill {
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    padding: 0.15rem 0.5rem;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+</style>
