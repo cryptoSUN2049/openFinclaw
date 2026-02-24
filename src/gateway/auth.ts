@@ -45,7 +45,8 @@ export type GatewayAuthResult = {
     | "tailscale"
     | "device-token"
     | "trusted-proxy"
-    | "supabase-jwt";
+    | "supabase-jwt"
+    | "xplatform-jwt";
   user?: string;
   reason?: string;
   /** Present when the request was blocked by the rate limiter. */

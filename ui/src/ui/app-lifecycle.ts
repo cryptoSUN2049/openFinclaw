@@ -16,10 +16,10 @@ import {
   syncTabWithLocation,
   syncThemeWithSettings,
 } from "./app-settings.ts";
+import { initAuthListener } from "./controllers/auth.ts";
 import { loadControlUiBootstrapConfig } from "./controllers/control-ui-bootstrap.ts";
-import { initSupabaseAuthListener } from "./controllers/supabase-auth.ts";
 import type { Tab } from "./navigation.ts";
-import { isSupabaseConfigured, getSupabaseSession } from "./supabase-client.ts";
+import { isAuthConfigured, getStoredSession } from "./xplatform-client.ts";
 
 type LifecycleHost = {
   basePath: string;
@@ -53,16 +53,14 @@ export function handleConnected(host: LifecycleHost) {
   attachThemeListener(host as unknown as Parameters<typeof attachThemeListener>[0]);
   window.addEventListener("popstate", host.popStateHandler);
 
-  if (isSupabaseConfigured()) {
-    initSupabaseAuthListener(host as unknown as Parameters<typeof initSupabaseAuthListener>[0]);
-    host.supabaseLoading = true;
-    void getSupabaseSession().then((session) => {
-      host.supabaseSession = session;
-      host.supabaseLoading = false;
-      if (session) {
-        connectGateway(host as unknown as Parameters<typeof connectGateway>[0]);
-      }
-    });
+  if (isAuthConfigured()) {
+    initAuthListener(host as unknown as Parameters<typeof initAuthListener>[0]);
+    const session = getStoredSession();
+    host.supabaseSession = session;
+    host.supabaseLoading = false;
+    if (session) {
+      connectGateway(host as unknown as Parameters<typeof connectGateway>[0]);
+    }
   } else {
     connectGateway(host as unknown as Parameters<typeof connectGateway>[0]);
   }

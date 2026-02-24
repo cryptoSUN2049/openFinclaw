@@ -10,8 +10,13 @@
     },
     "controlUi": {
       "enabled": true,
-      "allowedOrigins": ["http://localhost:18789"],
-      "allowInsecureAuth": true
+      "allowedOrigins": ["*"],
+      "allowInsecureAuth": true,
+      "dangerouslyDisableDeviceAuth": true,
+      "xplatform": {
+        "apiUrl": "${XPLATFORM_API_URL}",
+        "required": false
+      }
     },
     "http": {
       "endpoints": {

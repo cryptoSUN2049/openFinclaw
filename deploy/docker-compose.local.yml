@@ -92,8 +92,7 @@ services:
         - GATEWAY_AUTH_TOKEN=${GATEWAY_AUTH_TOKEN:-finclaw-local}
         - GATEWAY_ALLOWED_ORIGINS=${GATEWAY_ALLOWED_ORIGINS:-*}
         - GATEWAY_DEFAULT_MODEL=${GATEWAY_DEFAULT_MODEL:-litellm/moonshotai/kimi-k2.5}
-        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
-        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+        - VITE_XPLATFORM_API_URL=${VITE_XPLATFORM_API_URL:-http://43.134.61.136:7098}
         - VITE_GATEWAY_TOKEN=${GATEWAY_AUTH_TOKEN:-finclaw-local}
     container_name: finclaw-gateway-local
     restart: unless-stopped
@@ -126,6 +125,8 @@ services:
       - BRIGHTDATA_ZONE=${BRIGHTDATA_ZONE:-}
       # Gateway auth (config 中 ${GATEWAY_AUTH_TOKEN} 需要)
       - GATEWAY_AUTH_TOKEN=${GATEWAY_AUTH_TOKEN:-finclaw-local}
+      # xplatform 认证服务
+      - XPLATFORM_API_URL=${XPLATFORM_API_URL:-http://43.134.61.136:7098}
       # 金融功能 (默认启用)
       - OPENFINCLAW_FINANCE_ENABLED=${FINANCE_ENABLED:-true}
       - FINANCE_ENABLED=${FINANCE_ENABLED:-true}

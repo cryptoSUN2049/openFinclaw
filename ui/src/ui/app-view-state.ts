@@ -47,7 +47,7 @@ import type { SessionLogEntry } from "./views/usage.ts";
 export type AppViewState = {
   settings: UiSettings;
   password: string;
-  supabaseSession: import("./supabase-client.ts").SupabaseSession | null;
+  supabaseSession: import("./xplatform-client.ts").AuthSession | null;
   supabaseLoading: boolean;
   supabaseError: string | null;
   tab: Tab;
@@ -132,6 +132,11 @@ export type AppViewState = {
   whatsappBusy: boolean;
   nostrProfileFormState: NostrProfileFormState | null;
   nostrProfileAccountId: string | null;
+  // Tenant channel management (cloud SaaS mode)
+  tenantChannels: import("./views/tenant-channels.types.ts").TenantChannelEntry[];
+  tenantChannelsLoading: boolean;
+  tenantWizardOpen: boolean;
+  tenantWizardState: import("./views/tenant-channels.types.ts").TelegramSetupState | null;
   configFormDirty: boolean;
   presenceLoading: boolean;
   presenceEntries: PresenceEntry[];
@@ -242,6 +247,7 @@ export type AppViewState = {
   debugLoading: boolean;
   debugStatus: StatusSummary | null;
   debugHealth: HealthSnapshot | null;
+  availableModels: Array<{ id: string; name: string }>;
   debugModels: unknown[];
   debugHeartbeat: unknown;
   debugCallMethod: string;

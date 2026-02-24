@@ -469,6 +469,14 @@ export const OpenClawSchema = z
               })
               .strict()
               .optional(),
+            xplatform: z
+              .object({
+                apiUrl: z.string().url(),
+                required: z.boolean().optional(),
+                allowedDomains: z.array(z.string()).optional(),
+              })
+              .strict()
+              .optional(),
           })
           .strict()
           .optional(),

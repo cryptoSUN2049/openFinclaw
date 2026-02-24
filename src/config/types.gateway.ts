@@ -76,6 +76,15 @@ export type SupabaseAuthConfig = {
   oauthProviders?: string[];
 };
 
+export type XplatformAuthConfig = {
+  /** xplatform API base URL (e.g. "http://43.134.61.136:7098"). */
+  apiUrl: string;
+  /** When true, xplatform auth is required; unauthenticated users are rejected. */
+  required?: boolean;
+  /** Restrict login to these email domains (e.g. ["company.com"]). */
+  allowedDomains?: string[];
+};
+
 export type GatewayControlUiConfig = {
   /** If false, the Gateway will not serve the Control UI (default /). */
   enabled?: boolean;
@@ -100,6 +109,8 @@ export type GatewayControlUiConfig = {
   dangerouslyDisableDeviceAuth?: boolean;
   /** Supabase Auth configuration for multi-tenant WebChat login. */
   supabase?: SupabaseAuthConfig;
+  /** xplatform Auth configuration for multi-tenant WebChat login (takes priority over supabase). */
+  xplatform?: XplatformAuthConfig;
 };
 
 export type GatewayAuthMode = "none" | "token" | "password" | "trusted-proxy";
@@ -313,6 +324,17 @@ export type GatewayToolsConfig = {
   allow?: string[];
 };
 
+export type TenantChannelsConfig = {
+  /** Enable per-tenant channel management (cloud SaaS mode). */
+  enabled?: boolean;
+  /** Supabase service-role key for bypassing RLS on tenant_channels table. */
+  supabaseServiceKey?: string;
+  /** AES-256-GCM key (32 bytes / 64 hex chars) for encrypting stored bot tokens. */
+  encryptionKey?: string;
+  /** Public webhook base URL for channel callbacks (e.g. "https://openfinclaw.ai"). */
+  webhookBaseUrl?: string;
+};
+
 export type GatewayConfig = {
   /** Single multiplexed port for Gateway WS + HTTP (default: 18789). */
   port?: number;
@@ -352,6 +374,8 @@ export type GatewayConfig = {
    * Default: false (safer fail-closed behavior).
    */
   allowRealIpFallback?: boolean;
+  /** Per-tenant channel management for cloud/SaaS deployments. */
+  tenantChannels?: TenantChannelsConfig;
   /** Tool access restrictions for HTTP /tools/invoke endpoint. */
   tools?: GatewayToolsConfig;
   /**

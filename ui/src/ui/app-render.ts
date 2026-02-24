@@ -10,6 +10,15 @@ import { loadAgentFileContent, loadAgentFiles, saveAgentFile } from "./controlle
 import { loadAgentIdentities, loadAgentIdentity } from "./controllers/agent-identity.ts";
 import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents, loadToolsCatalog } from "./controllers/agents.ts";
+import {
+  handleEmailLogin,
+  handleEmailSignup,
+  handleGoogleLogin,
+  handleLogout,
+  handlePhoneLogin,
+  handleSendPhoneCode,
+  handleWalletLogin,
+} from "./controllers/auth.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { loadChatHistory } from "./controllers/chat.ts";
 import {
@@ -64,14 +73,17 @@ import {
   updateSkillEnabled,
 } from "./controllers/skills.ts";
 import {
-  handleEmailLogin,
-  handleEmailSignup,
-  handleMagicLink,
-  handleOAuthLogin,
-} from "./controllers/supabase-auth.ts";
+  loadTenantChannels,
+  openTenantWizard,
+  closeTenantWizard,
+  setWizardToken,
+  verifyTenantToken,
+  connectTenantChannel,
+  wizardGoBack,
+  removeTenantChannel,
+} from "./controllers/tenant-channels.ts";
 import { icons } from "./icons.ts";
 import { normalizeBasePath, TAB_GROUPS, subtitleForTab, titleForTab } from "./navigation.ts";
-import { isSupabaseConfigured } from "./supabase-client.ts";
 import { renderAgents } from "./views/agents.ts";
 import { renderChannels } from "./views/channels.ts";
 import { renderChat } from "./views/chat.ts";
@@ -87,6 +99,8 @@ import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
+import { renderTenantChannels } from "./views/tenant-channels.ts";
+import { isAuthConfigured } from "./xplatform-client.ts";
 
 const AVATAR_DATA_RE = /^data:/i;
 const AVATAR_HTTP_RE = /^https?:\/\//i;
@@ -145,18 +159,21 @@ function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
 }
 
 export function renderApp(state: AppViewState) {
-  // Login gate: if Supabase is configured but user is not authenticated, show login
-  if (isSupabaseConfigured() && !state.supabaseSession && !state.supabaseLoading) {
+  // Login gate: if auth is configured but user is not authenticated, show login
+  if (isAuthConfigured() && !state.supabaseSession && !state.supabaseLoading) {
     return renderLoginView({
       onEmailLogin: (email, password) =>
         handleEmailLogin(state as unknown as OpenClawApp, email, password),
       onEmailSignup: (email, password) =>
         handleEmailSignup(state as unknown as OpenClawApp, email, password),
-      onMagicLink: (email) => handleMagicLink(state as unknown as OpenClawApp, email),
-      onOAuthLogin: (provider) => handleOAuthLogin(state as unknown as OpenClawApp, provider),
-      supabaseError: state.supabaseError,
-      supabaseLoading: state.supabaseLoading,
-      oauthProviders: [],
+      onSendPhoneCode: (phone, countryCode) =>
+        handleSendPhoneCode(state as unknown as OpenClawApp, phone, countryCode),
+      onPhoneLogin: (phone, code, countryCode) =>
+        handlePhoneLogin(state as unknown as OpenClawApp, phone, code, countryCode),
+      onWalletLogin: () => handleWalletLogin(state as unknown as OpenClawApp),
+      onGoogleLogin: () => handleGoogleLogin(state as unknown as OpenClawApp),
+      authError: state.supabaseError,
+      authLoading: state.supabaseLoading,
     });
   }
 
@@ -383,40 +400,54 @@ export function renderApp(state: AppViewState) {
 
         ${
           state.tab === "channels"
-            ? renderChannels({
-                connected: state.connected,
-                loading: state.channelsLoading,
-                snapshot: state.channelsSnapshot,
-                lastError: state.channelsError,
-                lastSuccessAt: state.channelsLastSuccess,
-                whatsappMessage: state.whatsappLoginMessage,
-                whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
-                whatsappConnected: state.whatsappLoginConnected,
-                whatsappBusy: state.whatsappBusy,
-                configSchema: state.configSchema,
-                configSchemaLoading: state.configSchemaLoading,
-                configForm: state.configForm,
-                configUiHints: state.configUiHints,
-                configSaving: state.configSaving,
-                configFormDirty: state.configFormDirty,
-                nostrProfileFormState: state.nostrProfileFormState,
-                nostrProfileAccountId: state.nostrProfileAccountId,
-                onRefresh: (probe) => loadChannels(state, probe),
-                onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
-                onWhatsAppWait: () => state.handleWhatsAppWait(),
-                onWhatsAppLogout: () => state.handleWhatsAppLogout(),
-                onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
-                onConfigSave: () => state.handleChannelConfigSave(),
-                onConfigReload: () => state.handleChannelConfigReload(),
-                onNostrProfileEdit: (accountId, profile) =>
-                  state.handleNostrProfileEdit(accountId, profile),
-                onNostrProfileCancel: () => state.handleNostrProfileCancel(),
-                onNostrProfileFieldChange: (field, value) =>
-                  state.handleNostrProfileFieldChange(field, value),
-                onNostrProfileSave: () => state.handleNostrProfileSave(),
-                onNostrProfileImport: () => state.handleNostrProfileImport(),
-                onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
-              })
+            ? isAuthConfigured()
+              ? renderTenantChannels({
+                  channels: state.tenantChannels,
+                  loading: state.tenantChannelsLoading,
+                  wizardOpen: state.tenantWizardOpen,
+                  wizardState: state.tenantWizardState,
+                  onOpenWizard: () => openTenantWizard(state),
+                  onCloseWizard: () => closeTenantWizard(state),
+                  onWizardTokenInput: (token) => setWizardToken(state, token),
+                  onWizardVerify: () => void verifyTenantToken(state),
+                  onWizardConnect: () => void connectTenantChannel(state),
+                  onWizardBack: () => wizardGoBack(state),
+                  onRemoveChannel: (id) => void removeTenantChannel(state, id),
+                })
+              : renderChannels({
+                  connected: state.connected,
+                  loading: state.channelsLoading,
+                  snapshot: state.channelsSnapshot,
+                  lastError: state.channelsError,
+                  lastSuccessAt: state.channelsLastSuccess,
+                  whatsappMessage: state.whatsappLoginMessage,
+                  whatsappQrDataUrl: state.whatsappLoginQrDataUrl,
+                  whatsappConnected: state.whatsappLoginConnected,
+                  whatsappBusy: state.whatsappBusy,
+                  configSchema: state.configSchema,
+                  configSchemaLoading: state.configSchemaLoading,
+                  configForm: state.configForm,
+                  configUiHints: state.configUiHints,
+                  configSaving: state.configSaving,
+                  configFormDirty: state.configFormDirty,
+                  nostrProfileFormState: state.nostrProfileFormState,
+                  nostrProfileAccountId: state.nostrProfileAccountId,
+                  onRefresh: (probe) => loadChannels(state, probe),
+                  onWhatsAppStart: (force) => state.handleWhatsAppStart(force),
+                  onWhatsAppWait: () => state.handleWhatsAppWait(),
+                  onWhatsAppLogout: () => state.handleWhatsAppLogout(),
+                  onConfigPatch: (path, value) => updateConfigFormValue(state, path, value),
+                  onConfigSave: () => state.handleChannelConfigSave(),
+                  onConfigReload: () => state.handleChannelConfigReload(),
+                  onNostrProfileEdit: (accountId, profile) =>
+                    state.handleNostrProfileEdit(accountId, profile),
+                  onNostrProfileCancel: () => state.handleNostrProfileCancel(),
+                  onNostrProfileFieldChange: (field, value) =>
+                    state.handleNostrProfileFieldChange(field, value),
+                  onNostrProfileSave: () => state.handleNostrProfileSave(),
+                  onNostrProfileImport: () => state.handleNostrProfileImport(),
+                  onNostrProfileToggleAdvanced: () => state.handleNostrProfileToggleAdvanced(),
+                })
             : nothing
         }
 

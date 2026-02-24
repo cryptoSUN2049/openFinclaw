@@ -26,6 +26,7 @@ import { loadNodes } from "./controllers/nodes.ts";
 import { loadPresence } from "./controllers/presence.ts";
 import { loadSessions } from "./controllers/sessions.ts";
 import { loadSkills } from "./controllers/skills.ts";
+import { loadTenantChannels } from "./controllers/tenant-channels.ts";
 import {
   inferBasePathFromPathname,
   normalizeBasePath,
@@ -38,6 +39,7 @@ import { saveSettings, type UiSettings } from "./storage.ts";
 import { startThemeTransition, type ThemeTransitionContext } from "./theme-transition.ts";
 import { resolveTheme, type ResolvedTheme, type ThemeMode } from "./theme.ts";
 import type { AgentsListResult } from "./types.ts";
+import { isAuthConfigured } from "./xplatform-client.ts";
 
 type SettingsHost = {
   settings: UiSettings;
@@ -419,11 +421,17 @@ export async function loadOverview(host: SettingsHost) {
 }
 
 export async function loadChannelsTab(host: SettingsHost) {
-  await Promise.all([
-    loadChannels(host as unknown as OpenClawApp, true),
-    loadConfigSchema(host as unknown as OpenClawApp),
-    loadConfig(host as unknown as OpenClawApp),
-  ]);
+  if (isAuthConfigured()) {
+    // Cloud mode: load per-tenant channels
+    await loadTenantChannels(host as unknown as OpenClawApp);
+  } else {
+    // Self-hosted mode: load global channel status
+    await Promise.all([
+      loadChannels(host as unknown as OpenClawApp, true),
+      loadConfigSchema(host as unknown as OpenClawApp),
+      loadConfig(host as unknown as OpenClawApp),
+    ]);
+  }
 }
 
 export async function loadCron(host: SettingsHost) {

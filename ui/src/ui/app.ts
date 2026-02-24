@@ -119,7 +119,7 @@ export class OpenClawApp extends LitElement {
     }
   }
   @state() password = "";
-  @state() supabaseSession: import("./supabase-client.ts").SupabaseSession | null = null;
+  @state() supabaseSession: import("./xplatform-client.ts").AuthSession | null = null;
   @state() supabaseLoading = false;
   @state() supabaseError: string | null = null;
   @state() tab: Tab = "chat";
@@ -211,6 +211,13 @@ export class OpenClawApp extends LitElement {
   @state() whatsappBusy = false;
   @state() nostrProfileFormState: NostrProfileFormState | null = null;
   @state() nostrProfileAccountId: string | null = null;
+
+  // Tenant channel management (cloud SaaS mode)
+  @state() tenantChannels: import("./views/tenant-channels.types.ts").TenantChannelEntry[] = [];
+  @state() tenantChannelsLoading = false;
+  @state() tenantWizardOpen = false;
+  @state() tenantWizardState: import("./views/tenant-channels.types.ts").TelegramSetupState | null =
+    null;
 
   @state() presenceLoading = false;
   @state() presenceEntries: PresenceEntry[] = [];
@@ -349,6 +356,7 @@ export class OpenClawApp extends LitElement {
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
   @state() debugHealth: HealthSnapshot | null = null;
+  @state() availableModels: Array<{ id: string; name: string }> = [];
   @state() debugModels: unknown[] = [];
   @state() debugHeartbeat: unknown = null;
   @state() debugCallMethod = "";

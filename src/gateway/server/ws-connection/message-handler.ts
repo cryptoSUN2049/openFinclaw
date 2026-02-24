@@ -63,6 +63,7 @@ import type { GatewayRequestContext, GatewayRequestHandlers } from "../../server
 import { formatError } from "../../server-utils.js";
 import { verifySupabaseJwt } from "../../supabase-auth.js";
 import { formatForLog, logWs } from "../../ws-log.js";
+import { verifyXplatformToken } from "../../xplatform-auth.js";
 import { truncateCloseReason } from "../close-reason.js";
 import {
   buildGatewaySnapshot,
@@ -382,11 +383,36 @@ export function attachGatewayWsMessageHandler(params: {
           clientIp,
         });
 
-        // Supabase JWT verification (multi-tenant WebChat auth)
+        // xplatform / Supabase JWT verification (multi-tenant WebChat auth)
         let supabaseUser: import("../../auth.js").SupabaseUser | undefined;
+        const xplatformConfig = configSnapshot.gateway?.controlUi?.xplatform;
         const supabaseConfig = configSnapshot.gateway?.controlUi?.supabase;
         const supabaseJwt = connectParams.auth?.supabaseJwt;
-        if (supabaseConfig && typeof supabaseJwt === "string" && supabaseJwt.trim()) {
+
+        // xplatform takes priority over direct Supabase verification
+        if (xplatformConfig && typeof supabaseJwt === "string" && supabaseJwt.trim()) {
+          const xplatformResult = await verifyXplatformToken({
+            jwt: supabaseJwt,
+            config: xplatformConfig,
+          });
+          if (xplatformResult.ok) {
+            authOk = true;
+            authMethod = "xplatform-jwt";
+            supabaseUser = xplatformResult.user;
+          } else if (xplatformConfig.required) {
+            markHandshakeFailure("xplatform-jwt-failed", {
+              reason: xplatformResult.reason,
+            });
+            sendHandshakeErrorResponse(
+              ErrorCodes.INVALID_REQUEST,
+              `xplatform auth failed: ${xplatformResult.reason}`,
+            );
+            close(1008, truncateCloseReason(`xplatform auth failed: ${xplatformResult.reason}`));
+            return;
+          }
+          // If not required and verification failed, fall through to existing auth
+        } else if (supabaseConfig && typeof supabaseJwt === "string" && supabaseJwt.trim()) {
+          // Fallback: direct Supabase JWT verification
           const supabaseResult = await verifySupabaseJwt({
             jwt: supabaseJwt,
             config: supabaseConfig,
@@ -396,7 +422,6 @@ export function attachGatewayWsMessageHandler(params: {
             authMethod = "supabase-jwt";
             supabaseUser = supabaseResult.user;
           } else if (supabaseConfig.required) {
-            // Supabase auth is required but JWT verification failed — reject
             markHandshakeFailure("supabase-jwt-failed", {
               reason: supabaseResult.reason,
             });

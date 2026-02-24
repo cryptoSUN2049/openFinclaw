@@ -34,14 +34,13 @@ COPY ui/ ./ui/
 RUN pnpm exec tsdown
 
 # Vite 构建时注入 import.meta.env
-ARG VITE_SUPABASE_URL=
-ARG VITE_SUPABASE_ANON_KEY=
+ARG VITE_XPLATFORM_API_URL=
 ARG VITE_GATEWAY_TOKEN=
 
 # 安装 git + CA 证书 (workspace 依赖解析需要), 安装 UI 依赖, 构建 Control UI
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/* \
     && pnpm install --filter openclaw-control-ui --no-frozen-lockfile \
-    && VITE_SUPABASE_URL=${VITE_SUPABASE_URL} VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY} VITE_GATEWAY_TOKEN=${VITE_GATEWAY_TOKEN} CI=true node scripts/ui.js build
+    && VITE_XPLATFORM_API_URL=${VITE_XPLATFORM_API_URL} VITE_GATEWAY_TOKEN=${VITE_GATEWAY_TOKEN} CI=true node scripts/ui.js build
 
 # ==============================================================================
 # Production Stage
