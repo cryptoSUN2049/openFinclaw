@@ -4,7 +4,6 @@ import {
   emailSignIn,
   emailSignUp,
   getStoredSession,
-  googleLoginUrl,
   logout,
   phoneLogin,
   sendPhoneCode,
@@ -136,25 +135,10 @@ export async function handleWalletLogin(host: OpenClawApp) {
   }
 }
 
-export async function handleGoogleLogin(host: OpenClawApp) {
-  host.supabaseLoading = true;
-  host.supabaseError = null;
-  try {
-    const redirectUri = window.location.origin + window.location.pathname;
-    const url = googleLoginUrl(redirectUri);
-    // xplatform returns JSON with oauth_url instead of a 302 redirect
-    const res = await fetch(url);
-    const data = (await res.json()) as { oauth_url?: string };
-    if (data.oauth_url) {
-      window.location.href = data.oauth_url;
-      return;
-    }
-    // Fallback: if server does redirect directly, navigate to the URL
-    window.location.href = url;
-  } catch (err) {
-    host.supabaseError = err instanceof Error ? err.message : String(err);
-    host.supabaseLoading = false;
-  }
+export function handleGoogleLogin(_host: OpenClawApp) {
+  const redirectUri = window.location.origin + window.location.pathname;
+  // Gateway proxies the xplatform call server-side (no CORS/CSP issues)
+  window.location.href = `/__auth__/google/redirect?redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
 export async function handleLogout(host: OpenClawApp) {

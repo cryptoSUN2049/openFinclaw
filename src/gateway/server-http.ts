@@ -569,6 +569,42 @@ export function createGatewayHttpServer(opts: {
           return;
         }
       }
+      // Google OAuth proxy: fetch xplatform server-side, redirect to oauth_url
+      if (requestPath === "/__auth__/google/redirect") {
+        const xplatformUrl = configSnapshot?.gateway?.controlUi?.xplatform?.apiUrl;
+        if (!xplatformUrl) {
+          res.statusCode = 404;
+          res.end("xplatform not configured");
+          return;
+        }
+        const rawRedirect = new URL(req.url ?? "/", "http://localhost").searchParams.get("redirect_uri") || "/";
+        // Validate redirect_uri: must be a relative path (same-origin only)
+        const isRelative = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//");
+        if (!isRelative) {
+          res.statusCode = 400;
+          res.end("redirect_uri must be a relative path");
+          return;
+        }
+        // Reconstruct absolute URL from Host header so xplatform can redirect back
+        const host = req.headers.host;
+        const proto = req.headers["x-forwarded-proto"] || "http";
+        const redirectUri = host ? `${proto}://${host}${rawRedirect}` : rawRedirect;
+        try {
+          const apiRes = await fetch(
+            `${xplatformUrl}/api/auth/google/login?redirect_uri=${encodeURIComponent(redirectUri)}`,
+          );
+          const data = (await apiRes.json()) as { oauth_url?: string };
+          if (data.oauth_url) {
+            res.statusCode = 302;
+            res.setHeader("Location", data.oauth_url);
+            res.end();
+            return;
+          }
+        } catch { /* fall through */ }
+        res.statusCode = 502;
+        res.end("Google login unavailable");
+        return;
+      }
       if (controlUiEnabled) {
         if (
           handleControlUiAvatarRequest(req, res, {
