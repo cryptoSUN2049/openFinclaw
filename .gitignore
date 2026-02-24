@@ -117,3 +117,6 @@ dist/protocol.schema.json
 
 # Local development workspace
 dev/
+
+# Generated dashboard site
+commons/site/
