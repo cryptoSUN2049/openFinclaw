@@ -1,0 +1,98 @@
+# ==============================================================================
+# OpenFinClaw Gateway - Node.js WebSocket Server (多阶段构建)
+# ==============================================================================
+# 基于项目根目录，优化为 slim 多阶段构建
+# Context: 项目根目录 (docker-compose build.context: ..)
+
+FROM node:22-slim AS builder
+
+WORKDIR /app
+
+# 安装 pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# 复制依赖文件
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY patches/ ./patches/
+
+# 安装依赖 (frozen lockfile 确保可复现)
+RUN pnpm install --frozen-lockfile
+
+# 复制源代码和构建脚本
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY tsconfig*.json ./
+COPY tsdown.config.ts ./
+COPY extensions/ ./extensions/
+COPY skills/ ./skills/
+COPY assets/ ./assets/
+
+# 复制 Control UI 源代码
+COPY ui/ ./ui/
+
+# 构建 Gateway (tsdown) — 必须成功
+RUN pnpm exec tsdown
+
+# Vite 构建时注入 import.meta.env
+ARG VITE_SUPABASE_URL=
+ARG VITE_SUPABASE_ANON_KEY=
+ARG VITE_GATEWAY_TOKEN=
+
+# 安装 git + CA 证书 (workspace 依赖解析需要), 安装 UI 依赖, 构建 Control UI
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/* \
+    && pnpm install --filter openclaw-control-ui --no-frozen-lockfile \
+    && VITE_SUPABASE_URL=${VITE_SUPABASE_URL} VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY} VITE_GATEWAY_TOKEN=${VITE_GATEWAY_TOKEN} CI=true node scripts/ui.js build
+
+# ==============================================================================
+# Production Stage
+# ==============================================================================
+FROM node:22-slim
+
+WORKDIR /app
+
+# 安装 pnpm 和 curl (healthcheck)
+RUN corepack enable && corepack prepare pnpm@latest --activate && \
+    apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# 只复制必要文件
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/node_modules ./node_modules
+
+# 复制运行时需要的资源
+COPY --from=builder /app/extensions ./extensions
+COPY --from=builder /app/skills ./skills
+COPY --from=builder /app/assets ./assets
+
+# 复制模板文件 (heartbeat / bootstrap 需要)
+COPY docs/reference/templates/ ./docs/reference/templates/
+
+# 复制 CLI 入口 (OpenFinClaw 品牌)
+COPY openfinclaw.mjs ./
+
+# Gateway 配置参数 — 通过 .env → compose build.args 注入
+ARG GATEWAY_AUTH_TOKEN=finclaw-dev
+ARG GATEWAY_ALLOWED_ORIGINS=http://localhost:18789
+ARG GATEWAY_DEFAULT_MODEL=
+
+# 创建最小化配置文件
+# GATEWAY_ALLOWED_ORIGINS: 逗号分隔 → JSON 数组
+# GATEWAY_DEFAULT_MODEL: 可选, 设置后覆盖内置默认模型
+RUN mkdir -p /root/.openfinclaw && \
+    ORIGINS_JSON=$(echo "${GATEWAY_ALLOWED_ORIGINS}" | sed 's/,/","/g' | sed 's/^/["/' | sed 's/$/"]/' ) && \
+    if [ -n "${GATEWAY_DEFAULT_MODEL}" ]; then \
+      AGENTS_JSON=",\"agents\":{\"defaults\":{\"model\":{\"primary\":\"${GATEWAY_DEFAULT_MODEL}\"}}}"; \
+    else \
+      AGENTS_JSON=""; \
+    fi && \
+    printf '{"gateway":{"mode":"local","bind":"lan","trustedProxies":["172.16.0.0/12","10.0.0.0/8"],"auth":{"mode":"token","token":"%s"},"controlUi":{"allowedOrigins":%s,"allowInsecureAuth":true}},"plugins":{"enabled":false,"slots":{"memory":"none"}},"finance":{"enabled":true}%s}\n' \
+    "${GATEWAY_AUTH_TOKEN}" "${ORIGINS_JSON}" "${AGENTS_JSON}" > /root/.openfinclaw/openfinclaw.json
+
+# 暴露端口 (实际端口由 GATEWAY_PORT 环境变量控制)
+ENV GATEWAY_PORT=18789
+EXPOSE ${GATEWAY_PORT}
+
+# 启动命令 — Gateway 绑定 LAN (容器网络需要)
+CMD ["sh", "-c", "node dist/index.js gateway --bind lan --port $GATEWAY_PORT"]

@@ -1,0 +1,125 @@
+# ==============================================================================
+# OpenFinClaw - Production 环境
+# ==============================================================================
+#
+# Usage:
+#   docker compose -f deploy/docker-compose.prd.yml --env-file .env build --no-cache
+#   docker compose -f deploy/docker-compose.prd.yml --env-file .env up -d
+#
+# 访问:
+#   Gateway (WS + Control UI + WebChat):  http://localhost:18789
+#
+# ==============================================================================
+
+name: finclaw-prd
+
+services:
+  # ============================================================================
+  # Redis - 会话缓存 (生产配置)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: finclaw-redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - finclaw-redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - finclaw-network
+
+  # ============================================================================
+  # OpenFinClaw Gateway - WebSocket 网关 (生产配置)
+  # ============================================================================
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.gateway
+      args:
+        - GATEWAY_AUTH_TOKEN=${GATEWAY_AUTH_TOKEN:-}
+        - GATEWAY_ALLOWED_ORIGINS=${GATEWAY_ALLOWED_ORIGINS:-}
+        - GATEWAY_DEFAULT_MODEL=${GATEWAY_DEFAULT_MODEL:-}
+    container_name: finclaw-gateway
+    restart: always
+    ports:
+      - "${GATEWAY_PORT:-18789}:18789"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - GATEWAY_PORT=18789
+      - REDIS_URL=redis://redis:6379
+      # LLM 配置
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      # 渠道 Token
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      # 金融功能 (默认启用)
+      - OPENFINCLAW_FINANCE_ENABLED=${FINANCE_ENABLED:-true}
+      - FINANCE_ENABLED=${FINANCE_ENABLED:-true}
+      - FINANCE_API_URL=${FINANCE_API_URL:-}
+      - FINANCE_SERVICE_TOKEN=${FINANCE_SERVICE_TOKEN:-}
+      # 交易所 API
+      - HYPERLIQUID_API_KEY=${HYPERLIQUID_API_KEY:-}
+      - HYPERLIQUID_API_SECRET=${HYPERLIQUID_API_SECRET:-}
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET:-}
+      - OKX_API_KEY=${OKX_API_KEY:-}
+      - OKX_API_SECRET=${OKX_API_SECRET:-}
+      - OKX_PASSPHRASE=${OKX_PASSPHRASE:-}
+      # 禁用代理
+      - NO_PROXY=localhost,127.0.0.1,redis
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+    volumes:
+      - finclaw-state:/root/.openfinclaw
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - finclaw-network
+
+# ==============================================================================
+# Volumes (持久化)
+# ==============================================================================
+volumes:
+  finclaw-redis-data:
+    driver: local
+  finclaw-state:
+    driver: local
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  finclaw-network:
+    driver: bridge

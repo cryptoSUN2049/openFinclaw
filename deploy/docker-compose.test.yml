@@ -1,0 +1,205 @@
+# ==============================================================================
+# OpenFinClaw - Test 环境 (PostgreSQL + Redis + Gateway + LiteLLM 集成)
+# ==============================================================================
+#
+# Usage:
+#   docker compose -f deploy/docker-compose.test.yml --env-file deploy/.env.test up -d --build
+#
+# 访问:
+#   Gateway (WS + Control UI + WebChat):  http://<SERVER_IP>:8020
+#   PostgreSQL:                           localhost:5433
+#   Redis:                                localhost:6380
+#
+# 特点:
+#   - LiteLLM Proxy 作为上游, 首选 Kimi K2.5
+#   - 本地 PostgreSQL 16 (高并发优化)
+#   - 本地 Redis 7 (会话缓存, 512MB LRU)
+#   - 配置文件挂载 (deploy/config/finclaw.test.json)
+#   - 全部数据持久化到 Docker volumes
+#   - 金融功能默认启用
+#
+# ==============================================================================
+
+name: finclaw-test
+
+services:
+  # ============================================================================
+  # PostgreSQL 16 - 持久化存储 (高并发优化)
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: finclaw-postgres-v2
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-finclaw}
+    volumes:
+      - finclaw-postgres-data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=1GB
+      -c effective_cache_size=3GB
+      -c work_mem=64MB
+      -c maintenance_work_mem=256MB
+      -c max_worker_processes=4
+      -c max_parallel_workers=4
+      -c max_parallel_workers_per_gather=2
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c wal_buffers=16MB
+      -c checkpoint_completion_target=0.9
+      -c default_statistics_target=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - finclaw-network
+
+  # ============================================================================
+  # Redis 7 - 会话缓存 (512MB + LRU)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: finclaw-redis-v2
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - finclaw-redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - finclaw-network
+
+  # ============================================================================
+  # OpenFinClaw Gateway - WebSocket 网关 + Control UI + WebChat
+  # ============================================================================
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.gateway
+      args:
+        - GATEWAY_AUTH_TOKEN=${GATEWAY_AUTH_TOKEN:-finclaw-test}
+        - GATEWAY_ALLOWED_ORIGINS=${GATEWAY_ALLOWED_ORIGINS:-*}
+        - GATEWAY_DEFAULT_MODEL=${GATEWAY_DEFAULT_MODEL:-litellm/moonshotai/kimi-k2.5}
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
+        - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+    container_name: finclaw-gateway-v2
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8020}:${GATEWAY_PORT:-8020}"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - GATEWAY_PORT=${GATEWAY_PORT:-8020}
+      - GATEWAY_AUTH_TOKEN=${GATEWAY_AUTH_TOKEN:-finclaw-test}
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-finclaw}
+      # LiteLLM Proxy
+      - LITELLM_API_KEY=${LITELLM_API_KEY:-sk-placeholder}
+      - LITELLM_BASE_URL=${LITELLM_BASE_URL:-http://localhost:4000}
+      # 渠道 Token (按需)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      # Web Search (Brave / Perplexity / xAI / BrightData)
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+      - XAI_API_KEY=${XAI_API_KEY:-}
+      - BRIGHTDATA_API_KEY=${BRIGHTDATA_API_KEY:-}
+      - BRIGHTDATA_API_ENDPOINT=${BRIGHTDATA_API_ENDPOINT:-}
+      - BRIGHTDATA_ZONE=${BRIGHTDATA_ZONE:-}
+      # 金融功能 (默认启用)
+      - OPENFINCLAW_FINANCE_ENABLED=${FINANCE_ENABLED:-true}
+      - FINANCE_ENABLED=${FINANCE_ENABLED:-true}
+      - FINANCE_API_URL=${FINANCE_API_URL:-}
+      - FINANCE_SERVICE_TOKEN=${FINANCE_SERVICE_TOKEN:-}
+      - LANGGRAPH_DIRECT_URL=${LANGGRAPH_DIRECT_URL:-}
+      # 交易所 API
+      - HYPERLIQUID_API_KEY=${HYPERLIQUID_API_KEY:-}
+      - HYPERLIQUID_API_SECRET=${HYPERLIQUID_API_SECRET:-}
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET:-}
+      - OKX_API_KEY=${OKX_API_KEY:-}
+      - OKX_API_SECRET=${OKX_API_SECRET:-}
+      - OKX_PASSPHRASE=${OKX_PASSPHRASE:-}
+      # Finance auto-auth
+      - FINANCE_AUTH_EMAIL=${FINANCE_AUTH_EMAIL:-}
+      - FINANCE_AUTH_PASSWORD=${FINANCE_AUTH_PASSWORD:-}
+      # 禁用代理 (容器内访问)
+      - NO_PROXY=localhost,127.0.0.1,redis,postgres
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+    volumes:
+      - finclaw-state:/root/.openfinclaw
+      - ./config/.finclaw.test.runtime.json:/tmp/finclaw-config.json:ro
+    command:
+      [
+        "sh",
+        "-c",
+        "cp /tmp/finclaw-config.json /root/.openfinclaw/openfinclaw.json && node dist/index.js gateway --bind lan --port ${GATEWAY_PORT:-8020}",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf --connect-timeout 5 http://localhost:${GATEWAY_PORT:-8020}/ > /dev/null 2>&1 || [ $? -eq 22 ]",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - finclaw-network
+
+# ==============================================================================
+# Volumes (持久化)
+# ==============================================================================
+volumes:
+  finclaw-postgres-data:
+    driver: local
+  finclaw-redis-data:
+    driver: local
+  finclaw-state:
+    driver: local
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  finclaw-network:
+    driver: bridge

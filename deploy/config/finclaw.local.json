@@ -1,0 +1,112 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "lan",
+    "trustedProxies": ["172.16.0.0/12", "10.0.0.0/8"],
+    "auth": {
+      "mode": "token",
+      "token": "${GATEWAY_AUTH_TOKEN}"
+    },
+    "controlUi": {
+      "enabled": true,
+      "allowedOrigins": ["*"],
+      "allowInsecureAuth": true
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": { "enabled": true },
+        "responses": { "enabled": true }
+      }
+    }
+  },
+  "models": {
+    "mode": "replace",
+    "providers": {
+      "litellm": {
+        "baseUrl": "${LITELLM_BASE_URL}",
+        "api": "openai-completions",
+        "apiKey": "${LITELLM_API_KEY}",
+        "models": [
+          {
+            "id": "moonshotai/kimi-k2.5",
+            "name": "Kimi K2.5",
+            "reasoning": true,
+            "input": ["text"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 256000,
+            "maxTokens": 32768,
+            "compat": { "supportsReasoningEffort": false }
+          },
+          {
+            "id": "anthropic/claude-sonnet-4-6-20261001",
+            "name": "Claude Sonnet 4.6",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "cost": { "input": 3, "output": 15, "cacheRead": 0.3, "cacheWrite": 3.75 },
+            "contextWindow": 200000,
+            "maxTokens": 8192,
+            "compat": { "supportsReasoningEffort": false }
+          },
+          {
+            "id": "minimax/minimax-2.5",
+            "name": "Minimax 2.5",
+            "reasoning": true,
+            "input": ["text"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 128000,
+            "maxTokens": 16384,
+            "compat": { "supportsReasoningEffort": false }
+          },
+          {
+            "id": "zhipu/glm-5",
+            "name": "GLM-5",
+            "reasoning": true,
+            "input": ["text"],
+            "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+            "contextWindow": 128000,
+            "maxTokens": 16384,
+            "compat": { "supportsReasoningEffort": false }
+          }
+        ]
+      }
+    }
+  },
+  "channels": {},
+  "ui": {
+    "assistant": {
+      "name": "FinClaw",
+      "avatar": "🦅"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "litellm/moonshotai/kimi-k2.5"
+      }
+    },
+    "list": [
+      {
+        "id": "main",
+        "name": "FinClaw",
+        "default": true,
+        "identity": {
+          "emoji": "🦅"
+        },
+        "subagents": {
+          "allowAgents": ["finance-deep"]
+        }
+      },
+      {
+        "id": "finance-deep",
+        "name": "Finance DeepAgent",
+        "identity": {
+          "emoji": "🔍"
+        },
+        "model": {
+          "primary": "langgraph/strategy"
+        }
+      }
+    ]
+  }
+}
