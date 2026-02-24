@@ -27,6 +27,26 @@
     {
       "id": "fin-expert",
       "description": "Deep financial analysis and research"
+    },
+    {
+      "id": "fin-risk-manager",
+      "description": "Position sizing, VaR, stress testing, and portfolio risk metrics"
+    },
+    {
+      "id": "fin-news-intel",
+      "description": "AI-powered news analysis, sentiment scoring, and event impact"
+    },
+    {
+      "id": "fin-backtest",
+      "description": "Strategy backtesting with performance metrics and Monte Carlo simulation"
+    },
+    {
+      "id": "fin-onchain",
+      "description": "On-chain valuation, DeFi yields, whale tracking, and token unlocks"
+    },
+    {
+      "id": "fin-macro-calendar",
+      "description": "Economic calendar, macro regime classification, and event impact analysis"
     }
   ]
 }

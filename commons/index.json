@@ -26,6 +26,66 @@
       "updatedAt": "2026-02-24T00:00:00Z"
     },
     {
+      "id": "fin-risk-manager",
+      "name": "Risk Manager",
+      "type": "skill",
+      "description": "Risk management suite - position sizing, Value-at-Risk, stress testing, correlation analysis, and risk-adjusted performance metrics for institutional-grade portfolio risk control.",
+      "version": "1.0.0",
+      "author": "finclaw-commons",
+      "tags": ["finance", "risk", "var", "stress-test", "position-sizing", "portfolio"],
+      "path": "skills/fin-risk-manager",
+      "createdAt": "2026-02-24T00:00:00Z",
+      "updatedAt": "2026-02-24T00:00:00Z"
+    },
+    {
+      "id": "fin-news-intel",
+      "name": "News Intelligence",
+      "type": "skill",
+      "description": "Financial news intelligence - multi-source sentiment scoring, event impact analysis, historical analogies, and personalized portfolio-aware digests.",
+      "version": "1.0.0",
+      "author": "finclaw-commons",
+      "tags": ["finance", "news", "sentiment", "intelligence", "digest", "data-feed"],
+      "path": "skills/fin-news-intel",
+      "createdAt": "2026-02-24T00:00:00Z",
+      "updatedAt": "2026-02-24T00:00:00Z"
+    },
+    {
+      "id": "fin-backtest",
+      "name": "Strategy Backtester",
+      "type": "skill",
+      "description": "Strategy backtesting engine - test trading strategies against historical data, compute performance metrics, optimize parameters, and run Monte Carlo simulations.",
+      "version": "1.0.0",
+      "author": "finclaw-commons",
+      "tags": ["finance", "backtest", "strategy", "simulation", "optimization"],
+      "path": "skills/fin-backtest",
+      "createdAt": "2026-02-24T00:00:00Z",
+      "updatedAt": "2026-02-24T00:00:00Z"
+    },
+    {
+      "id": "fin-onchain",
+      "name": "On-Chain Analytics",
+      "type": "skill",
+      "description": "On-chain analytics - blockchain valuation metrics, DeFi protocol analysis, whale tracking, yield comparison, and token unlock impact assessment.",
+      "version": "1.0.0",
+      "author": "finclaw-commons",
+      "tags": ["finance", "onchain", "defi", "whale", "blockchain", "yield"],
+      "path": "skills/fin-onchain",
+      "createdAt": "2026-02-24T00:00:00Z",
+      "updatedAt": "2026-02-24T00:00:00Z"
+    },
+    {
+      "id": "fin-macro-calendar",
+      "name": "Macro Calendar & Regime Analyst",
+      "type": "skill",
+      "description": "Macroeconomic calendar and regime analysis - economic event tracking, earnings dates, macro regime classification, cross-market impact cascades, and portfolio event exposure.",
+      "version": "1.0.0",
+      "author": "finclaw-commons",
+      "tags": ["finance", "macro", "calendar", "economics", "regime", "earnings"],
+      "path": "skills/fin-macro-calendar",
+      "createdAt": "2026-02-24T00:00:00Z",
+      "updatedAt": "2026-02-24T00:00:00Z"
+    },
+    {
       "id": "finclaw-starter",
       "name": "FinClaw Starter Workspace",
       "type": "workspace",
