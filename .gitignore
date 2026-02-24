@@ -114,3 +114,6 @@ dist/protocol.schema.json
 
 # Synthing
 **/.stfolder/
+
+# Local development workspace
+dev/

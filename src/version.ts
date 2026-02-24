@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 
 declare const __OPENCLAW_VERSION__: string | undefined;
-const CORE_PACKAGE_NAME = "openclaw";
+const CORE_PACKAGE_NAME = "openfinclaw";
 
 const PACKAGE_JSON_CANDIDATES = [
   "../package.json",
@@ -81,18 +81,21 @@ export function resolveRuntimeServiceVersion(
 ): string {
   return (
     firstNonEmpty(
+      env["OPENFINCLAW_VERSION"],
       env["OPENCLAW_VERSION"],
+      env["OPENFINCLAW_SERVICE_VERSION"],
       env["OPENCLAW_SERVICE_VERSION"],
       env["npm_package_version"],
     ) ?? fallback
   );
 }
 
-// Single source of truth for the current OpenClaw version.
+// Single source of truth for the current OpenFinClaw version.
 // - Embedded/bundled builds: injected define or env var.
 // - Dev/npm builds: package.json.
 export const VERSION =
   (typeof __OPENCLAW_VERSION__ === "string" && __OPENCLAW_VERSION__) ||
+  process.env.OPENFINCLAW_BUNDLED_VERSION ||
   process.env.OPENCLAW_BUNDLED_VERSION ||
   resolveVersionFromModuleUrl(import.meta.url) ||
   "0.0.0";

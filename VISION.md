@@ -1,110 +1,111 @@
-## OpenClaw Vision
+## OpenFinClaw Vision
 
-OpenClaw is the AI that actually does things.
-It runs on your devices, in your channels, with your rules.
+OpenFinClaw is a self-hosted, privacy-first AI financial butler.
+It runs on your devices, in your channels, with your rules — and it can actually trade.
 
 This document explains the current state and direction of the project.
 We are still early, so iteration is fast.
 Project overview and developer docs: [`README.md`](README.md)
-Contribution guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
-OpenClaw started as a personal playground to learn AI and build something genuinely useful:
-an assistant that can run real tasks on a real computer.
-It evolved through several names and shells: Warelay -> Clawdbot -> Moltbot -> OpenClaw.
+OpenFinClaw is an independent fork of [OpenClaw](https://github.com/openclaw/openclaw) (68K+ stars),
+repositioned as a **full-spectrum financial AI assistant**. It inherits OpenClaw's robust multi-channel
+gateway and plugin architecture, and extends it with deep financial capabilities.
 
-The goal: a personal assistant that is easy to use, supports a wide range of platforms, and respects privacy and security.
+### Core Differentiators
 
-The current focus is:
+- **Self-hosted + Privacy First**: Financial data never leaves your device. API keys stored locally.
+- **Actually Trades**: CCXT integration with Hyperliquid, Binance, OKX, Bybit — not just "suggestions".
+- **35+ Channels**: Interact via Telegram, Discord, WeChat, Web, and more.
+- **Tiered Risk Control**: Auto-execute small trades, confirm medium ones, reject dangerous ones.
+- **Evolving Skill System**: Community-driven financial skills ecosystem.
+- **Expert SDK + Info Feed**: Plug in professional analysis and real-time information services.
+
+### Current Focus
 
 Priority:
 
-- Security and safe defaults
-- Bug fixes and stability
-- Setup reliability and first-run UX
+- Security-first trading with tiered risk controls
+- Cross-exchange portfolio aggregation and monitoring
+- Financial skill system (market data, portfolio, trading, alerts)
+- Proactive monitoring: price alerts, stop-loss, daily briefs
 
 Next priorities:
 
-- Supporting all major model providers
-- Improving support for major messaging channels (and adding a few high-demand ones)
-- Performance and test infrastructure
-- Better computer-use and agent harness capabilities
-- Ergonomics across CLI and web frontend
-- Companion apps on macOS, iOS, Android, Windows, and Linux
+- Expert SDK integration for deep financial analysis
+- Intelligent information feed with portfolio-aware filtering
+- Automated reporting (daily, weekly, monthly)
+- Smart rebalancing suggestions
+- Backtesting framework for strategy validation
 
-Contribution rules:
+### Architecture
 
-- One PR = one issue/topic. Do not bundle multiple unrelated fixes/features.
-- PRs over ~5,000 changed lines are reviewed only in exceptional circumstances.
-- Do not open large batches of tiny PRs at once; each PR has review cost.
-- For very small related fixes, grouping into one focused PR is encouraged.
+All financial capabilities live as extensions, never modifying core:
 
-## Security
+```
+extensions/
+  fin-core/           # Shared types, exchange registry, risk controller
+  fin-market-data/    # Price, orderbook, ticker, market overview tools
+  fin-portfolio/      # Cross-exchange portfolio tracking and history
+  fin-trading/        # CCXT trading engine with risk-gated execution
+  fin-expert-sdk/     # Deep analysis via external Expert API
+  fin-info-feed/      # Intelligent news and information streaming
+  fin-monitoring/     # Price alerts, portfolio checks, scheduled reports
+```
 
-Security in OpenClaw is a deliberate tradeoff: strong defaults without killing capability.
-The goal is to stay powerful for real work while making risky paths explicit and operator-controlled.
+### Security
 
-Canonical security policy and reporting:
+Financial security is non-negotiable:
 
-- [`SECURITY.md`](SECURITY.md)
+- Trading disabled by default — explicit opt-in required
+- Tiered execution: auto (small), confirm (medium), reject (large/risky)
+- Daily loss hard limits halt all trading when breached
+- Leverage caps and pair allowlists
+- All credentials stored locally, never transmitted to third parties
 
-We prioritize secure defaults, but also expose clear knobs for trusted high-power workflows.
+Canonical security policy: [`SECURITY.md`](SECURITY.md)
 
-## Plugins & Memory
+## Plugins & Skills
 
-OpenClaw has an extensive plugin API.
-Core stays lean; optional capability should usually ship as plugins.
+OpenFinClaw inherits OpenClaw's extensive plugin API.
+Financial capabilities ship as `fin-*` extensions following the standard plugin pattern.
 
-Preferred plugin path is npm package distribution plus local extension loading for development.
-If you build a plugin, host and maintain it in your own repository.
-The bar for adding optional plugins to core is intentionally high.
-Plugin docs: [`docs/tools/plugin.md`](docs/tools/plugin.md)
-Community plugin listing + PR bar: https://docs.openclaw.ai/plugins/community
+### Financial Skills
 
-Memory is a special plugin slot where only one memory plugin can be active at a time.
-Today we ship multiple memory options; over time we plan to converge on one recommended default path.
+Financial skills provide natural-language interfaces to financial tools:
 
-### Skills
-
-We still ship some bundled skills for baseline UX.
-New skills should be published to ClawHub first (`clawhub.ai`), not added to core by default.
-Core skill additions should be rare and require a strong product or security reason.
+- `fin-market-data` — "BTC price?", "Market overview"
+- `fin-portfolio` — "My positions", "How much did I make?"
+- `fin-trading` — "Buy 0.1 BTC", "Set stop-loss at 95000"
+- `fin-alerts` — "Alert me when ETH hits 4000"
+- `fin-expert` — "Analyze SOL's trend", "Research report on DeFi"
+- `fin-report` — "Weekly report", "Monthly performance"
 
 ### MCP Support
 
-OpenClaw supports MCP through `mcporter`: https://github.com/steipete/mcporter
-
-This keeps MCP integration flexible and decoupled from core runtime:
-
-- add or change MCP servers without restarting the gateway
-- keep core tool/context surface lean
-- reduce MCP churn impact on core stability and security
-
-For now, we prefer this bridge model over building first-class MCP runtime into core.
-If there is an MCP server or feature `mcporter` does not support yet, please open an issue there.
-
-### Setup
-
-OpenClaw is currently terminal-first by design.
-This keeps setup explicit: users see docs, auth, permissions, and security posture up front.
-
-Long term, we want easier onboarding flows as hardening matures.
-We do not want convenience wrappers that hide critical security decisions from users.
+OpenFinClaw supports MCP through `mcporter`: https://github.com/steipete/mcporter
 
 ### Why TypeScript?
 
-OpenClaw is primarily an orchestration system: prompts, tools, protocols, and integrations.
-TypeScript was chosen to keep OpenClaw hackable by default.
-It is widely known, fast to iterate in, and easy to read, modify, and extend.
+OpenFinClaw is primarily an orchestration system: prompts, tools, protocols, and integrations.
+TypeScript keeps it hackable by default — widely known, fast to iterate, easy to extend.
 
-## What We Will Not Merge (For Now)
+## Open Source + Business Model
 
-- New core skills when they can live on ClawHub
-- Full-doc translation sets for all docs (deferred; we plan AI-generated translations later)
-- Commercial service integrations that do not clearly fit the model-provider category
-- Wrapper channels around already supported channels without a clear capability or security gap
-- First-class MCP runtime in core when `mcporter` already provides the integration path
-- Agent-hierarchy frameworks (manager-of-managers / nested planner trees) as a default architecture
-- Heavy orchestration layers that duplicate existing agent and tool infrastructure
-
-This list is a roadmap guardrail, not a law of physics.
-Strong user demand and strong technical rationale can change it.
+```
+┌─────────────────────────────────────────────┐
+│            MIT Open Source (Free)            │
+│                                             │
+│  fin-core    fin-trading   fin-portfolio    │
+│  fin-monitoring  fin-market-data            │
+│  All financial skills   Community framework │
+│                                             │
+├─────────────────────────────────────────────┤
+│          SDK Key (Paid / Value-Add)          │
+│                                             │
+│  fin-expert-sdk   Deep financial analysis   │
+│  fin-info-feed    Smart info streaming       │
+│  Advanced skills  Institutional analytics   │
+│  Priority support                           │
+│                                             │
+└─────────────────────────────────────────────┘
+```
