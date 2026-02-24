@@ -840,7 +840,8 @@ export const FIELD_HELP: Record<string, string> = {
   "financial.trading.maxPositionPct":
     "Maximum single-position size as a percentage of total account equity (0-100).",
   "financial.trading.maxLeverage": "Maximum leverage the agent may use for any trade.",
-  "financial.trading.allowedPairs": "If set, only these trading pairs are allowed. Empty = all allowed.",
+  "financial.trading.allowedPairs":
+    "If set, only these trading pairs are allowed. Empty = all allowed.",
   "financial.trading.blockedPairs": "If set, these trading pairs are never traded.",
   "financial.expertSdk": "Expert SDK connection for advanced financial analysis capabilities.",
   "financial.infoFeedSdk": "Info Feed SDK connection for news and market intelligence.",

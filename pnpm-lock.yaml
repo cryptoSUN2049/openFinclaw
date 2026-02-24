@@ -80,6 +80,9 @@ importers:
       '@slack/web-api':
         specifier: ^7.14.1
         version: 7.14.1
+      '@supabase/supabase-js':
+        specifier: ^2.97.0
+        version: 2.97.0
       '@whiskeysockets/baileys':
         specifier: 7.0.0-rc.9
         version: 7.0.0-rc.9(audio-decode@2.2.3)(sharp@0.34.5)
@@ -638,9 +641,6 @@ importers:
       '@noble/ed25519':
         specifier: 3.0.0
         version: 3.0.0
-      '@supabase/supabase-js':
-        specifier: ^2.97.0
-        version: 2.97.0
       dompurify:
         specifier: ^3.3.1
         version: 3.3.1

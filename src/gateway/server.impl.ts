@@ -68,6 +68,7 @@ import { GATEWAY_EVENTS, listGatewayMethods } from "./server-methods-list.js";
 import { coreGatewayHandlers } from "./server-methods.js";
 import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
 import { safeParseJson } from "./server-methods/nodes.helpers.js";
+import { createTenantChannelHandlers } from "./server-methods/tenant-channels.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
 import { loadGatewayModelCatalog } from "./server-model-catalog.js";
 import { createNodeSubscriptionManager } from "./server-node-subscriptions.js";
@@ -90,6 +91,7 @@ import {
 } from "./server/health-state.js";
 import { loadGatewayTlsRuntime } from "./server/tls.js";
 import { ensureGatewayStartupAuth } from "./startup-auth.js";
+import { TenantChannelManager } from "./tenant-channels/manager.js";
 
 export { __resetModelCatalogCacheForTest } from "./server-model-catalog.js";
 
@@ -353,6 +355,27 @@ export async function startGatewayServer(
   const { wizardSessions, findRunningWizard, purgeWizardSession } = createWizardSessionTracker();
 
   const deps = createDefaultDeps();
+
+  // Multi-tenant channel management (cloud SaaS mode)
+  const tenantChannelsCfg = cfgAtStart.gateway?.tenantChannels;
+  const supabaseUrl = cfgAtStart.gateway?.controlUi?.supabase?.url;
+  let tenantChannelManager: TenantChannelManager | null = null;
+  if (
+    tenantChannelsCfg?.enabled &&
+    supabaseUrl &&
+    tenantChannelsCfg.supabaseServiceKey &&
+    tenantChannelsCfg.encryptionKey
+  ) {
+    tenantChannelManager = new TenantChannelManager({
+      supabaseUrl,
+      supabaseServiceKey: tenantChannelsCfg.supabaseServiceKey,
+      encryptionKey: tenantChannelsCfg.encryptionKey,
+      webhookBaseUrl: tenantChannelsCfg.webhookBaseUrl ?? "https://openfinclaw.ai",
+      log: log.child("tenant-channels"),
+    });
+  }
+  const tenantChannelHandlers = createTenantChannelHandlers(tenantChannelManager);
+
   let canvasHostServer: CanvasHostServer | null = null;
   const gatewayTls = await loadGatewayTlsRuntime(cfgAtStart.gateway?.tls, log.child("tls"));
   if (cfgAtStart.gateway?.tls?.enabled && !gatewayTls.enabled) {
@@ -400,6 +423,7 @@ export async function startGatewayServer(
     log,
     logHooks,
     logPlugins,
+    tenantChannelManager,
   });
   let bonjourStop: (() => Promise<void>) | null = null;
   const nodeRegistry = new NodeRegistry();
@@ -582,6 +606,7 @@ export async function startGatewayServer(
     extraHandlers: {
       ...pluginRegistry.gatewayHandlers,
       ...execApprovalHandlers,
+      ...tenantChannelHandlers,
     },
     broadcast,
     context: {
@@ -681,6 +706,13 @@ export async function startGatewayServer(
     }));
   }
 
+  // Start tenant channel bots (cloud SaaS mode)
+  if (!minimalTestGateway && tenantChannelManager) {
+    void tenantChannelManager.startAllActiveBots().catch((err) => {
+      log.warn(`tenant channels startup failed: ${String(err)}`);
+    });
+  }
+
   // Run gateway_start plugin hook (fire-and-forget)
   if (!minimalTestGateway) {
     const hookRunner = getGlobalHookRunner();
@@ -778,6 +810,11 @@ export async function startGatewayServer(
       skillsChangeUnsub();
       authRateLimiter?.dispose();
       channelHealthMonitor?.stop();
+      if (tenantChannelManager) {
+        await tenantChannelManager.stopAll().catch((err) => {
+          log.warn(`tenant channels shutdown failed: ${String(err)}`);
+        });
+      }
       await close(opts);
     },
   };

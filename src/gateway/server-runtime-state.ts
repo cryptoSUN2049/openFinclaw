@@ -30,6 +30,7 @@ import { listenGatewayHttpServer } from "./server/http-listen.js";
 import { createGatewayPluginRequestHandler } from "./server/plugins-http.js";
 import type { GatewayTlsRuntime } from "./server/tls.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
+import type { TenantChannelManager } from "./tenant-channels/manager.js";
 
 export async function createGatewayRuntimeState(params: {
   cfg: import("../config/config.js").OpenClawConfig;
@@ -56,6 +57,7 @@ export async function createGatewayRuntimeState(params: {
   log: { info: (msg: string) => void; warn: (msg: string) => void };
   logHooks: ReturnType<typeof createSubsystemLogger>;
   logPlugins: ReturnType<typeof createSubsystemLogger>;
+  tenantChannelManager?: TenantChannelManager | null;
 }): Promise<{
   canvasHost: CanvasHostHandler | null;
   httpServer: HttpServer;
@@ -134,6 +136,7 @@ export async function createGatewayRuntimeState(params: {
       handlePluginRequest,
       resolvedAuth: params.resolvedAuth,
       rateLimiter: params.rateLimiter,
+      tenantChannelManager: params.tenantChannelManager,
       tlsOptions: params.gatewayTls?.enabled ? params.gatewayTls.tlsOptions : undefined,
     });
     try {

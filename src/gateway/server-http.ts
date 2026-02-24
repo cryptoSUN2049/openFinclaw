@@ -60,6 +60,8 @@ import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
 import { GATEWAY_CLIENT_MODES, normalizeGatewayClientMode } from "./protocol/client-info.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
+import type { TenantChannelManager } from "./tenant-channels/manager.js";
+import { handleTenantWebhookRequest } from "./tenant-channels/webhook-router.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
@@ -423,6 +425,8 @@ export function createGatewayHttpServer(opts: {
   resolvedAuth: ResolvedGatewayAuth;
   /** Optional rate limiter for auth brute-force protection. */
   rateLimiter?: AuthRateLimiter;
+  /** Multi-tenant channel manager for /wh/* webhook routing. */
+  tenantChannelManager?: TenantChannelManager | null;
   tlsOptions?: TlsOptions;
 }): HttpServer {
   const {
@@ -471,6 +475,12 @@ export function createGatewayHttpServer(opts: {
         req.url = scopedCanvas.rewrittenUrl;
       }
       const requestPath = new URL(req.url ?? "/", "http://localhost").pathname;
+      // Tenant channel webhooks (/wh/telegram/{tenantId}/{secret}) — no auth needed (URL secret)
+      if (requestPath.startsWith("/wh/")) {
+        if (await handleTenantWebhookRequest(req, res, opts.tenantChannelManager ?? null)) {
+          return;
+        }
+      }
       if (await handleHooksRequest(req, res)) {
         return;
       }
