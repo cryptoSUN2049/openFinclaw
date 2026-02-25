@@ -178,7 +178,8 @@ export function googleLoginUrl(redirectUri: string): string {
 // --- Profile ---
 
 export async function fetchProfile(accessToken: string): Promise<Partial<AuthSession>> {
-  const res = await fetch(apiUrl("/api/users/me"), {
+  // Use gateway proxy to avoid CORS (browser → same-origin gateway → xplatform)
+  const res = await fetch("/__auth__/profile", {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,

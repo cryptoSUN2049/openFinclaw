@@ -609,6 +609,39 @@ export function createGatewayHttpServer(opts: {
         res.end("Google login unavailable");
         return;
       }
+      // Profile proxy: forward browser request to xplatform /api/users/me (avoids CORS)
+      if (requestPath === "/__auth__/profile") {
+        const xplatformUrl = configSnapshot?.gateway?.controlUi?.xplatform?.apiUrl;
+        if (!xplatformUrl) {
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "xplatform not configured" }));
+          return;
+        }
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+          res.statusCode = 401;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "missing authorization header" }));
+          return;
+        }
+        try {
+          const apiRes = await fetch(`${xplatformUrl}/api/users/me`, {
+            method: "GET",
+            headers: { Authorization: authHeader, Accept: "application/json" },
+            signal: AbortSignal.timeout(10_000),
+          });
+          const body = await apiRes.text();
+          res.statusCode = apiRes.status;
+          res.setHeader("Content-Type", apiRes.headers.get("content-type") ?? "application/json");
+          res.end(body);
+        } catch {
+          res.statusCode = 502;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "upstream unavailable" }));
+        }
+        return;
+      }
       if (controlUiEnabled) {
         if (
           handleControlUiAvatarRequest(req, res, {
