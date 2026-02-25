@@ -15,6 +15,8 @@ export type ExchangeAccountConfig = {
   testnet?: boolean;
   /** Sub-account name (exchange-specific). */
   subaccount?: string;
+  /** Default market type (spot, swap, future). Default: "spot". */
+  defaultType?: "spot" | "swap" | "future";
 };
 
 /** Trading risk limits and behavioral controls. */

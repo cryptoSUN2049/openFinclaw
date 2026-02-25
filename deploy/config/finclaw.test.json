@@ -81,6 +81,25 @@
       "groupPolicy": "open"
     }
   },
+  "financial": {
+    "exchanges": {
+      "binance-testnet": {
+        "exchange": "binance",
+        "apiKey": "${BINANCE_TESTNET_API_KEY}",
+        "secret": "${BINANCE_TESTNET_SECRET}",
+        "testnet": true,
+        "defaultType": "spot"
+      }
+    },
+    "trading": {
+      "enabled": true,
+      "maxAutoTradeUsd": 100,
+      "confirmThresholdUsd": 500,
+      "maxDailyLossUsd": 200,
+      "maxPositionPct": 50,
+      "maxLeverage": 1
+    }
+  },
   "ui": {
     "assistant": {
       "name": "FinClaw",

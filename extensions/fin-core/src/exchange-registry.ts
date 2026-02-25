@@ -52,7 +52,7 @@ export class ExchangeRegistry {
       password: config.passphrase,
       enableRateLimit: true,
       options: {
-        defaultType: "swap",
+        defaultType: config.defaultType ?? "spot",
         ...(config.subaccount ? { subaccount: config.subaccount } : {}),
       },
     });

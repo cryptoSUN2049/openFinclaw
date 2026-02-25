@@ -1,7 +1,7 @@
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { ExchangeRegistry } from "./src/exchange-registry.js";
 import { RiskController } from "./src/risk-controller.js";
-import type { TradingRiskConfig } from "./src/types.js";
+import type { ExchangeConfig, TradingRiskConfig } from "./src/types.js";
 
 export { ExchangeRegistry } from "./src/exchange-registry.js";
 export { RiskController } from "./src/risk-controller.js";
@@ -24,7 +24,31 @@ const finCorePlugin = {
 
   register(api: OpenClawPluginApi) {
     const registry = new ExchangeRegistry();
-    const riskController = new RiskController(DEFAULT_RISK_CONFIG);
+
+    // Pre-load exchanges from config so they're available immediately.
+    const financialConfig = api.config?.financial;
+    if (financialConfig?.exchanges) {
+      for (const [name, cfg] of Object.entries(financialConfig.exchanges)) {
+        registry.addExchange(name, cfg as ExchangeConfig);
+      }
+    }
+
+    // Apply configured risk limits, falling back to safe defaults.
+    const tradingCfg = financialConfig?.trading;
+    const riskConfig: TradingRiskConfig = {
+      ...DEFAULT_RISK_CONFIG,
+      ...(tradingCfg?.enabled != null && { enabled: tradingCfg.enabled }),
+      ...(tradingCfg?.maxAutoTradeUsd != null && { maxAutoTradeUsd: tradingCfg.maxAutoTradeUsd }),
+      ...(tradingCfg?.confirmThresholdUsd != null && {
+        confirmThresholdUsd: tradingCfg.confirmThresholdUsd,
+      }),
+      ...(tradingCfg?.maxDailyLossUsd != null && { maxDailyLossUsd: tradingCfg.maxDailyLossUsd }),
+      ...(tradingCfg?.maxPositionPct != null && { maxPositionPct: tradingCfg.maxPositionPct }),
+      ...(tradingCfg?.maxLeverage != null && { maxLeverage: tradingCfg.maxLeverage }),
+      ...(tradingCfg?.allowedPairs && { allowedPairs: tradingCfg.allowedPairs }),
+      ...(tradingCfg?.blockedPairs && { blockedPairs: tradingCfg.blockedPairs }),
+    };
+    const riskController = new RiskController(riskConfig);
 
     // Expose services for other fin-* plugins to consume.
     api.registerService({

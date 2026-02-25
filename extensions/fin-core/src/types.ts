@@ -9,6 +9,8 @@ export type ExchangeConfig = {
   passphrase?: string;
   testnet?: boolean;
   subaccount?: string;
+  /** Default market type. Defaults to "spot". */
+  defaultType?: "spot" | "swap" | "future";
 };
 
 /** Risk limits for automated trading. */

@@ -16,6 +16,7 @@ const ExchangeAccountSchema = z
     passphrase: z.string().optional().register(sensitive),
     testnet: z.boolean().optional(),
     subaccount: z.string().optional(),
+    defaultType: z.union([z.literal("spot"), z.literal("swap"), z.literal("future")]).optional(),
   })
   .strict();
 

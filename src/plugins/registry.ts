@@ -412,6 +412,9 @@ export function createPluginRegistry(registryParams: PluginRegistryParams) {
       service,
       source: record.source,
     });
+    // Expose the service instance on the runtime so other plugins can discover it.
+    const instance = (service as Record<string, unknown>).instance ?? service;
+    registryParams.runtime.services.set(id, instance);
   };
 
   const registerCommand = (record: PluginRecord, command: OpenClawPluginCommandDefinition) => {

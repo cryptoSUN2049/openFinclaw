@@ -247,6 +247,7 @@ export function createPluginRuntime(): PluginRuntime {
     channel: createRuntimeChannel(),
     logging: createRuntimeLogging(),
     state: { resolveStateDir },
+    services: new Map(),
   };
 }
 

@@ -361,4 +361,6 @@ export type PluginRuntime = {
   state: {
     resolveStateDir: ResolveStateDir;
   };
+  /** Cross-plugin service registry. Populated by registerService() during plugin loading. */
+  services: Map<string, unknown>;
 };
