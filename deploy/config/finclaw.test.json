@@ -20,7 +20,6 @@
       "supabase": {
         "url": "${SUPABASE_URL}",
         "anonKey": "${SUPABASE_ANON_KEY}",
-        "jwtSecret": "${SUPABASE_JWT_SECRET}",
         "required": false
       }
     },

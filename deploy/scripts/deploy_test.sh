@@ -90,6 +90,9 @@ prepare_config() {
         -e "s|\${LITELLM_BASE_URL}|${LITELLM_BASE_URL}|g" \
         -e "s|\${LITELLM_API_KEY}|${LITELLM_API_KEY}|g" \
         -e "s|\${TELEGRAM_BOT_TOKEN}|${TELEGRAM_BOT_TOKEN}|g" \
+        -e "s|\${SUPABASE_URL}|${VITE_SUPABASE_URL}|g" \
+        -e "s|\${SUPABASE_ANON_KEY}|${VITE_SUPABASE_ANON_KEY}|g" \
+        -e "s|\${SUPABASE_JWT_SECRET}|${SUPABASE_JWT_SECRET}|g" \
         "$CONFIG_TEMPLATE" > "$CONFIG_RUNTIME"
 
     echo -e "${BLUE}Config prepared: $CONFIG_RUNTIME${NC}"
