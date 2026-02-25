@@ -33,6 +33,7 @@ import {
   type GatewayHelloOk,
 } from "./gateway.ts";
 import { GatewayBrowserClient } from "./gateway.ts";
+import { clearSession, isAuthConfigured } from "./xplatform-client.ts";
 import type { Tab } from "./navigation.ts";
 import type { UiSettings } from "./storage.ts";
 import type {
@@ -147,14 +148,14 @@ export function connectGateway(host: GatewayHost) {
   host.execApprovalError = null;
 
   const previousClient = host.client;
-  // JWT auth and token/password auth are mutually exclusive.
-  // When a supabase JWT is present, omit token/password to prevent
-  // stale localStorage tokens from causing "token_mismatch" errors.
+  // Always send token/password alongside JWT. The gateway checks token
+  // auth first (sets authOk), then JWT verification can override to true.
+  // This ensures token auth works as fallback when JWT is expired/invalid.
   const hasJwt = Boolean(host.supabaseSession?.access_token);
   const client = new GatewayBrowserClient({
     url: host.settings.gatewayUrl,
-    token: hasJwt ? undefined : (host.settings.token.trim() ? host.settings.token : undefined),
-    password: hasJwt ? undefined : (host.password.trim() ? host.password : undefined),
+    token: host.settings.token.trim() ? host.settings.token : undefined,
+    password: host.password.trim() ? host.password : undefined,
     supabaseJwt: host.supabaseSession?.access_token,
     clientName: "openclaw-control-ui",
     mode: "webchat",
@@ -191,6 +192,13 @@ export function connectGateway(host: GatewayHost) {
       host.lastErrorCode =
         resolveGatewayErrorDetailCode(error) ??
         (typeof error?.code === "string" ? error.code : null);
+      // When auth-related rejection occurs and we had a JWT session,
+      // the token is likely expired. Clear the stale session so the
+      // login page appears on next render.
+      if (code === 1008 && hasJwt && isAuthConfigured()) {
+        clearSession();
+        (host as unknown as OpenClawApp).supabaseSession = null;
+      }
       if (code !== 1012) {
         if (error?.message) {
           host.lastError = error.message;
