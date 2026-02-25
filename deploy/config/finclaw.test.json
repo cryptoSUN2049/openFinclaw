@@ -21,6 +21,9 @@
         "url": "${SUPABASE_URL}",
         "anonKey": "${SUPABASE_ANON_KEY}",
         "required": false
+      },
+      "xplatform": {
+        "apiUrl": "${XPLATFORM_API_URL}"
       }
     },
     "http": {

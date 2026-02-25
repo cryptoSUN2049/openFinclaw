@@ -93,6 +93,7 @@ prepare_config() {
         -e "s|\${SUPABASE_URL}|${VITE_SUPABASE_URL}|g" \
         -e "s|\${SUPABASE_ANON_KEY}|${VITE_SUPABASE_ANON_KEY}|g" \
         -e "s|\${SUPABASE_JWT_SECRET}|${SUPABASE_JWT_SECRET}|g" \
+        -e "s|\${XPLATFORM_API_URL}|${XPLATFORM_API_URL}|g" \
         "$CONFIG_TEMPLATE" > "$CONFIG_RUNTIME"
 
     echo -e "${BLUE}Config prepared: $CONFIG_RUNTIME${NC}"

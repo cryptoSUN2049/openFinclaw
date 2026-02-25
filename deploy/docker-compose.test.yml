@@ -106,6 +106,7 @@ services:
         - GATEWAY_AUTH_TOKEN=${GATEWAY_AUTH_TOKEN:-finclaw-test}
         - GATEWAY_ALLOWED_ORIGINS=${GATEWAY_ALLOWED_ORIGINS:-*}
         - GATEWAY_DEFAULT_MODEL=${GATEWAY_DEFAULT_MODEL:-litellm/moonshotai/kimi-k2.5}
+        - VITE_XPLATFORM_API_URL=${VITE_XPLATFORM_API_URL:-}
         - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
         - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
     container_name: finclaw-gateway-v2
