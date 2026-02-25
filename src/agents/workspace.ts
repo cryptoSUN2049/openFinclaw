@@ -300,6 +300,7 @@ export async function ensureAgentWorkspace(params?: {
   const rawDir = params?.dir?.trim() ? params.dir.trim() : DEFAULT_AGENT_WORKSPACE_DIR;
   const dir = resolveUserPath(rawDir);
   await fs.mkdir(dir, { recursive: true });
+  await fs.mkdir(path.join(dir, "memory"), { recursive: true });
 
   if (!params?.ensureBootstrapFiles) {
     return { dir };
