@@ -4,7 +4,7 @@
 
 | 项目       | 值                                |
 | ---------- | --------------------------------- |
-| 服务器     | TBD                               |
+| 服务器     | 43.134.61.136                     |
 | 配置文件   | `deploy/.env.test`                |
 | 模型配置   | `deploy/config/finclaw.test.json` |
 | Compose    | `deploy/docker-compose.test.yml`  |
@@ -54,7 +54,7 @@
 ### 1. 服务器准备
 
 ```bash
-ssh root@<TEST_IP>
+ssh root@43.134.61.136
 
 # 安装 Docker
 curl -fsSL https://get.docker.com | sh
@@ -107,7 +107,7 @@ docker exec finclaw-postgres-v2 pg_isready -U postgres
 docker exec finclaw-redis-v2 redis-cli ping
 
 # 检查 Control UI
-# 浏览器打开: http://<TEST_IP>:8020
+# 浏览器打开: http://43.134.61.136:8020
 ```
 
 ## 日常更新
