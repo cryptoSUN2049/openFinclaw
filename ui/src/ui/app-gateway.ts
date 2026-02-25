@@ -147,10 +147,14 @@ export function connectGateway(host: GatewayHost) {
   host.execApprovalError = null;
 
   const previousClient = host.client;
+  // JWT auth and token/password auth are mutually exclusive.
+  // When a supabase JWT is present, omit token/password to prevent
+  // stale localStorage tokens from causing "token_mismatch" errors.
+  const hasJwt = Boolean(host.supabaseSession?.access_token);
   const client = new GatewayBrowserClient({
     url: host.settings.gatewayUrl,
-    token: host.settings.token.trim() ? host.settings.token : undefined,
-    password: host.password.trim() ? host.password : undefined,
+    token: hasJwt ? undefined : (host.settings.token.trim() ? host.settings.token : undefined),
+    password: hasJwt ? undefined : (host.password.trim() ? host.password : undefined),
     supabaseJwt: host.supabaseSession?.access_token,
     clientName: "openclaw-control-ui",
     mode: "webchat",

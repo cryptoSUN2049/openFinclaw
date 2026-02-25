@@ -94,6 +94,7 @@ import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
 import { renderInstances } from "./views/instances.ts";
 import { renderLoginView } from "./views/login.ts";
+import { renderUserProfile } from "./views/user-profile.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
 import { renderOverview } from "./views/overview.ts";
@@ -292,6 +293,15 @@ export function renderApp(state: AppViewState) {
             <span>${t("common.health")}</span>
             <span class="mono">${state.connected ? t("common.ok") : t("common.offline")}</span>
           </div>
+          ${isAuthConfigured() && state.supabaseSession
+            ? renderUserProfile({
+                name: state.supabaseSession.name,
+                email: state.supabaseSession.email,
+                phone: state.supabaseSession.phone,
+                avatarUrl: state.supabaseSession.avatar_url,
+                onLogout: () => handleLogout(state as unknown as OpenClawApp),
+              })
+            : nothing}
           ${renderThemeToggle(state)}
         </div>
       </header>

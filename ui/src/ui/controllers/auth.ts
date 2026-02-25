@@ -66,6 +66,10 @@ export async function handlePhoneLogin(
   host.supabaseError = null;
   try {
     const session = await phoneLogin(phone, code, countryCode);
+    // Ensure phone number is stored in session for profile display
+    if (!session.phone) {
+      session.phone = `${countryCode}${phone}`;
+    }
     storeSession(session);
     host.supabaseSession = session;
     host.connect();
@@ -169,6 +173,8 @@ export function initAuthListener(host: OpenClawApp) {
         refresh_token: refreshTokenVal,
         user_id: params.get("user_id") ?? "",
         email: params.get("email"),
+        name: params.get("name") ?? params.get("full_name"),
+        avatar_url: params.get("avatar_url") ?? params.get("picture"),
       };
       storeSession(session);
       host.supabaseSession = session;

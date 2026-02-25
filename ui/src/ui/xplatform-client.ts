@@ -9,6 +9,9 @@ export type AuthSession = {
   refresh_token: string | null;
   user_id: string;
   email?: string | null;
+  phone?: string | null;
+  name?: string | null;
+  avatar_url?: string | null;
 };
 
 const STORAGE_KEY = "openfinclaw_auth_session";
@@ -68,10 +71,33 @@ function extractSession(data: Record<string, unknown>): AuthSession {
     (data.email as string | null) ??
     ((data.user as Record<string, unknown>)?.email as string | null) ??
     null;
+  const phone =
+    (data.phone as string | null) ??
+    ((data.user as Record<string, unknown>)?.phone as string | null) ??
+    null;
+  const name =
+    (data.name as string | null) ??
+    (data.display_name as string | null) ??
+    ((data.user as Record<string, unknown>)?.user_metadata as Record<string, unknown>)?.full_name as string | null ??
+    ((data.user as Record<string, unknown>)?.user_metadata as Record<string, unknown>)?.name as string | null ??
+    null;
+  const avatarUrl =
+    (data.avatar_url as string | null) ??
+    ((data.user as Record<string, unknown>)?.user_metadata as Record<string, unknown>)?.avatar_url as string | null ??
+    ((data.user as Record<string, unknown>)?.user_metadata as Record<string, unknown>)?.picture as string | null ??
+    null;
 
   if (!accessToken) throw new Error("No access token in response");
 
-  return { access_token: accessToken, refresh_token: refreshToken, user_id: userId, email };
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    user_id: userId,
+    email,
+    phone,
+    name,
+    avatar_url: avatarUrl,
+  };
 }
 
 // --- Email Auth ---
