@@ -175,6 +175,39 @@ export function googleLoginUrl(redirectUri: string): string {
   return `${XPLATFORM_API_URL}/api/auth/google/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
+// --- Profile ---
+
+export async function fetchProfile(accessToken: string): Promise<Partial<AuthSession>> {
+  const res = await fetch(apiUrl("/api/users/me"), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+  const body = await handleJsonResponse<Record<string, unknown>>(res);
+  const email =
+    (body.email as string | null) ??
+    ((body.user as Record<string, unknown>)?.email as string | null) ??
+    null;
+  const phone =
+    (body.phone as string | null) ??
+    ((body.user as Record<string, unknown>)?.phone as string | null) ??
+    null;
+  const name =
+    (body.name as string | null) ??
+    (body.display_name as string | null) ??
+    ((body.user_metadata as Record<string, unknown>)?.full_name as string | null) ??
+    ((body.user_metadata as Record<string, unknown>)?.name as string | null) ??
+    null;
+  const avatarUrl =
+    (body.avatar_url as string | null) ??
+    ((body.user_metadata as Record<string, unknown>)?.avatar_url as string | null) ??
+    ((body.user_metadata as Record<string, unknown>)?.picture as string | null) ??
+    null;
+  return { email, phone, name, avatar_url: avatarUrl };
+}
+
 // --- Token Management ---
 
 export async function refreshToken(refresh: string): Promise<AuthSession> {

@@ -3,6 +3,7 @@ import {
   clearSession,
   emailSignIn,
   emailSignUp,
+  fetchProfile,
   getStoredSession,
   logout,
   phoneLogin,
@@ -13,6 +14,38 @@ import {
   type AuthSession,
 } from "../xplatform-client.ts";
 
+/**
+ * Fetch user profile and merge into session. Best-effort — does not throw.
+ */
+async function enrichSessionProfile(host: OpenClawApp, session: AuthSession): Promise<void> {
+  try {
+    const profile = await fetchProfile(session.access_token);
+    let updated = false;
+    if (profile.email && !session.email) {
+      session.email = profile.email;
+      updated = true;
+    }
+    if (profile.phone && !session.phone) {
+      session.phone = profile.phone;
+      updated = true;
+    }
+    if (profile.name && !session.name) {
+      session.name = profile.name;
+      updated = true;
+    }
+    if (profile.avatar_url && !session.avatar_url) {
+      session.avatar_url = profile.avatar_url;
+      updated = true;
+    }
+    if (updated) {
+      storeSession(session);
+      host.supabaseSession = { ...session };
+    }
+  } catch {
+    // Profile fetch is best-effort; login still succeeds
+  }
+}
+
 export async function handleEmailLogin(host: OpenClawApp, email: string, password: string) {
   host.supabaseLoading = true;
   host.supabaseError = null;
@@ -21,6 +54,7 @@ export async function handleEmailLogin(host: OpenClawApp, email: string, passwor
     storeSession(session);
     host.supabaseSession = session;
     host.connect();
+    void enrichSessionProfile(host, session);
   } catch (err) {
     host.supabaseError = err instanceof Error ? err.message : String(err);
   } finally {
@@ -36,6 +70,7 @@ export async function handleEmailSignup(host: OpenClawApp, email: string, passwo
     storeSession(session);
     host.supabaseSession = session;
     host.connect();
+    void enrichSessionProfile(host, session);
   } catch (err) {
     host.supabaseError = err instanceof Error ? err.message : String(err);
   } finally {
@@ -73,6 +108,7 @@ export async function handlePhoneLogin(
     storeSession(session);
     host.supabaseSession = session;
     host.connect();
+    void enrichSessionProfile(host, session);
   } catch (err) {
     host.supabaseError = err instanceof Error ? err.message : String(err);
   } finally {
@@ -132,6 +168,7 @@ export async function handleWalletLogin(host: OpenClawApp) {
     storeSession(session);
     host.supabaseSession = session;
     host.connect();
+    void enrichSessionProfile(host, session);
   } catch (err) {
     host.supabaseError = err instanceof Error ? err.message : String(err);
   } finally {
@@ -183,6 +220,7 @@ export function initAuthListener(host: OpenClawApp) {
       if (!host.connected) {
         host.connect();
       }
+      void enrichSessionProfile(host, session);
       return;
     }
   }
@@ -191,5 +229,9 @@ export function initAuthListener(host: OpenClawApp) {
   const stored = getStoredSession();
   if (stored) {
     host.supabaseSession = stored;
+    // Refresh profile if missing user info
+    if (!stored.name && !stored.email) {
+      void enrichSessionProfile(host, stored);
+    }
   }
 }
