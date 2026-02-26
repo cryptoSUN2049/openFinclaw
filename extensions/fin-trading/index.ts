@@ -43,10 +43,7 @@ function getRegistry(api: OpenClawPluginApi): ExchangeRegistry | undefined {
  * then wrap it in a CcxtBridge for unified access.
  * When exchangeId is omitted, falls back to the first configured exchange.
  */
-async function resolveBridge(
-  api: OpenClawPluginApi,
-  exchangeId?: string,
-): Promise<ResolvedBridge> {
+async function resolveBridge(api: OpenClawPluginApi, exchangeId?: string): Promise<ResolvedBridge> {
   const registry = getRegistry(api);
   if (!registry) {
     throw new Error("fin-core plugin not loaded — exchange registry unavailable");

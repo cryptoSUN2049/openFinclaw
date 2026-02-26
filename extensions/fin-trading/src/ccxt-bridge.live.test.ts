@@ -107,9 +107,7 @@ describe.skipIf(!LIVE || !API_KEY || !SECRET)("Binance Testnet E2E", () => {
 
     // Check it appears in open orders
     const openOrders = await bridge.fetchOpenOrders("BTC/USDT");
-    const found = openOrders.find(
-      (o) => (o as Record<string, unknown>).id === orderId,
-    );
+    const found = openOrders.find((o) => (o as Record<string, unknown>).id === orderId);
     expect(found).toBeDefined();
     console.log(`  Open orders for BTC/USDT: ${openOrders.length}`);
 
@@ -120,9 +118,7 @@ describe.skipIf(!LIVE || !API_KEY || !SECRET)("Binance Testnet E2E", () => {
 
     // Verify it's no longer open
     const openAfter = await bridge.fetchOpenOrders("BTC/USDT");
-    const stillThere = openAfter.find(
-      (o) => (o as Record<string, unknown>).id === orderId,
-    );
+    const stillThere = openAfter.find((o) => (o as Record<string, unknown>).id === orderId);
     expect(stillThere).toBeUndefined();
   });
 

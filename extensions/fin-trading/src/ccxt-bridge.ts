@@ -35,11 +35,7 @@ function wrapCcxtError(err: unknown, context: string): CcxtBridgeError {
   const message = err instanceof Error ? err.message : String(err);
 
   if (name === "AuthenticationError" || name === "PermissionDenied") {
-    return new CcxtBridgeError(
-      `[${context}] Authentication failed: ${message}`,
-      "auth",
-      err,
-    );
+    return new CcxtBridgeError(`[${context}] Authentication failed: ${message}`, "auth", err);
   }
   if (name === "InsufficientFunds") {
     return new CcxtBridgeError(
@@ -49,43 +45,19 @@ function wrapCcxtError(err: unknown, context: string): CcxtBridgeError {
     );
   }
   if (name === "RateLimitExceeded" || name === "DDoSProtection") {
-    return new CcxtBridgeError(
-      `[${context}] Rate limited: ${message}`,
-      "rate_limit",
-      err,
-    );
+    return new CcxtBridgeError(`[${context}] Rate limited: ${message}`, "rate_limit", err);
   }
-  if (
-    name === "NetworkError" ||
-    name === "RequestTimeout" ||
-    name === "ExchangeNotAvailable"
-  ) {
-    return new CcxtBridgeError(
-      `[${context}] Network error: ${message}`,
-      "network",
-      err,
-    );
+  if (name === "NetworkError" || name === "RequestTimeout" || name === "ExchangeNotAvailable") {
+    return new CcxtBridgeError(`[${context}] Network error: ${message}`, "network", err);
   }
   if (name === "InvalidOrder" || name === "OrderNotFound") {
-    return new CcxtBridgeError(
-      `[${context}] Invalid order: ${message}`,
-      "invalid_order",
-      err,
-    );
+    return new CcxtBridgeError(`[${context}] Invalid order: ${message}`, "invalid_order", err);
   }
   if (name === "BadRequest" || name === "BadSymbol") {
-    return new CcxtBridgeError(
-      `[${context}] Bad request: ${message}`,
-      "exchange",
-      err,
-    );
+    return new CcxtBridgeError(`[${context}] Bad request: ${message}`, "exchange", err);
   }
 
-  return new CcxtBridgeError(
-    `[${context}] ${message}`,
-    "unknown",
-    err,
-  );
+  return new CcxtBridgeError(`[${context}] ${message}`, "unknown", err);
 }
 
 export class CcxtBridge {

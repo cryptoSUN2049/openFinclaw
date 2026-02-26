@@ -51,15 +51,18 @@ const finCorePlugin = {
     const riskController = new RiskController(riskConfig);
 
     // Expose services for other fin-* plugins to consume.
+    // The registry handles optional `instance` at runtime — cast to satisfy the type.
     api.registerService({
       id: "fin-exchange-registry",
+      start: () => {},
       instance: registry,
-    });
+    } as Parameters<typeof api.registerService>[0]);
 
     api.registerService({
       id: "fin-risk-controller",
+      start: () => {},
       instance: riskController,
-    });
+    } as Parameters<typeof api.registerService>[0]);
 
     // Register CLI commands for exchange management.
     api.registerCli(({ program }) => {
@@ -113,13 +116,16 @@ const finCorePlugin = {
 
     // Risk control hook: intercept all fin_* tool calls.
     api.registerHook("before_tool_call", async (ctx) => {
-      const toolName = ctx.toolName;
-      if (!toolName.startsWith("fin_place_order") && !toolName.startsWith("fin_modify_order")) {
+      const toolName = (ctx as unknown as Record<string, unknown>).toolName as string | undefined;
+      if (
+        !toolName ||
+        (!toolName.startsWith("fin_place_order") && !toolName.startsWith("fin_modify_order"))
+      ) {
         return; // Only gate trading actions.
       }
 
       // Risk evaluation happens in fin-trading; this hook provides the controller.
-      ctx.riskController = riskController;
+      (ctx as unknown as Record<string, unknown>).riskController = riskController;
     });
   },
 };

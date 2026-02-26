@@ -117,7 +117,9 @@ describe("ExchangeRegistry", () => {
       testnet: true,
     });
 
-    const instance = (await registry.getInstance("testnet")) as { setSandboxMode: ReturnType<typeof vi.fn> };
+    const instance = (await registry.getInstance("testnet")) as {
+      setSandboxMode: ReturnType<typeof vi.fn>;
+    };
     expect(instance.setSandboxMode).toHaveBeenCalledWith(true);
   });
 

@@ -41,7 +41,7 @@ export async function promptFinancialConfig(
     note(
       configuredIds
         .map((id) => {
-          const ex = existingExchanges[id]!;
+          const ex = existingExchanges[id];
           return `  ${id} (${ex.exchange}${ex.testnet ? " [testnet]" : ""})`;
         })
         .join("\n"),
@@ -75,7 +75,9 @@ export async function promptFinancialConfig(
       runtime,
     );
 
-    if (action === "done") {break;}
+    if (action === "done") {
+      break;
+    }
 
     if (action === "add") {
       const exchangeType = guardCancel(
@@ -97,8 +99,12 @@ export async function promptFinancialConfig(
           placeholder: `${exchangeType}-main`,
           validate: (v) => {
             const s = (v ?? "").trim();
-            if (!s) {return "Name is required";}
-            if (!/^[\w-]+$/.test(s)) {return "Use only letters, numbers, hyphens, underscores";}
+            if (!s) {
+              return "Name is required";
+            }
+            if (!/^[\w-]+$/.test(s)) {
+              return "Use only letters, numbers, hyphens, underscores";
+            }
             return undefined;
           },
         }),
@@ -170,9 +176,8 @@ export async function promptFinancialConfig(
           // Dynamic import — ccxt must be installed as a peer dependency
           let ccxt: Record<string, unknown>;
           try {
-            ccxt = (await (Function('return import("ccxt")')() as Promise<
-              Record<string, unknown>
-            >)) as Record<string, unknown>;
+            // eslint-disable-next-line no-implied-eval -- dynamic import for optional peer dep
+            ccxt = await (Function('return import("ccxt")')() as Promise<Record<string, unknown>>);
           } catch {
             throw new Error("ccxt package not found. Install it: pnpm add ccxt");
           }
@@ -220,7 +225,7 @@ export async function promptFinancialConfig(
           options: configuredIds.map((id) => ({
             value: id,
             label: id,
-            hint: `${existingExchanges[id]!.exchange}${existingExchanges[id]!.testnet ? " [testnet]" : ""}`,
+            hint: `${existingExchanges[id].exchange}${existingExchanges[id].testnet ? " [testnet]" : ""}`,
           })),
         }),
         runtime,
@@ -235,9 +240,11 @@ export async function promptFinancialConfig(
       );
 
       if (confirmed) {
-        delete existingExchanges[toRemove as string];
-        const idx = configuredIds.indexOf(toRemove as string);
-        if (idx >= 0) {configuredIds.splice(idx, 1);}
+        delete existingExchanges[toRemove];
+        const idx = configuredIds.indexOf(toRemove);
+        if (idx >= 0) {
+          configuredIds.splice(idx, 1);
+        }
         note(`Exchange "${toRemove}" removed.`, "Removed");
       }
     }
@@ -265,7 +272,7 @@ export async function promptFinancialConfig(
       const maxAutoInput = guardCancel(
         await text({
           message: "Max auto-trade size (USD) — orders below this execute automatically",
-          initialValue: String(existingTrading.maxAutoTradeUsd ?? 500),
+          initialValue: String(Number(existingTrading.maxAutoTradeUsd) || 500),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") > 0
               ? undefined
@@ -277,7 +284,7 @@ export async function promptFinancialConfig(
       const confirmThresholdInput = guardCancel(
         await text({
           message: "Confirmation threshold (USD) — orders above this require user confirmation",
-          initialValue: String(existingTrading.confirmThresholdUsd ?? 5000),
+          initialValue: String(Number(existingTrading.confirmThresholdUsd) || 5000),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") > 0
               ? undefined
@@ -289,7 +296,7 @@ export async function promptFinancialConfig(
       const maxDailyLossInput = guardCancel(
         await text({
           message: "Max daily loss limit (USD) — trading halts when reached",
-          initialValue: String(existingTrading.maxDailyLossUsd ?? 2000),
+          initialValue: String(Number(existingTrading.maxDailyLossUsd) || 2000),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") > 0
               ? undefined
@@ -301,7 +308,7 @@ export async function promptFinancialConfig(
       const maxLeverageInput = guardCancel(
         await text({
           message: "Max leverage allowed",
-          initialValue: String(existingTrading.maxLeverage ?? 5),
+          initialValue: String(Number(existingTrading.maxLeverage) || 5),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") >= 1
               ? undefined
@@ -320,10 +327,10 @@ export async function promptFinancialConfig(
       note(
         [
           `Trading: ${enableTrading ? "enabled" : "disabled"}`,
-          `Auto-trade limit: $${existingTrading.maxAutoTradeUsd}`,
-          `Confirm threshold: $${existingTrading.confirmThresholdUsd}`,
-          `Daily loss limit: $${existingTrading.maxDailyLossUsd}`,
-          `Max leverage: ${existingTrading.maxLeverage}x`,
+          `Auto-trade limit: $${String(existingTrading.maxAutoTradeUsd)}`,
+          `Confirm threshold: $${String(existingTrading.confirmThresholdUsd)}`,
+          `Daily loss limit: $${String(existingTrading.maxDailyLossUsd)}`,
+          `Max leverage: ${String(existingTrading.maxLeverage)}x`,
         ].join("\n"),
         "Risk limits configured",
       );

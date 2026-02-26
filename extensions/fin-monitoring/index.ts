@@ -16,8 +16,9 @@ const finMonitoringPlugin = {
     // Expose the alert engine for other fin-* plugins to consume.
     api.registerService({
       id: "fin-alert-engine",
+      start: () => {},
       instance: alertEngine,
-    });
+    } as Parameters<typeof api.registerService>[0]);
 
     // --- fin_set_alert ---
     api.registerTool(
@@ -69,15 +70,10 @@ const finMonitoringPlugin = {
             const symbol = params.symbol as string | undefined;
             const price = params.price as number | undefined;
             if (!symbol || price == null) {
+              const err = { error: "symbol and price are required for price alerts" };
               return {
-                content: [
-                  {
-                    type: "text",
-                    text: JSON.stringify({
-                      error: "symbol and price are required for price alerts",
-                    }),
-                  },
-                ],
+                content: [{ type: "text" as const, text: JSON.stringify(err) }],
+                details: err,
               };
             }
             condition = { kind, symbol, price };
@@ -85,34 +81,26 @@ const finMonitoringPlugin = {
             const threshold = params.threshold as number | undefined;
             const direction = (params.direction as "loss" | "gain" | undefined) ?? "loss";
             if (threshold == null) {
+              const err = { error: "threshold is required for pnl_threshold alerts" };
               return {
-                content: [
-                  {
-                    type: "text",
-                    text: JSON.stringify({
-                      error: "threshold is required for pnl_threshold alerts",
-                    }),
-                  },
-                ],
+                content: [{ type: "text" as const, text: JSON.stringify(err) }],
+                details: err,
               };
             }
             condition = { kind, threshold, direction };
           } else {
+            const err = { error: `Unknown alert kind: ${kind}` };
             return {
-              content: [
-                { type: "text", text: JSON.stringify({ error: `Unknown alert kind: ${kind}` }) },
-              ],
+              content: [{ type: "text" as const, text: JSON.stringify(err) }],
+              details: err,
             };
           }
 
           const id = alertEngine.addAlert(condition, message);
+          const result = { id, condition, message, status: "active" };
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({ id, condition, message, status: "active" }, null, 2),
-              },
-            ],
+            content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+            details: result,
           };
         },
       },
@@ -128,22 +116,15 @@ const finMonitoringPlugin = {
         parameters: Type.Object({}),
         async execute() {
           const alerts = alertEngine.listAlerts();
+          const result = {
+            total: alerts.length,
+            active: alerts.filter((a) => !a.triggeredAt).length,
+            triggered: alerts.filter((a) => !!a.triggeredAt).length,
+            alerts,
+          };
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(
-                  {
-                    total: alerts.length,
-                    active: alerts.filter((a) => !a.triggeredAt).length,
-                    triggered: alerts.filter((a) => !!a.triggeredAt).length,
-                    alerts,
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
+            content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+            details: result,
           };
         },
       },
@@ -162,17 +143,14 @@ const finMonitoringPlugin = {
         async execute(_id: string, params: Record<string, unknown>) {
           const alertId = params.id as string;
           const removed = alertEngine.removeAlert(alertId);
+          const result = {
+            id: alertId,
+            removed,
+            message: removed ? "Alert removed" : "Alert not found",
+          };
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  id: alertId,
-                  removed,
-                  message: removed ? "Alert removed" : "Alert not found",
-                }),
-              },
-            ],
+            content: [{ type: "text" as const, text: JSON.stringify(result) }],
+            details: result,
           };
         },
       },
