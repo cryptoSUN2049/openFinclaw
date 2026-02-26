@@ -2,5 +2,10 @@
   "id": "fin-portfolio",
   "name": "Portfolio Tracker",
   "description": "Cross-exchange portfolio tracking, balance aggregation, and history",
-  "kind": "financial"
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
 }

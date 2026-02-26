@@ -115,7 +115,7 @@ const finCorePlugin = {
     });
 
     // Risk control hook: intercept all fin_* tool calls.
-    api.registerHook("before_tool_call", async (ctx) => {
+    api.registerHook("before_tool_call", "fin-risk-gate", async (ctx) => {
       const toolName = (ctx as unknown as Record<string, unknown>).toolName as string | undefined;
       if (
         !toolName ||

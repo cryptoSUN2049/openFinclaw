@@ -2,5 +2,10 @@
   "id": "fin-monitoring",
   "name": "Financial Monitoring",
   "description": "Proactive financial monitoring: price alerts, portfolio health checks, scheduled reports",
-  "kind": "financial"
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
 }
