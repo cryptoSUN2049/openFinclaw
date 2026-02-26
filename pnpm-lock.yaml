@@ -335,6 +335,12 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/fin-data-bus:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/fin-expert-sdk:
     devDependencies:
       openfinclaw:
@@ -359,7 +365,25 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/fin-paper-trading:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/fin-portfolio:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
+  extensions/fin-strategy-engine:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
+  extensions/fin-strategy-memory:
     devDependencies:
       openfinclaw:
         specifier: workspace:*
