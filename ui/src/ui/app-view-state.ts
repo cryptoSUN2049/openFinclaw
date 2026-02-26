@@ -236,6 +236,12 @@ export type AppViewState = {
   skillEdits: Record<string, string>;
   skillMessages: Record<string, SkillMessage>;
   skillsBusyKey: string | null;
+  exchangesLoading: boolean;
+  exchangesSaving: boolean;
+  exchangesError: string | null;
+  exchangeEditAlias: string | null;
+  exchangeNewMode: boolean;
+  exchangeFormDraft: Record<string, unknown> | null;
   debugLoading: boolean;
   debugStatus: StatusSummary | null;
   debugHealth: HealthSnapshot | null;

@@ -12,6 +12,7 @@ import { loadAgentSkills } from "./controllers/agent-skills.ts";
 import { loadAgents, loadToolsCatalog } from "./controllers/agents.ts";
 import { loadChannels } from "./controllers/channels.ts";
 import { loadConfig, loadConfigSchema } from "./controllers/config.ts";
+import { loadExchanges } from "./controllers/exchanges.ts";
 import {
   loadCronJobs,
   loadCronModelSuggestions,
@@ -237,6 +238,9 @@ export async function refreshActiveTab(host: SettingsHost) {
       host as unknown as Parameters<typeof scheduleChatScroll>[0],
       !host.chatHasAutoScrolled,
     );
+  }
+  if (host.tab === "exchanges") {
+    await loadExchanges(host as unknown as OpenClawApp);
   }
   if (host.tab === "config") {
     await loadConfigSchema(host as unknown as OpenClawApp);

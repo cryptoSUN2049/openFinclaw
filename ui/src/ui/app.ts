@@ -343,6 +343,13 @@ export class OpenClawApp extends LitElement {
   @state() skillsBusyKey: string | null = null;
   @state() skillMessages: Record<string, SkillMessage> = {};
 
+  @state() exchangesLoading = false;
+  @state() exchangesSaving = false;
+  @state() exchangesError: string | null = null;
+  @state() exchangeEditAlias: string | null = null;
+  @state() exchangeNewMode = false;
+  @state() exchangeFormDraft: Record<string, unknown> | null = null;
+
   @state() debugLoading = false;
   @state() debugStatus: StatusSummary | null = null;
   @state() debugHealth: HealthSnapshot | null = null;

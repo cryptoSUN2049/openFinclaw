@@ -39,6 +39,11 @@ import {
 } from "./controllers/cron.ts";
 import { loadDebug, callDebugMethod } from "./controllers/debug.ts";
 import {
+  getExchanges,
+  saveExchange,
+  deleteExchange,
+} from "./controllers/exchanges.ts";
+import {
   approveDevicePairing,
   loadDevices,
   rejectDevicePairing,
@@ -70,6 +75,7 @@ import { renderChat } from "./views/chat.ts";
 import { renderConfig } from "./views/config.ts";
 import { renderCron } from "./views/cron.ts";
 import { renderDebug } from "./views/debug.ts";
+import { renderExchanges } from "./views/exchanges.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
 import { renderInstances } from "./views/instances.ts";
@@ -1046,6 +1052,44 @@ export function renderApp(state: AppViewState) {
                 onSplitRatioChange: (ratio: number) => state.handleSplitRatioChange(ratio),
                 assistantName: state.assistantName,
                 assistantAvatar: state.assistantAvatar,
+              })
+            : nothing
+        }
+
+        ${
+          state.tab === "exchanges"
+            ? renderExchanges({
+                loading: state.exchangesLoading,
+                saving: state.exchangesSaving,
+                error: state.exchangesError,
+                exchanges: getExchanges(state),
+                editAlias: state.exchangeEditAlias,
+                newMode: state.exchangeNewMode,
+                formDraft: state.exchangeFormDraft,
+                onAdd: () => {
+                  state.exchangeNewMode = true;
+                  state.exchangeEditAlias = null;
+                  state.exchangeFormDraft = { exchange: "binance", testnet: false, defaultType: "spot" };
+                },
+                onEdit: (alias) => {
+                  const exchanges = getExchanges(state);
+                  const existing = exchanges[alias];
+                  state.exchangeEditAlias = alias;
+                  state.exchangeNewMode = false;
+                  state.exchangeFormDraft = existing
+                    ? { alias, ...existing }
+                    : { alias, exchange: "binance" };
+                },
+                onCancel: () => {
+                  state.exchangeEditAlias = null;
+                  state.exchangeNewMode = false;
+                  state.exchangeFormDraft = null;
+                },
+                onSave: (alias, config) => saveExchange(state, alias, config),
+                onDelete: (alias) => deleteExchange(state, alias),
+                onFormChange: (draft) => {
+                  state.exchangeFormDraft = draft;
+                },
               })
             : nothing
         }
