@@ -47,6 +47,22 @@
     {
       "id": "fin-macro-calendar",
       "description": "Economic calendar, macro regime classification, and event impact analysis"
+    },
+    {
+      "id": "fin-quant-fund",
+      "description": "One-person quant fund management — capital allocation, leaderboard, risk control"
+    },
+    {
+      "id": "fin-strategy-research",
+      "description": "Strategy research lab — regime analysis, candidate design, Walk-Forward validation"
+    },
+    {
+      "id": "fin-strategy-evolution",
+      "description": "Strategy evolution — promotion, demotion, mutation, fitness-based culling"
+    },
+    {
+      "id": "fin-trade-review",
+      "description": "Trade review and learning — error book, success patterns, experience insights"
     }
   ]
 }

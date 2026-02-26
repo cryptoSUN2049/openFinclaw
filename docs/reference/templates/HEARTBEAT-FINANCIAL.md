@@ -29,6 +29,9 @@
 - [ ] **Market overview**: Major index moves, crypto market cap, fear/greed index
 - [ ] **Calendar events**: Earnings, FOMC, token unlocks, options expiry today
 - [ ] **Pending actions**: Unfilled orders, expiring alerts, due rebalances
+- [ ] **Fund status** (quant): Call `fin_fund_status` — total equity, risk level, active strategies
+- [ ] **Regime check** (quant): Call `fin_data_regime` for each active market — detect regime changes
+- [ ] **Decay scan** (quant): Check paper/live strategies for degrading or critical decay levels
 
 ## Daily at 17:00 — End of Day Review
 
@@ -36,6 +39,8 @@
 - [ ] **Portfolio drift**: Has allocation drifted from target? Suggest rebalance?
 - [ ] **Risk assessment**: Updated risk metrics (VaR, max drawdown, Sharpe)
 - [ ] **News impact**: Key news events and their observed portfolio impact
+- [ ] **Trade review** (quant): Call `fin_review_trades` — update error/success books
+- [ ] **Promotion check** (quant): Any L2 strategies ready for L3 promotion?
 
 ## Weekly (Sunday 10:00) — Weekly Report
 
@@ -45,6 +50,9 @@
 - [ ] **Strategy assessment**: Are current strategies performing as expected?
 - [ ] **Rebalance recommendation**: Suggested portfolio adjustments
 - [ ] **Upcoming week**: Key events and potential trading opportunities
+- [ ] **Fund rebalance** (quant): Call `fin_fund_rebalance` — re-profile, correlate, re-allocate
+- [ ] **Correlation matrix** (quant): Recalculate strategy correlations, flag high-corr pairs
+- [ ] **Weekly review** (quant): Call `fin_review_trades period=7d` — weekly error/success summary
 
 ## Monthly (1st, 09:00) — Monthly Report
 
@@ -53,3 +61,6 @@
 - [ ] **Tax events**: Capital gains/losses for tax reporting
 - [ ] **Goal progress**: Are financial goals on track?
 - [ ] **Risk profile review**: Should risk parameters be adjusted?
+- [ ] **Evolution cycle** (quant): Call `fin_fund_rebalance` — full evolution: score, cull bottom 20%, mutate, re-backtest
+- [ ] **Capital reallocation** (quant): Call `fin_fund_allocate` — redistribute based on updated fitness
+- [ ] **Monthly report** (quant): Generate quant fund monthly report with leaderboard, promotions, kills
