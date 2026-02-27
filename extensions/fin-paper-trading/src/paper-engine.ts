@@ -187,6 +187,16 @@ export class PaperEngine {
     return account?.getState() ?? null;
   }
 
+  /** Retrieve equity snapshots for the given account (used by dashboard equity curve). */
+  getSnapshots(accountId: string): import("./types.js").EquitySnapshot[] {
+    return this.store.getSnapshots(accountId);
+  }
+
+  /** Retrieve orders for the given account. */
+  getOrders(accountId: string, limit?: number): import("./types.js").PaperOrder[] {
+    return this.store.getOrders(accountId, limit);
+  }
+
   getMetrics(accountId: string): DecayState | null {
     const account = this.loadAccount(accountId);
     if (!account) return null;

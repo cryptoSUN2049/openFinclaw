@@ -530,6 +530,79 @@ const plugin = {
       },
     });
 
+    // ── CLI Commands ──
+
+    api.registerCli(({ program }) => {
+      const fund = program.command("fund").description("Fund management commands");
+
+      fund
+        .command("pipeline")
+        .description("Run full trading pipeline: backtest → walk-forward → paper trade")
+        .option("--live", "Include real testnet orders via CcxtBridge")
+        .action(async (opts: { live?: boolean }) => {
+          const registrySvc = getRegistry();
+          const paperSvc = getPaper();
+
+          if (!registrySvc) {
+            console.log(
+              "Strategy registry not available. Ensure fin-strategy-engine plugin is enabled.",
+            );
+            return;
+          }
+          if (!paperSvc) {
+            console.log("Paper engine not available. Ensure fin-paper-trading plugin is enabled.");
+            return;
+          }
+
+          console.log("\nOpenFinClaw Fund Pipeline");
+          console.log(`Mode: ${opts.live ? "LIVE (testnet)" : "Paper-only"}\n`);
+
+          // List strategies and their levels
+          const strategies = registrySvc.list();
+          console.log(`Strategies registered: ${strategies.length}`);
+          for (const s of strategies) {
+            const bt = (s as { lastBacktest?: { totalReturn: number; sharpe: number } })
+              .lastBacktest;
+            const btInfo = bt
+              ? `return=${bt.totalReturn.toFixed(2)}% sharpe=${bt.sharpe.toFixed(3)}`
+              : "no backtest";
+            console.log(`  ${s.id} [${s.level}] — ${btInfo}`);
+          }
+
+          // Show paper accounts
+          const accounts = paperSvc.listAccounts();
+          console.log(`\nPaper accounts: ${accounts.length}`);
+          for (const a of accounts) {
+            console.log(`  ${a.id}: ${a.name} — $${a.equity.toFixed(2)}`);
+          }
+
+          // Rebalance if fund manager is available
+          const profiles = manager.buildProfiles(
+            strategies as Parameters<typeof manager.buildProfiles>[0],
+          );
+          const allocations = manager.allocate(profiles);
+
+          console.log(`\nAllocations (${allocations.length}):`);
+          for (const a of allocations) {
+            console.log(
+              `  ${a.strategyId}: $${a.capitalUsd.toFixed(2)} (${a.weightPct.toFixed(1)}%)`,
+            );
+          }
+
+          // Risk evaluation
+          const totalEquity = config.totalCapital ?? manager.getState().totalCapital;
+          const risk = manager.evaluateRisk(totalEquity);
+          console.log(`\nRisk: ${risk.riskLevel} (DD: ${risk.dailyDrawdown.toFixed(1)}%)`);
+
+          if (opts.live) {
+            console.log("\nLive testnet orders require the standalone script:");
+            console.log("  bun scripts/finance/run-trading-pipeline.ts --live");
+          }
+
+          console.log("\nPipeline complete.");
+        });
+    });
+
     // ── Dashboard Route ──
 
     api.registerHttpRoute({

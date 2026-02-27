@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { ExchangeRegistry } from "./src/exchange-registry.js";
 import { RiskController } from "./src/risk-controller.js";
@@ -9,12 +12,27 @@ export * from "./src/types.js";
 
 const DEFAULT_RISK_CONFIG: TradingRiskConfig = {
   enabled: false,
-  maxAutoTradeUsd: 500,
-  confirmThresholdUsd: 5000,
-  maxDailyLossUsd: 2000,
+  maxAutoTradeUsd: 100,
+  confirmThresholdUsd: 500,
+  maxDailyLossUsd: 1000,
   maxPositionPct: 25,
-  maxLeverage: 5,
+  maxLeverage: 1,
 };
+
+const FINANCIAL_PLUGIN_IDS = [
+  "fin-core",
+  "fin-data-bus",
+  "fin-market-data",
+  "fin-trading",
+  "fin-portfolio",
+  "fin-monitoring",
+  "fin-paper-trading",
+  "fin-strategy-engine",
+  "fin-strategy-memory",
+  "fin-fund-manager",
+  "fin-expert-sdk",
+  "fin-info-feed",
+] as const;
 
 const finCorePlugin = {
   id: "fin-core",
@@ -63,6 +81,336 @@ const finCorePlugin = {
       start: () => {},
       instance: riskController,
     } as Parameters<typeof api.registerService>[0]);
+
+    const dashboardDir = join(dirname(fileURLToPath(import.meta.url)), "dashboard");
+    let dashboardTemplate = "";
+    let dashboardCss = "";
+    let tradingDashboardTemplate = "";
+    let tradingDashboardCss = "";
+    try {
+      dashboardTemplate = readFileSync(join(dashboardDir, "finance-dashboard.html"), "utf-8");
+      dashboardCss = readFileSync(join(dashboardDir, "finance-dashboard.css"), "utf-8");
+    } catch {
+      // Fallback to JSON response when dashboard assets are not available.
+    }
+    try {
+      tradingDashboardTemplate = readFileSync(
+        join(dashboardDir, "trading-dashboard.html"),
+        "utf-8",
+      );
+      tradingDashboardCss = readFileSync(join(dashboardDir, "trading-dashboard.css"), "utf-8");
+    } catch {
+      // Trading dashboard assets optional.
+    }
+
+    const gatherFinanceConfigData = () => {
+      const pluginEntries = (api.config.plugins?.entries ?? {}) as Record<
+        string,
+        { enabled?: boolean; config?: Record<string, unknown> }
+      >;
+
+      const plugins = FINANCIAL_PLUGIN_IDS.map((id) => ({
+        id,
+        enabled: pluginEntries[id]?.enabled === true,
+      }));
+
+      return {
+        generatedAt: new Date().toISOString(),
+        exchanges: registry.listExchanges(),
+        trading: {
+          enabled: riskConfig.enabled,
+          maxAutoTradeUsd: riskConfig.maxAutoTradeUsd,
+          confirmThresholdUsd: riskConfig.confirmThresholdUsd,
+          maxDailyLossUsd: riskConfig.maxDailyLossUsd,
+          maxPositionPct: riskConfig.maxPositionPct,
+          maxLeverage: riskConfig.maxLeverage,
+          allowedPairs: riskConfig.allowedPairs ?? [],
+          blockedPairs: riskConfig.blockedPairs ?? [],
+        },
+        plugins: {
+          total: plugins.length,
+          enabled: plugins.filter((entry) => entry.enabled).length,
+          entries: plugins,
+        },
+      };
+    };
+
+    api.registerHttpRoute({
+      path: "/api/v1/finance/config",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          end: (body: string) => void;
+        },
+      ) => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(gatherFinanceConfigData()));
+      },
+    });
+
+    api.registerHttpRoute({
+      path: "/dashboard/finance",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          end: (body: string) => void;
+        },
+      ) => {
+        const financeData = gatherFinanceConfigData();
+        if (!dashboardTemplate || !dashboardCss) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(financeData));
+          return;
+        }
+
+        const safeJson = JSON.stringify(financeData).replace(/<\//g, "<\\/");
+        const html = dashboardTemplate
+          .replace("/*__FINANCE_CSS__*/", dashboardCss)
+          .replace("/*__FINANCE_DATA__*/{}", safeJson);
+
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(html);
+      },
+    });
+
+    // ── Trading Dashboard: service type aliases ──
+
+    type PaperEngineLike = {
+      listAccounts: () => Array<{ id: string; name: string; equity: number }>;
+      getAccountState: (id: string) => {
+        id: string;
+        name: string;
+        initialCapital: number;
+        cash: number;
+        equity: number;
+        positions: Array<{
+          symbol: string;
+          side: string;
+          quantity: number;
+          entryPrice: number;
+          currentPrice: number;
+          unrealizedPnl: number;
+        }>;
+        orders: Array<{
+          id: string;
+          symbol: string;
+          side: string;
+          type: string;
+          quantity: number;
+          fillPrice?: number;
+          commission?: number;
+          status: string;
+          strategyId?: string;
+          createdAt: number;
+          filledAt?: number;
+        }>;
+      } | null;
+      getSnapshots: (id: string) => Array<{
+        timestamp: number;
+        equity: number;
+        cash: number;
+        positionsValue: number;
+        dailyPnl: number;
+        dailyPnlPct: number;
+      }>;
+      getOrders: (
+        id: string,
+        limit?: number,
+      ) => Array<{
+        id: string;
+        symbol: string;
+        side: string;
+        type: string;
+        quantity: number;
+        fillPrice?: number;
+        commission?: number;
+        status: string;
+        strategyId?: string;
+        createdAt: number;
+        filledAt?: number;
+      }>;
+    };
+
+    type StrategyRegistryLike = {
+      list: (filter?: { level?: string }) => Array<{
+        id: string;
+        name: string;
+        level: string;
+        lastBacktest?: {
+          totalReturn: number;
+          sharpe: number;
+          sortino: number;
+          maxDrawdown: number;
+          winRate: number;
+          profitFactor: number;
+          totalTrades: number;
+          finalEquity: number;
+          initialCapital: number;
+          strategyId: string;
+        };
+      }>;
+    };
+
+    type FundManagerLike = {
+      getState: () => {
+        allocations: Array<{ strategyId: string; capitalUsd: number; weightPct: number }>;
+        totalCapital: number;
+      };
+    };
+
+    const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+
+    function gatherTradingData() {
+      const paperEngine = runtime.services?.get?.("fin-paper-engine") as
+        | PaperEngineLike
+        | undefined;
+      const strategyRegistry = runtime.services?.get?.("fin-strategy-registry") as
+        | StrategyRegistryLike
+        | undefined;
+      const fundManager = runtime.services?.get?.("fin-fund-manager") as
+        | FundManagerLike
+        | undefined;
+
+      // Aggregate across all paper accounts
+      const accounts = paperEngine?.listAccounts() ?? [];
+      let totalEquity = 0;
+      let totalDailyPnl = 0;
+      const allPositions: Array<Record<string, unknown>> = [];
+      const allOrders: Array<Record<string, unknown>> = [];
+      const allSnapshots: Array<Record<string, unknown>> = [];
+
+      for (const acct of accounts) {
+        const state = paperEngine?.getAccountState(acct.id);
+        if (!state) continue;
+
+        totalEquity += state.equity;
+
+        for (const pos of state.positions) {
+          allPositions.push(pos);
+        }
+
+        const snapshots = paperEngine?.getSnapshots(acct.id) ?? [];
+        for (const snap of snapshots) {
+          allSnapshots.push(snap);
+        }
+        if (snapshots.length > 0) {
+          totalDailyPnl += snapshots[snapshots.length - 1]!.dailyPnl;
+        }
+
+        const orders = paperEngine?.getOrders(acct.id, 50) ?? [];
+        for (const order of orders) {
+          allOrders.push(order);
+        }
+      }
+
+      // Strategies
+      const strategies = strategyRegistry?.list() ?? [];
+      const strategyData = strategies.map((s) => ({
+        id: s.id,
+        name: s.name,
+        level: s.level,
+        totalReturn: s.lastBacktest?.totalReturn,
+        sharpe: s.lastBacktest?.sharpe,
+        maxDrawdown: s.lastBacktest?.maxDrawdown,
+        totalTrades: s.lastBacktest?.totalTrades,
+      }));
+
+      // Backtests
+      const backtests = strategies.filter((s) => s.lastBacktest).map((s) => s.lastBacktest!);
+
+      // Allocations
+      const fundState = fundManager?.getState();
+      const allocItems = fundState?.allocations ?? [];
+      const totalAllocated = allocItems.reduce(
+        (sum: number, a: { capitalUsd: number }) => sum + a.capitalUsd,
+        0,
+      );
+
+      // Win rate from filled orders
+      const filledOrders = allOrders.filter((o) => (o as { status: string }).status === "filled");
+      const totalInitialCapital =
+        accounts.length > 0 ? accounts.reduce((sum, a) => sum + a.equity, 0) : totalEquity;
+      const dailyPnlPct = totalInitialCapital > 0 ? (totalDailyPnl / totalInitialCapital) * 100 : 0;
+
+      // Avg sharpe from strategies with backtests
+      const sharpValues = strategies
+        .filter((s) => s.lastBacktest?.sharpe != null)
+        .map((s) => s.lastBacktest!.sharpe);
+      const avgSharpe =
+        sharpValues.length > 0 ? sharpValues.reduce((a, b) => a + b, 0) / sharpValues.length : null;
+
+      // Sort snapshots by timestamp for equity curve
+      allSnapshots.sort(
+        (a, b) => (a as { timestamp: number }).timestamp - (b as { timestamp: number }).timestamp,
+      );
+
+      return {
+        summary: {
+          totalEquity,
+          dailyPnl: totalDailyPnl,
+          dailyPnlPct,
+          positionCount: allPositions.length,
+          strategyCount: strategies.length,
+          winRate: filledOrders.length > 0 ? null : null,
+          avgSharpe,
+        },
+        positions: allPositions,
+        orders: allOrders,
+        snapshots: allSnapshots,
+        strategies: strategyData,
+        backtests,
+        allocations: {
+          items: allocItems,
+          totalAllocated,
+          cashReserve: (fundState?.totalCapital ?? 0) - totalAllocated,
+          totalCapital: fundState?.totalCapital ?? 0,
+        },
+      };
+    }
+
+    // ── Trading Dashboard API ──
+
+    api.registerHttpRoute({
+      path: "/api/v1/finance/trading",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          end: (body: string) => void;
+        },
+      ) => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(gatherTradingData()));
+      },
+    });
+
+    api.registerHttpRoute({
+      path: "/dashboard/trading",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          end: (body: string) => void;
+        },
+      ) => {
+        const tradingData = gatherTradingData();
+        if (!tradingDashboardTemplate || !tradingDashboardCss) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(tradingData));
+          return;
+        }
+
+        const safeJson = JSON.stringify(tradingData).replace(/<\//g, "<\\/");
+        const html = tradingDashboardTemplate
+          .replace("/*__TRADING_CSS__*/", tradingDashboardCss)
+          .replace("/*__TRADING_DATA__*/{}", safeJson);
+
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(html);
+      },
+    });
 
     // Register CLI commands for exchange management.
     api.registerCli(({ program }) => {
