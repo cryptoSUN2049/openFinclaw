@@ -1,10 +1,21 @@
 import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { BacktestEngine } from "./src/backtest-engine.js";
+import { createBollingerBands } from "./src/builtin-strategies/bollinger-bands.js";
+import { createMacdDivergence } from "./src/builtin-strategies/macd-divergence.js";
 import { createRsiMeanReversion } from "./src/builtin-strategies/rsi-mean-reversion.js";
 import { createSmaCrossover } from "./src/builtin-strategies/sma-crossover.js";
 import { StrategyRegistry } from "./src/strategy-registry.js";
 import type { BacktestConfig, StrategyDefinition } from "./src/types.js";
+
+type OhlcvBar = {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
 
 const json = (payload: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }],
@@ -42,9 +53,21 @@ const plugin = {
         description: "Create a new trading strategy from a built-in template or custom definition",
         parameters: Type.Object({
           name: Type.String({ description: "Strategy display name" }),
-          type: Type.Unsafe<"sma-crossover" | "rsi-mean-reversion" | "custom">({
+          type: Type.Unsafe<
+            | "sma-crossover"
+            | "rsi-mean-reversion"
+            | "bollinger-bands"
+            | "macd-divergence"
+            | "custom"
+          >({
             type: "string",
-            enum: ["sma-crossover", "rsi-mean-reversion", "custom"],
+            enum: [
+              "sma-crossover",
+              "rsi-mean-reversion",
+              "bollinger-bands",
+              "macd-divergence",
+              "custom",
+            ],
             description: "Strategy template type",
           }),
           parameters: Type.Optional(
@@ -77,6 +100,10 @@ const plugin = {
               definition = createSmaCrossover(stratParams);
             } else if (type === "rsi-mean-reversion") {
               definition = createRsiMeanReversion(stratParams);
+            } else if (type === "bollinger-bands") {
+              definition = createBollingerBands(stratParams);
+            } else if (type === "macd-divergence") {
+              definition = createMacdDivergence(stratParams);
             } else {
               return json({ error: "Custom strategies are not yet supported via this tool" });
             }
@@ -188,19 +215,18 @@ const plugin = {
             const dataProvider = runtime.services?.get?.("fin-data-provider") as
               | {
                   getOHLCV?: (
-                    symbol: string,
-                    timeframe: string,
-                    limit: number,
-                  ) => Promise<
-                    Array<{
-                      timestamp: number;
-                      open: number;
-                      high: number;
-                      low: number;
-                      close: number;
-                      volume: number;
-                    }>
-                  >;
+                    paramsOrSymbol:
+                      | {
+                          symbol: string;
+                          market: "crypto" | "equity" | "commodity";
+                          timeframe: string;
+                          limit?: number;
+                          since?: number;
+                        }
+                      | string,
+                    timeframe?: string,
+                    limit?: number,
+                  ) => Promise<OhlcvBar[]>;
                 }
               | undefined;
 
@@ -213,7 +239,16 @@ const plugin = {
 
             const symbol = record.definition.symbols[0] ?? "BTC/USDT";
             const timeframe = record.definition.timeframes[0] ?? "1d";
-            const ohlcvData = await dataProvider.getOHLCV(symbol, timeframe, 365);
+            const getOHLCV = dataProvider.getOHLCV;
+            const ohlcvData =
+              getOHLCV.length <= 1
+                ? await getOHLCV({
+                    symbol,
+                    market: config.market,
+                    timeframe,
+                    limit: 365,
+                  })
+                : await getOHLCV(symbol, timeframe, 365);
 
             const result = await engine.run(record.definition, ohlcvData, config);
             registry.updateBacktest(strategyId, result);

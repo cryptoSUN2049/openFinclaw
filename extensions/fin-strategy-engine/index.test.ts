@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import plugin from "./index.js";
 import { BacktestEngine } from "./src/backtest-engine.js";
 import { StrategyRegistry } from "./src/strategy-registry.js";
@@ -114,6 +114,36 @@ describe("fin-strategy-engine plugin", () => {
       expect(result.name).toBe("My RSI Strategy");
     });
 
+    it("creates a Bollinger Bands strategy", async () => {
+      const tool = tools.get("fin_strategy_create")!;
+      const result = parseResult(
+        await tool.execute("call-bb", {
+          name: "My BB Strategy",
+          type: "bollinger-bands",
+          parameters: { period: 15, stdDev: 1.5 },
+        }),
+      ) as Record<string, unknown>;
+
+      expect(result.created).toBe(true);
+      expect(result.name).toBe("My BB Strategy");
+      expect(result.level).toBe("L0_INCUBATE");
+    });
+
+    it("creates a MACD Divergence strategy", async () => {
+      const tool = tools.get("fin_strategy_create")!;
+      const result = parseResult(
+        await tool.execute("call-macd", {
+          name: "My MACD Strategy",
+          type: "macd-divergence",
+          parameters: { fastPeriod: 8, slowPeriod: 21, signalPeriod: 5 },
+        }),
+      ) as Record<string, unknown>;
+
+      expect(result.created).toBe(true);
+      expect(result.name).toBe("My MACD Strategy");
+      expect(result.level).toBe("L0_INCUBATE");
+    });
+
     it("rejects unknown strategy type", async () => {
       const tool = tools.get("fin_strategy_create")!;
       const result = parseResult(
@@ -183,6 +213,46 @@ describe("fin-strategy-engine plugin", () => {
       ) as Record<string, unknown>;
 
       expect(result.error).toContain("Data provider");
+    });
+
+    it("uses object-based data provider contract", async () => {
+      const createTool = tools.get("fin_strategy_create")!;
+      const created = parseResult(
+        await createTool.execute("c5", { name: "S5", type: "sma-crossover" }),
+      ) as Record<string, unknown>;
+
+      const getOHLCV = vi.fn(
+        async (params: { symbol: string; market: string; timeframe: string; limit?: number }) => {
+          const bars = params.limit ?? 365;
+          return Array.from({ length: bars }, (_, index) => {
+            const open = 100 + index * 0.1;
+            return {
+              timestamp: Date.UTC(2026, 0, 1) + index * 86_400_000,
+              open,
+              high: open + 1,
+              low: open - 1,
+              close: open + Math.sin(index / 8),
+              volume: 1000 + index,
+            };
+          });
+        },
+      );
+      services.set("fin-data-provider", { getOHLCV });
+
+      const tool = tools.get("fin_backtest_run")!;
+      const result = parseResult(
+        await tool.execute("call-9", { strategyId: created.id as string }),
+      ) as Record<string, unknown>;
+
+      expect(result.error).toBeUndefined();
+      expect(getOHLCV).toHaveBeenCalledWith(
+        expect.objectContaining({
+          symbol: "BTC/USDT",
+          market: "crypto",
+          timeframe: "1d",
+          limit: 365,
+        }),
+      );
     });
   });
 });
