@@ -220,4 +220,201 @@ describe("FinancialSchema", () => {
       expect(ex.testnet).toBe(true);
     });
   });
+
+  // ── Schema boundary values ──
+
+  describe("Schema boundary values", () => {
+    describe("futuOpenDPort boundaries", () => {
+      it("port 1 is valid", () => {
+        const result = FinancialSchema.parse({ paperTrading: { hk: { futuOpenDPort: 1 } } });
+        expect(result!.paperTrading!.hk!.futuOpenDPort).toBe(1);
+      });
+
+      it("port 65535 is valid", () => {
+        const result = FinancialSchema.parse({ paperTrading: { hk: { futuOpenDPort: 65535 } } });
+        expect(result!.paperTrading!.hk!.futuOpenDPort).toBe(65535);
+      });
+
+      it("port 0 rejects", () => {
+        expect(() =>
+          FinancialSchema.parse({ paperTrading: { hk: { futuOpenDPort: 0 } } }),
+        ).toThrow();
+      });
+
+      it("port 65536 rejects", () => {
+        expect(() =>
+          FinancialSchema.parse({ paperTrading: { hk: { futuOpenDPort: 65536 } } }),
+        ).toThrow();
+      });
+    });
+
+    describe("extreme percentage combinations", () => {
+      it("cashReservePct=0 + maxTotalExposurePct=100 → valid (all-in)", () => {
+        const result = FinancialSchema.parse({
+          fund: { cashReservePct: 0, maxTotalExposurePct: 100, maxSingleStrategyPct: 50 },
+        });
+        expect(result!.fund!.cashReservePct).toBe(0);
+        expect(result!.fund!.maxTotalExposurePct).toBe(100);
+      });
+
+      it("cashReservePct=100 + maxTotalExposurePct=0 → valid (all-cash)", () => {
+        const result = FinancialSchema.parse({
+          fund: { cashReservePct: 100, maxTotalExposurePct: 0, maxSingleStrategyPct: 0 },
+        });
+        expect(result!.fund!.cashReservePct).toBe(100);
+        expect(result!.fund!.maxTotalExposurePct).toBe(0);
+      });
+    });
+
+    describe("rebalanceFrequency enum", () => {
+      it("accepts daily", () => {
+        const result = FinancialSchema.parse({ fund: { rebalanceFrequency: "daily" } });
+        expect(result!.fund!.rebalanceFrequency).toBe("daily");
+      });
+
+      it("accepts weekly", () => {
+        const result = FinancialSchema.parse({ fund: { rebalanceFrequency: "weekly" } });
+        expect(result!.fund!.rebalanceFrequency).toBe("weekly");
+      });
+
+      it("accepts monthly", () => {
+        const result = FinancialSchema.parse({ fund: { rebalanceFrequency: "monthly" } });
+        expect(result!.fund!.rebalanceFrequency).toBe("monthly");
+      });
+
+      it("rejects invalid enum value", () => {
+        expect(() => FinancialSchema.parse({ fund: { rebalanceFrequency: "hourly" } })).toThrow();
+      });
+    });
+
+    describe("walkForwardInSamplePct boundaries", () => {
+      it("0.5 is valid (minimum)", () => {
+        const result = FinancialSchema.parse({ backtest: { walkForwardInSamplePct: 0.5 } });
+        expect(result!.backtest!.walkForwardInSamplePct).toBe(0.5);
+      });
+
+      it("0.9 is valid (maximum)", () => {
+        const result = FinancialSchema.parse({ backtest: { walkForwardInSamplePct: 0.9 } });
+        expect(result!.backtest!.walkForwardInSamplePct).toBe(0.9);
+      });
+
+      it("0.49 rejects (below minimum)", () => {
+        expect(() =>
+          FinancialSchema.parse({ backtest: { walkForwardInSamplePct: 0.49 } }),
+        ).toThrow();
+      });
+
+      it("0.91 rejects (above maximum)", () => {
+        expect(() =>
+          FinancialSchema.parse({ backtest: { walkForwardInSamplePct: 0.91 } }),
+        ).toThrow();
+      });
+    });
+
+    describe("cullPercentage boundaries", () => {
+      it("0 is valid", () => {
+        const result = FinancialSchema.parse({ evolution: { cullPercentage: 0 } });
+        expect(result!.evolution!.cullPercentage).toBe(0);
+      });
+
+      it("50 is valid (maximum)", () => {
+        const result = FinancialSchema.parse({ evolution: { cullPercentage: 50 } });
+        expect(result!.evolution!.cullPercentage).toBe(50);
+      });
+
+      it("51 rejects (above maximum)", () => {
+        expect(() => FinancialSchema.parse({ evolution: { cullPercentage: 51 } })).toThrow();
+      });
+    });
+
+    describe("maxPositionPct boundaries", () => {
+      it("0 is valid", () => {
+        const result = FinancialSchema.parse({ trading: { maxPositionPct: 0 } });
+        expect(result!.trading!.maxPositionPct).toBe(0);
+      });
+
+      it("100 is valid", () => {
+        const result = FinancialSchema.parse({ trading: { maxPositionPct: 100 } });
+        expect(result!.trading!.maxPositionPct).toBe(100);
+      });
+
+      it("101 rejects", () => {
+        expect(() => FinancialSchema.parse({ trading: { maxPositionPct: 101 } })).toThrow();
+      });
+    });
+
+    describe("all 4 exchanges accepted", () => {
+      for (const exchange of ["hyperliquid", "binance", "okx", "bybit"] as const) {
+        it(`accepts ${exchange}`, () => {
+          const result = FinancialSchema.parse({
+            exchanges: { [`${exchange}-main`]: { exchange } },
+          });
+          expect(result!.exchanges![`${exchange}-main`].exchange).toBe(exchange);
+        });
+      }
+    });
+
+    it("full valid config with ALL sections → parses", () => {
+      const fullConfig = {
+        trading: { enabled: true, maxAutoTradeUsd: 500, maxLeverage: 2 },
+        fund: {
+          cashReservePct: 20,
+          maxSingleStrategyPct: 25,
+          maxTotalExposurePct: 80,
+          rebalanceFrequency: "daily" as const,
+          totalCapital: 200000,
+        },
+        backtest: {
+          defaultCommission: 0.002,
+          defaultSlippage: 0.001,
+          walkForwardWindows: 3,
+          walkForwardInSamplePct: 0.6,
+        },
+        evolution: {
+          evaluationInterval: "weekly" as const,
+          cullPercentage: 30,
+          mutationRate: 0.5,
+          minStrategies: 5,
+        },
+        paperTrading: {
+          defaultCapital: 50000,
+          slippageModel: "constant" as const,
+          constantSlippageBps: 10,
+          us: { adapter: "alpaca" as const },
+          hk: { adapter: "futu" as const, futuOpenDHost: "192.168.1.100", futuOpenDPort: 22222 },
+          cn: {
+            adapter: "openctp" as const,
+            dataSource: "tushare" as const,
+            tushareToken: "tok123",
+          },
+        },
+        equity: { alpaca: { apiKeyId: "ak", apiSecretKey: "sk", paper: false } },
+        commodity: { quandlApiKey: "qk" },
+        exchanges: {
+          "binance-test": {
+            exchange: "binance" as const,
+            apiKey: "key",
+            secret: "sec",
+            testnet: true,
+          },
+        },
+      };
+
+      const result = FinancialSchema.parse(fullConfig);
+      expect(result).toBeDefined();
+      expect(result!.trading!.enabled).toBe(true);
+      expect(result!.fund!.totalCapital).toBe(200000);
+      expect(result!.paperTrading!.hk!.futuOpenDPort).toBe(22222);
+    });
+
+    it("backward compatibility: undefined financial → undefined", () => {
+      const result = FinancialSchema.parse(undefined);
+      expect(result).toBeUndefined();
+    });
+
+    it("backward compatibility: empty object → empty object", () => {
+      const result = FinancialSchema.parse({});
+      expect(result).toEqual({});
+    });
+  });
 });
