@@ -14,7 +14,10 @@
       <header class="dashboard-header">
         <h1><span>OpenFinClaw</span> Trading</h1>
         <div class="header-right">
-          <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            LIVE
+          </div>
           <div class="timestamp" id="timestamp"></div>
         </div>
       </header>
@@ -157,405 +160,549 @@
         </div>
       </div>
 
-      <footer class="dashboard-footer">OpenFinClaw Trading Dashboard &middot; Auto-refreshes every 10s</footer>
+      <footer class="dashboard-footer">
+        OpenFinClaw Trading Dashboard &middot; Real-time via SSE
+      </footer>
     </div>
 
     <script>
       (function () {
         "use strict";
-        var DATA = /*__TRADING_DATA__*/{};
-        var summary = DATA.summary || {};
-        var positions = DATA.positions || [];
-        var orders = DATA.orders || [];
-        var snapshots = DATA.snapshots || [];
-        var strategies = DATA.strategies || [];
-        var backtests = DATA.backtests || [];
-        var allocations = DATA.allocations || {};
+        var DATA = /*__TRADING_DATA__*/ {};
 
         // ── Helpers ──
-        function fmt(n) { return (n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-        function fmtPct(n) { return (n || 0).toFixed(2); }
-        function signed(n) { return (n >= 0 ? "+" : "") + fmt(n); }
-        function signedPct(n) { return (n >= 0 ? "+" : "") + fmtPct(n) + "%"; }
-        function pnlClass(n) { return n > 0 ? "pnl-positive" : n < 0 ? "pnl-negative" : "pnl-neutral"; }
-        function setText(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
-        function setClass(id, cls) { var el = document.getElementById(id); if (el) el.className = cls; }
+        function fmt(n) {
+          return (n || 0).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        }
+        function fmtPct(n) {
+          return (n || 0).toFixed(2);
+        }
+        function signed(n) {
+          return (n >= 0 ? "+" : "") + fmt(n);
+        }
+        function signedPct(n) {
+          return (n >= 0 ? "+" : "") + fmtPct(n) + "%";
+        }
+        function pnlClass(n) {
+          return n > 0 ? "pnl-positive" : n < 0 ? "pnl-negative" : "pnl-neutral";
+        }
+        function setText(id, text) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = text;
+        }
         function formatTime(ts) {
           if (!ts) return "--";
           var d = new Date(ts);
-          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " +
-                 d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+          return (
+            d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+            " " +
+            d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+          );
         }
 
-        // ── Timestamp ──
-        setText("timestamp", new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }));
+        // ── Chart instances (persisted across updates) ──
+        var equityChart = null;
+        var allocChart = null;
+        var ALLOC_COLORS = [
+          "#ff5a2d",
+          "#448aff",
+          "#00c853",
+          "#ffb020",
+          "#e040fb",
+          "#8b7f77",
+          "#ff7a50",
+        ];
 
-        // ── Panel 1: Hero ──
-        setText("hero-equity", "$" + fmt(summary.totalEquity));
-        var pnlEl = document.getElementById("hero-pnl");
-        if (pnlEl) {
-          var dailyPnl = summary.dailyPnl || 0;
-          var dailyPnlPct = summary.dailyPnlPct || 0;
-          pnlEl.textContent = signed(dailyPnl) + " (" + signedPct(dailyPnlPct) + ")";
-          pnlEl.className = "pnl " + pnlClass(dailyPnl);
+        // ── Rebuild a table body from row data ──
+        function rebuildTbody(tableId, emptyId, rows, buildRow) {
+          var table = document.getElementById(tableId);
+          var empty = document.getElementById(emptyId);
+          if (rows.length === 0) {
+            if (table) table.style.display = "none";
+            if (empty) empty.style.display = "block";
+          } else {
+            if (table) table.style.display = "";
+            if (empty) empty.style.display = "none";
+            var tbody = table ? table.querySelector("tbody") : null;
+            if (tbody) {
+              tbody.innerHTML = "";
+              for (var i = 0; i < rows.length; i++) {
+                tbody.appendChild(buildRow(rows[i]));
+              }
+            }
+          }
         }
-        setText("hero-positions", String(positions.length));
-        setText("hero-strategies", String(strategies.length));
-        if (summary.winRate != null) setText("hero-win-rate", fmtPct(summary.winRate) + "%");
-        if (summary.avgSharpe != null) setText("hero-sharpe", summary.avgSharpe.toFixed(2));
 
-        // ── Panel 2: Equity Curve ──
-        var equityCtx = document.getElementById("equity-chart");
-        if (equityCtx && snapshots.length > 1 && typeof Chart !== "undefined") {
-          try {
-            var labels = snapshots.map(function (s) { return formatTime(s.timestamp); });
-            var equityValues = snapshots.map(function (s) { return s.equity; });
-            var gradient = equityCtx.getContext("2d").createLinearGradient(0, 0, 0, 280);
-            gradient.addColorStop(0, "rgba(0, 200, 83, 0.15)");
-            gradient.addColorStop(1, "rgba(0, 200, 83, 0.0)");
+        // ── Main update function (called on every SSE message or poll) ──
+        function updateDashboard(DATA) {
+          var summary = DATA.summary || {};
+          var positions = DATA.positions || [];
+          var orders = DATA.orders || [];
+          var snapshots = DATA.snapshots || [];
+          var strategies = DATA.strategies || [];
+          var backtests = DATA.backtests || [];
+          var allocations = DATA.allocations || {};
 
-            new Chart(equityCtx, {
-              type: "line",
-              data: {
-                labels: labels,
-                datasets: [{
-                  label: "Equity",
-                  data: equityValues,
-                  borderColor: "#00c853",
-                  backgroundColor: gradient,
-                  borderWidth: 2,
-                  fill: true,
-                  tension: 0.3,
-                  pointRadius: snapshots.length > 30 ? 0 : 3,
-                  pointHoverRadius: 5,
-                  pointBackgroundColor: "#00c853",
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: "index", intersect: false },
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    backgroundColor: "#181e27",
-                    titleColor: "#e8edf4",
-                    bodyColor: "#e8edf4",
-                    borderColor: "#2a3546",
-                    borderWidth: 1,
-                    padding: 12,
-                    titleFont: { family: "SF Mono, monospace", size: 11 },
-                    bodyFont: { family: "SF Mono, monospace", size: 12 },
-                    callbacks: {
-                      label: function (ctx) { return "$" + fmt(ctx.raw); }
-                    }
-                  }
-                },
-                scales: {
-                  x: {
-                    grid: { color: "rgba(30,39,54,0.5)", drawBorder: false },
-                    ticks: { color: "#4a5568", font: { size: 10, family: "SF Mono, monospace" }, maxRotation: 0, maxTicksLimit: 8 }
+          // ── Timestamp ──
+          setText(
+            "timestamp",
+            new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+          );
+
+          // ── Panel 1: Hero ──
+          setText("hero-equity", "$" + fmt(summary.totalEquity));
+          var pnlEl = document.getElementById("hero-pnl");
+          if (pnlEl) {
+            var dailyPnl = summary.dailyPnl || 0;
+            var dailyPnlPct = summary.dailyPnlPct || 0;
+            pnlEl.textContent = signed(dailyPnl) + " (" + signedPct(dailyPnlPct) + ")";
+            pnlEl.className = "pnl " + pnlClass(dailyPnl);
+          }
+          setText("hero-positions", String(positions.length));
+          setText("hero-strategies", String(strategies.length));
+          setText("hero-win-rate", summary.winRate != null ? fmtPct(summary.winRate) + "%" : "--");
+          setText("hero-sharpe", summary.avgSharpe != null ? summary.avgSharpe.toFixed(2) : "--");
+
+          // ── Panel 2: Equity Curve (update existing chart or create new) ──
+          var equityCanvas = document.getElementById("equity-chart");
+          if (equityCanvas && snapshots.length > 1 && typeof Chart !== "undefined") {
+            try {
+              var labels = snapshots.map(function (s) {
+                return formatTime(s.timestamp);
+              });
+              var equityValues = snapshots.map(function (s) {
+                return s.equity;
+              });
+
+              if (equityChart) {
+                equityChart.data.labels = labels;
+                equityChart.data.datasets[0].data = equityValues;
+                equityChart.data.datasets[0].pointRadius = snapshots.length > 30 ? 0 : 3;
+                equityChart.update("none");
+              } else {
+                var gradient = equityCanvas.getContext("2d").createLinearGradient(0, 0, 0, 280);
+                gradient.addColorStop(0, "rgba(0, 200, 83, 0.15)");
+                gradient.addColorStop(1, "rgba(0, 200, 83, 0.0)");
+
+                equityChart = new Chart(equityCanvas, {
+                  type: "line",
+                  data: {
+                    labels: labels,
+                    datasets: [
+                      {
+                        label: "Equity",
+                        data: equityValues,
+                        borderColor: "#00c853",
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: snapshots.length > 30 ? 0 : 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: "#00c853",
+                      },
+                    ],
                   },
-                  y: {
-                    grid: { color: "rgba(30,39,54,0.5)", drawBorder: false },
-                    ticks: {
-                      color: "#4a5568",
-                      font: { size: 10, family: "SF Mono, monospace" },
-                      callback: function (v) { return "$" + v.toLocaleString(); }
-                    }
-                  }
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: "index", intersect: false },
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        backgroundColor: "#181e27",
+                        titleColor: "#e8edf4",
+                        bodyColor: "#e8edf4",
+                        borderColor: "#2a3546",
+                        borderWidth: 1,
+                        padding: 12,
+                        titleFont: { family: "SF Mono, monospace", size: 11 },
+                        bodyFont: { family: "SF Mono, monospace", size: 12 },
+                        callbacks: {
+                          label: function (ctx) {
+                            return "$" + fmt(ctx.raw);
+                          },
+                        },
+                      },
+                    },
+                    scales: {
+                      x: {
+                        grid: { color: "rgba(30,39,54,0.5)", drawBorder: false },
+                        ticks: {
+                          color: "#4a5568",
+                          font: { size: 10, family: "SF Mono, monospace" },
+                          maxRotation: 0,
+                          maxTicksLimit: 8,
+                        },
+                      },
+                      y: {
+                        grid: { color: "rgba(30,39,54,0.5)", drawBorder: false },
+                        ticks: {
+                          color: "#4a5568",
+                          font: { size: 10, family: "SF Mono, monospace" },
+                          callback: function (v) {
+                            return "$" + v.toLocaleString();
+                          },
+                        },
+                      },
+                    },
+                  },
+                });
+              }
+            } catch (e) {
+              console.warn("Equity chart error:", e);
+            }
+          }
+
+          // ── Panel 3: Allocation Doughnut ──
+          var allocCanvas = document.getElementById("alloc-chart");
+          var allocItems = allocations.items || [];
+          var allocLegendEl = document.getElementById("alloc-legend");
+
+          if (allocCanvas && typeof Chart !== "undefined") {
+            try {
+              var allocLabels = allocItems.map(function (a) {
+                return a.strategyId || a.symbol;
+              });
+              var allocValues = allocItems.map(function (a) {
+                return a.capitalUsd || a.weight || 0;
+              });
+              var colors = ALLOC_COLORS.slice();
+              if (allocations.cashReserve > 0) {
+                allocLabels.push("Cash");
+                allocValues.push(allocations.cashReserve);
+                colors.push("#1e2736");
+              }
+
+              if (allocChart && allocItems.length > 0) {
+                allocChart.data.labels = allocLabels;
+                allocChart.data.datasets[0].data = allocValues;
+                allocChart.data.datasets[0].backgroundColor = colors.slice(0, allocLabels.length);
+                allocChart.update("none");
+              } else if (allocItems.length > 0) {
+                allocChart = new Chart(allocCanvas, {
+                  type: "doughnut",
+                  data: {
+                    labels: allocLabels,
+                    datasets: [
+                      {
+                        data: allocValues,
+                        backgroundColor: colors.slice(0, allocLabels.length),
+                        borderColor: "#12171e",
+                        borderWidth: 3,
+                        hoverBorderWidth: 0,
+                      },
+                    ],
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "70%",
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        backgroundColor: "#181e27",
+                        titleColor: "#e8edf4",
+                        bodyColor: "#e8edf4",
+                        borderColor: "#2a3546",
+                        borderWidth: 1,
+                        callbacks: {
+                          label: function (ctx) {
+                            return ctx.label + ": $" + fmt(ctx.raw);
+                          },
+                        },
+                      },
+                    },
+                  },
+                });
+              }
+
+              // Rebuild legend
+              if (allocLegendEl) {
+                allocLegendEl.innerHTML = "";
+                for (var li = 0; li < allocLabels.length; li++) {
+                  var item = document.createElement("div");
+                  item.className = "alloc-legend-item";
+                  var dot = document.createElement("div");
+                  dot.className = "alloc-legend-dot";
+                  dot.style.backgroundColor = colors[li] || "#8b7f77";
+                  var lbl = document.createElement("span");
+                  lbl.textContent = allocLabels[li];
+                  item.appendChild(dot);
+                  item.appendChild(lbl);
+                  allocLegendEl.appendChild(item);
                 }
               }
-            });
-          } catch (e) { console.warn("Equity chart error:", e); }
-        }
-
-        // ── Panel 3: Allocation Doughnut ──
-        var allocCtx = document.getElementById("alloc-chart");
-        var allocItems = allocations.items || [];
-        var allocLegend = document.getElementById("alloc-legend");
-        var allocColors = ["#ff5a2d", "#448aff", "#00c853", "#ffb020", "#e040fb", "#8b7f77", "#ff7a50"];
-
-        if (allocCtx && allocItems.length > 0 && typeof Chart !== "undefined") {
-          try {
-            var allocLabels = allocItems.map(function (a) { return a.strategyId || a.symbol; });
-            var allocValues = allocItems.map(function (a) { return a.capitalUsd || a.weight || 0; });
-            if (allocations.cashReserve > 0) {
-              allocLabels.push("Cash");
-              allocValues.push(allocations.cashReserve);
-              allocColors.push("#1e2736");
+            } catch (e) {
+              console.warn("Allocation chart error:", e);
             }
+          }
 
-            new Chart(allocCtx, {
-              type: "doughnut",
-              data: {
-                labels: allocLabels,
-                datasets: [{
-                  data: allocValues,
-                  backgroundColor: allocColors.slice(0, allocLabels.length),
-                  borderColor: "#12171e",
-                  borderWidth: 3,
-                  hoverBorderWidth: 0,
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: "70%",
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    backgroundColor: "#181e27",
-                    titleColor: "#e8edf4",
-                    bodyColor: "#e8edf4",
-                    borderColor: "#2a3546",
-                    borderWidth: 1,
-                    callbacks: {
-                      label: function (ctx) { return ctx.label + ": $" + fmt(ctx.raw); }
-                    }
-                  }
-                }
+          // ── Panel 4: Positions ──
+          rebuildTbody("positions-table", "positions-empty", positions, function (pos) {
+            var tr = document.createElement("tr");
+
+            var tdSymbol = document.createElement("td");
+            tdSymbol.textContent = pos.symbol;
+            tdSymbol.style.fontWeight = "600";
+
+            var tdSide = document.createElement("td");
+            tdSide.textContent = pos.side.toUpperCase();
+            tdSide.className = pos.side === "long" ? "side-long" : "side-short";
+
+            var tdQty = document.createElement("td");
+            tdQty.className = "right";
+            tdQty.textContent = pos.quantity.toString();
+
+            var tdEntry = document.createElement("td");
+            tdEntry.className = "right";
+            tdEntry.textContent = "$" + fmt(pos.entryPrice);
+
+            var tdCurrent = document.createElement("td");
+            tdCurrent.className = "right";
+            tdCurrent.textContent = "$" + fmt(pos.currentPrice);
+
+            var pnlVal = pos.unrealizedPnl || 0;
+            var pnlPctVal =
+              pos.entryPrice > 0 ? ((pos.currentPrice - pos.entryPrice) / pos.entryPrice) * 100 : 0;
+            if (pos.side === "short") pnlPctVal = -pnlPctVal;
+
+            var tdPnl = document.createElement("td");
+            tdPnl.className = "right pnl-cell " + pnlClass(pnlVal);
+            tdPnl.textContent = signed(pnlVal);
+
+            var tdPnlPct = document.createElement("td");
+            tdPnlPct.className = "right pnl-cell " + pnlClass(pnlPctVal);
+            tdPnlPct.textContent = signedPct(pnlPctVal);
+
+            tr.append(tdSymbol, tdSide, tdQty, tdEntry, tdCurrent, tdPnl, tdPnlPct);
+            return tr;
+          });
+
+          // ── Panel 5: Strategy Cards ──
+          var stratGrid = document.getElementById("strategy-grid");
+          var stratEmpty = document.getElementById("strategies-empty");
+          if (strategies.length === 0) {
+            if (stratGrid) {
+              stratGrid.style.display = "none";
+              stratGrid.innerHTML = "";
+            }
+            if (stratEmpty) stratEmpty.style.display = "block";
+          } else if (stratGrid) {
+            stratGrid.style.display = "";
+            if (stratEmpty) stratEmpty.style.display = "none";
+            stratGrid.innerHTML = "";
+            for (var si = 0; si < strategies.length; si++) {
+              var strat = strategies[si];
+              var card = document.createElement("div");
+              card.className = "strategy-card";
+
+              var header = document.createElement("div");
+              header.className = "strategy-card-header";
+              var nameSpan = document.createElement("span");
+              nameSpan.className = "strategy-card-name";
+              nameSpan.textContent = strat.name || strat.id;
+              var lvlBadge = document.createElement("span");
+              var lvlShort = (strat.level || "L0").replace("_", " ").split(" ")[0];
+              var lvlKey = (strat.level || "L0_INCUBATE").split("_")[0];
+              lvlBadge.className = "level-badge level-" + lvlKey;
+              lvlBadge.textContent = lvlShort;
+              header.appendChild(nameSpan);
+              header.appendChild(lvlBadge);
+
+              var stats = document.createElement("div");
+              stats.className = "strategy-card-stats";
+
+              var statItems = [
+                {
+                  label: "Return",
+                  value: strat.totalReturn != null ? signedPct(strat.totalReturn) : "--",
+                  cls: pnlClass(strat.totalReturn || 0),
+                },
+                {
+                  label: "Sharpe",
+                  value: strat.sharpe != null ? strat.sharpe.toFixed(2) : "--",
+                  cls:
+                    strat.sharpe >= 1
+                      ? "sharpe-good"
+                      : strat.sharpe >= 0
+                        ? "sharpe-ok"
+                        : "sharpe-bad",
+                },
+                {
+                  label: "Max DD",
+                  value: strat.maxDrawdown != null ? fmtPct(strat.maxDrawdown) + "%" : "--",
+                  cls: "",
+                },
+                {
+                  label: "Trades",
+                  value: strat.totalTrades != null ? String(strat.totalTrades) : "--",
+                  cls: "",
+                },
+              ];
+
+              for (var sti = 0; sti < statItems.length; sti++) {
+                var statDiv = document.createElement("div");
+                statDiv.className = "strategy-stat";
+                var statLabel = document.createElement("span");
+                statLabel.className = "stat-label";
+                statLabel.textContent = statItems[sti].label;
+                var statValue = document.createElement("span");
+                statValue.className =
+                  "stat-value" + (statItems[sti].cls ? " " + statItems[sti].cls : "");
+                statValue.textContent = statItems[sti].value;
+                statDiv.appendChild(statLabel);
+                statDiv.appendChild(statValue);
+                stats.appendChild(statDiv);
               }
-            });
 
-            // Custom legend
-            if (allocLegend) {
-              for (var i = 0; i < allocLabels.length; i++) {
-                var item = document.createElement("div");
-                item.className = "alloc-legend-item";
-                var dot = document.createElement("div");
-                dot.className = "alloc-legend-dot";
-                dot.style.backgroundColor = allocColors[i] || "#8b7f77";
-                var label = document.createElement("span");
-                label.textContent = allocLabels[i];
-                item.appendChild(dot);
-                item.appendChild(label);
-                allocLegend.appendChild(item);
-              }
-            }
-          } catch (e) { console.warn("Allocation chart error:", e); }
-        }
-
-        // ── Panel 4: Positions ──
-        var posTable = document.getElementById("positions-table");
-        var posEmpty = document.getElementById("positions-empty");
-        if (positions.length === 0) {
-          if (posTable) posTable.style.display = "none";
-          if (posEmpty) posEmpty.style.display = "block";
-        } else {
-          var posTbody = posTable ? posTable.querySelector("tbody") : null;
-          if (posTbody) {
-            for (var p = 0; p < positions.length; p++) {
-              var pos = positions[p];
-              var tr = document.createElement("tr");
-
-              var tdSymbol = document.createElement("td");
-              tdSymbol.textContent = pos.symbol;
-              tdSymbol.style.fontWeight = "600";
-
-              var tdSide = document.createElement("td");
-              tdSide.textContent = pos.side.toUpperCase();
-              tdSide.className = pos.side === "long" ? "side-long" : "side-short";
-
-              var tdQty = document.createElement("td");
-              tdQty.className = "right";
-              tdQty.textContent = pos.quantity.toString();
-
-              var tdEntry = document.createElement("td");
-              tdEntry.className = "right";
-              tdEntry.textContent = "$" + fmt(pos.entryPrice);
-
-              var tdCurrent = document.createElement("td");
-              tdCurrent.className = "right";
-              tdCurrent.textContent = "$" + fmt(pos.currentPrice);
-
-              var pnlVal = pos.unrealizedPnl || 0;
-              var pnlPctVal = pos.entryPrice > 0 ? ((pos.currentPrice - pos.entryPrice) / pos.entryPrice * 100) : 0;
-              if (pos.side === "short") pnlPctVal = -pnlPctVal;
-
-              var tdPnl = document.createElement("td");
-              tdPnl.className = "right pnl-cell " + pnlClass(pnlVal);
-              tdPnl.textContent = signed(pnlVal);
-
-              var tdPnlPct = document.createElement("td");
-              tdPnlPct.className = "right pnl-cell " + pnlClass(pnlPctVal);
-              tdPnlPct.textContent = signedPct(pnlPctVal);
-
-              tr.append(tdSymbol, tdSide, tdQty, tdEntry, tdCurrent, tdPnl, tdPnlPct);
-              posTbody.appendChild(tr);
+              card.appendChild(header);
+              card.appendChild(stats);
+              stratGrid.appendChild(card);
             }
           }
+
+          // ── Panel 6: Orders ──
+          rebuildTbody("orders-table", "orders-empty", orders, function (o) {
+            var otr = document.createElement("tr");
+
+            var otdTime = document.createElement("td");
+            otdTime.textContent = formatTime(o.filledAt || o.createdAt);
+
+            var otdSymbol = document.createElement("td");
+            otdSymbol.textContent = o.symbol;
+            otdSymbol.style.fontWeight = "600";
+
+            var otdSide = document.createElement("td");
+            otdSide.textContent = o.side.toUpperCase();
+            otdSide.className = o.side === "buy" ? "side-long" : "side-short";
+
+            var otdQty = document.createElement("td");
+            otdQty.className = "right";
+            otdQty.textContent = o.quantity.toString();
+
+            var otdPrice = document.createElement("td");
+            otdPrice.className = "right";
+            otdPrice.textContent = o.fillPrice ? "$" + fmt(o.fillPrice) : "--";
+
+            var otdStatus = document.createElement("td");
+            var statusSpan = document.createElement("span");
+            statusSpan.className = "status-badge status-" + (o.status || "pending");
+            statusSpan.textContent = (o.status || "pending").toUpperCase();
+            otdStatus.appendChild(statusSpan);
+
+            var otdComm = document.createElement("td");
+            otdComm.className = "right";
+            otdComm.textContent = o.commission ? "$" + o.commission.toFixed(4) : "--";
+
+            var otdStrat = document.createElement("td");
+            otdStrat.textContent = o.strategyId || "--";
+            otdStrat.style.color = "var(--fc-text-secondary)";
+
+            otr.append(otdTime, otdSymbol, otdSide, otdQty, otdPrice, otdStatus, otdComm, otdStrat);
+            return otr;
+          });
+
+          // ── Panel 7: Backtest Results ──
+          rebuildTbody("backtest-table", "backtest-empty", backtests, function (bt) {
+            var btr = document.createElement("tr");
+
+            var btdName = document.createElement("td");
+            btdName.textContent = bt.strategyId || bt.name || "Unknown";
+            btdName.style.fontWeight = "600";
+
+            var btdReturn = document.createElement("td");
+            btdReturn.className = "right " + pnlClass(bt.totalReturn);
+            btdReturn.textContent = signedPct(bt.totalReturn);
+
+            var btdSharpe = document.createElement("td");
+            btdSharpe.className =
+              "right " +
+              (bt.sharpe >= 1 ? "sharpe-good" : bt.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad");
+            btdSharpe.textContent = bt.sharpe.toFixed(3);
+
+            var btdSortino = document.createElement("td");
+            btdSortino.className = "right";
+            btdSortino.textContent = bt.sortino != null ? bt.sortino.toFixed(3) : "--";
+
+            var btdDD = document.createElement("td");
+            btdDD.className = "right pnl-negative";
+            btdDD.textContent = fmtPct(bt.maxDrawdown) + "%";
+
+            var btdWin = document.createElement("td");
+            btdWin.className = "right";
+            btdWin.textContent = fmtPct(bt.winRate) + "%";
+
+            var btdPF = document.createElement("td");
+            btdPF.className = "right";
+            btdPF.textContent = bt.profitFactor != null ? bt.profitFactor.toFixed(2) : "--";
+
+            var btdTrades = document.createElement("td");
+            btdTrades.className = "right";
+            btdTrades.textContent = String(bt.totalTrades);
+
+            var btdFinal = document.createElement("td");
+            btdFinal.className = "right " + pnlClass(bt.finalEquity - bt.initialCapital);
+            btdFinal.textContent = "$" + fmt(bt.finalEquity);
+
+            btr.append(
+              btdName,
+              btdReturn,
+              btdSharpe,
+              btdSortino,
+              btdDD,
+              btdWin,
+              btdPF,
+              btdTrades,
+              btdFinal,
+            );
+            return btr;
+          });
         }
 
-        // ── Panel 5: Strategy Cards ──
-        var stratGrid = document.getElementById("strategy-grid");
-        var stratEmpty = document.getElementById("strategies-empty");
-        if (strategies.length === 0) {
-          if (stratGrid) stratGrid.style.display = "none";
-          if (stratEmpty) stratEmpty.style.display = "block";
-        } else if (stratGrid) {
-          for (var si = 0; si < strategies.length; si++) {
-            var strat = strategies[si];
-            var card = document.createElement("div");
-            card.className = "strategy-card";
+        // ── Initial render from server-injected data ──
+        updateDashboard(DATA);
 
-            var header = document.createElement("div");
-            header.className = "strategy-card-header";
-            var nameSpan = document.createElement("span");
-            nameSpan.className = "strategy-card-name";
-            nameSpan.textContent = strat.name || strat.id;
-            var lvlBadge = document.createElement("span");
-            var lvlShort = (strat.level || "L0").replace("_", " ").split(" ")[0];
-            var lvlKey = (strat.level || "L0_INCUBATE").split("_")[0];
-            lvlBadge.className = "level-badge level-" + lvlKey;
-            lvlBadge.textContent = lvlShort;
-            header.appendChild(nameSpan);
-            header.appendChild(lvlBadge);
-
-            var stats = document.createElement("div");
-            stats.className = "strategy-card-stats";
-
-            var statItems = [
-              { label: "Return", value: strat.totalReturn != null ? signedPct(strat.totalReturn) : "--", cls: pnlClass(strat.totalReturn || 0) },
-              { label: "Sharpe", value: strat.sharpe != null ? strat.sharpe.toFixed(2) : "--", cls: strat.sharpe >= 1 ? "sharpe-good" : strat.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad" },
-              { label: "Max DD", value: strat.maxDrawdown != null ? fmtPct(strat.maxDrawdown) + "%" : "--", cls: "" },
-              { label: "Trades", value: strat.totalTrades != null ? String(strat.totalTrades) : "--", cls: "" }
-            ];
-
-            for (var sti = 0; sti < statItems.length; sti++) {
-              var statDiv = document.createElement("div");
-              statDiv.className = "strategy-stat";
-              var statLabel = document.createElement("span");
-              statLabel.className = "stat-label";
-              statLabel.textContent = statItems[sti].label;
-              var statValue = document.createElement("span");
-              statValue.className = "stat-value" + (statItems[sti].cls ? " " + statItems[sti].cls : "");
-              statValue.textContent = statItems[sti].value;
-              statDiv.appendChild(statLabel);
-              statDiv.appendChild(statValue);
-              stats.appendChild(statDiv);
-            }
-
-            card.appendChild(header);
-            card.appendChild(stats);
-            stratGrid.appendChild(card);
+        // ── Real-time updates via SSE, with fetch polling fallback ──
+        function startSSE() {
+          if (typeof EventSource === "undefined") {
+            startPolling();
+            return;
           }
-        }
-
-        // ── Panel 6: Orders ──
-        var ordersTable = document.getElementById("orders-table");
-        var ordersEmpty = document.getElementById("orders-empty");
-        if (orders.length === 0) {
-          if (ordersTable) ordersTable.style.display = "none";
-          if (ordersEmpty) ordersEmpty.style.display = "block";
-        } else {
-          var ordersTbody = ordersTable ? ordersTable.querySelector("tbody") : null;
-          if (ordersTbody) {
-            for (var oi = 0; oi < orders.length; oi++) {
-              var o = orders[oi];
-              var otr = document.createElement("tr");
-
-              var otdTime = document.createElement("td");
-              otdTime.textContent = formatTime(o.filledAt || o.createdAt);
-
-              var otdSymbol = document.createElement("td");
-              otdSymbol.textContent = o.symbol;
-              otdSymbol.style.fontWeight = "600";
-
-              var otdSide = document.createElement("td");
-              otdSide.textContent = o.side.toUpperCase();
-              otdSide.className = o.side === "buy" ? "side-long" : "side-short";
-
-              var otdQty = document.createElement("td");
-              otdQty.className = "right";
-              otdQty.textContent = o.quantity.toString();
-
-              var otdPrice = document.createElement("td");
-              otdPrice.className = "right";
-              otdPrice.textContent = o.fillPrice ? "$" + fmt(o.fillPrice) : "--";
-
-              var otdStatus = document.createElement("td");
-              var statusSpan = document.createElement("span");
-              statusSpan.className = "status-badge status-" + (o.status || "pending");
-              statusSpan.textContent = (o.status || "pending").toUpperCase();
-              otdStatus.appendChild(statusSpan);
-
-              var otdComm = document.createElement("td");
-              otdComm.className = "right";
-              otdComm.textContent = o.commission ? "$" + o.commission.toFixed(4) : "--";
-
-              var otdStrat = document.createElement("td");
-              otdStrat.textContent = o.strategyId || "--";
-              otdStrat.style.color = "var(--fc-text-secondary)";
-
-              otr.append(otdTime, otdSymbol, otdSide, otdQty, otdPrice, otdStatus, otdComm, otdStrat);
-              ordersTbody.appendChild(otr);
+          var es = new EventSource("/api/v1/finance/trading/stream");
+          es.onmessage = function (event) {
+            try {
+              var data = JSON.parse(event.data);
+              updateDashboard(data);
+            } catch (e) {
+              console.warn("SSE parse error:", e);
             }
-          }
+          };
+          es.onerror = function () {
+            // SSE failed — close and fall back to polling
+            es.close();
+            console.warn("SSE connection lost, falling back to polling");
+            startPolling();
+          };
         }
 
-        // ── Panel 7: Backtest Results ──
-        var btTable = document.getElementById("backtest-table");
-        var btEmpty = document.getElementById("backtest-empty");
-        if (backtests.length === 0) {
-          if (btTable) btTable.style.display = "none";
-          if (btEmpty) btEmpty.style.display = "block";
-        } else {
-          var btTbody = btTable ? btTable.querySelector("tbody") : null;
-          if (btTbody) {
-            for (var bi = 0; bi < backtests.length; bi++) {
-              var bt = backtests[bi];
-              var btr = document.createElement("tr");
-
-              var btdName = document.createElement("td");
-              btdName.textContent = bt.strategyId || bt.name || "Unknown";
-              btdName.style.fontWeight = "600";
-
-              var btdReturn = document.createElement("td");
-              btdReturn.className = "right " + pnlClass(bt.totalReturn);
-              btdReturn.textContent = signedPct(bt.totalReturn);
-
-              var btdSharpe = document.createElement("td");
-              btdSharpe.className = "right " + (bt.sharpe >= 1 ? "sharpe-good" : bt.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad");
-              btdSharpe.textContent = bt.sharpe.toFixed(3);
-
-              var btdSortino = document.createElement("td");
-              btdSortino.className = "right";
-              btdSortino.textContent = bt.sortino != null ? bt.sortino.toFixed(3) : "--";
-
-              var btdDD = document.createElement("td");
-              btdDD.className = "right pnl-negative";
-              btdDD.textContent = fmtPct(bt.maxDrawdown) + "%";
-
-              var btdWin = document.createElement("td");
-              btdWin.className = "right";
-              btdWin.textContent = fmtPct(bt.winRate) + "%";
-
-              var btdPF = document.createElement("td");
-              btdPF.className = "right";
-              btdPF.textContent = bt.profitFactor != null ? bt.profitFactor.toFixed(2) : "--";
-
-              var btdTrades = document.createElement("td");
-              btdTrades.className = "right";
-              btdTrades.textContent = String(bt.totalTrades);
-
-              var btdFinal = document.createElement("td");
-              btdFinal.className = "right " + pnlClass(bt.finalEquity - bt.initialCapital);
-              btdFinal.textContent = "$" + fmt(bt.finalEquity);
-
-              btr.append(btdName, btdReturn, btdSharpe, btdSortino, btdDD, btdWin, btdPF, btdTrades, btdFinal);
-              btTbody.appendChild(btr);
-            }
-          }
+        function startPolling() {
+          setInterval(function () {
+            fetch("/api/v1/finance/trading")
+              .then(function (r) {
+                return r.ok ? r.json() : null;
+              })
+              .then(function (d) {
+                if (d) updateDashboard(d);
+              })
+              .catch(function () {});
+          }, 10000);
         }
 
-        // ── Auto-refresh ──
-        setTimeout(function () {
-          fetch("/api/v1/finance/trading")
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (d) { if (d) location.reload(); })
-            .catch(function () {});
-        }, 10000);
+        startSSE();
       })();
     </script>
   </body>
