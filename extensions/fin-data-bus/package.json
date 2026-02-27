@@ -1,0 +1,18 @@
+{
+  "name": "@openfinclaw/fin-data-bus",
+  "version": "2026.2.23",
+  "private": true,
+  "description": "Unified multi-market data bus — OHLCV cache, adapters, regime detection",
+  "type": "module",
+  "devDependencies": {
+    "openfinclaw": "workspace:*"
+  },
+  "peerDependencies": {
+    "openfinclaw": ">=2026.2.23"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "fin-data-bus",
+  "name": "Data Bus",
+  "description": "Unified multi-market data bus with OHLCV cache and regime detection",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

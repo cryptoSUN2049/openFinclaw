@@ -1,0 +1,11 @@
+{
+  "id": "fin-strategy-engine",
+  "name": "Strategy Engine",
+  "description": "Strategy lifecycle: indicators, backtest, walk-forward, evolution",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

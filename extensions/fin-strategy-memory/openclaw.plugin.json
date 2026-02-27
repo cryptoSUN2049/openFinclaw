@@ -1,0 +1,11 @@
+{
+  "id": "fin-strategy-memory",
+  "name": "Strategy Memory",
+  "description": "Trading memory — trade journal and error book for learning from past trades",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

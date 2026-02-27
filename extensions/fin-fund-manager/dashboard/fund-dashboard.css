@@ -1,0 +1,358 @@
+/* Fund Dashboard — LOBSTER_PALETTE theme */
+
+:root {
+  --fc-accent: #FF5A2D;
+  --fc-accent-bright: #FF7A50;
+  --fc-success: #2FBF71;
+  --fc-warn: #FFB020;
+  --fc-error: #E23D2D;
+  --fc-info: #4A9EFF;
+  --fc-muted: #8B7F77;
+  --fc-bg: #0d1117;
+  --fc-surface: #161b22;
+  --fc-surface-hover: #1c2128;
+  --fc-border: #30363d;
+  --fc-text: #e6edf3;
+  --fc-text-secondary: #8b949e;
+  --fc-radius: 8px;
+  --fc-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --fc-font-mono: 'SF Mono', SFMono-Regular, 'Cascadia Code', Menlo, Monaco, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--fc-font);
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.dashboard {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--fc-border);
+}
+
+.dashboard-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+
+.dashboard-header h1 span {
+  color: var(--fc-accent);
+}
+
+.dashboard-header .timestamp {
+  color: var(--fc-text-secondary);
+  font-size: 13px;
+  font-family: var(--fc-font-mono);
+}
+
+/* ── Grid ── */
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.panel {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  padding: 20px;
+  transition: border-color 0.2s;
+}
+
+.panel:hover {
+  border-color: var(--fc-accent);
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fc-text-secondary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title .icon { font-size: 16px; }
+
+.panel-full {
+  grid-column: 1 / -1;
+}
+
+/* ── Hero (Fund Overview) ── */
+
+.fund-hero {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.fund-hero .equity {
+  font-size: 42px;
+  font-weight: 700;
+  font-family: var(--fc-font-mono);
+  color: var(--fc-text);
+  letter-spacing: -1px;
+}
+
+.fund-hero .pnl {
+  font-size: 20px;
+  font-family: var(--fc-font-mono);
+  margin-top: 4px;
+}
+
+.pnl-positive { color: var(--fc-success); }
+.pnl-negative { color: var(--fc-error); }
+
+.fund-hero .risk-badge {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-normal   { background: rgba(47,191,113,0.15); color: var(--fc-success); border: 1px solid rgba(47,191,113,0.3); }
+.risk-caution  { background: rgba(255,176,32,0.15); color: var(--fc-warn); border: 1px solid rgba(255,176,32,0.3); }
+.risk-warning  { background: rgba(255,90,45,0.15); color: var(--fc-accent); border: 1px solid rgba(255,90,45,0.3); }
+.risk-critical { background: rgba(226,61,45,0.15); color: var(--fc-error); border: 1px solid rgba(226,61,45,0.3); }
+
+.mini-stats {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.mini-stat {
+  text-align: center;
+}
+
+.mini-stat .label {
+  font-size: 11px;
+  color: var(--fc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mini-stat .value {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--fc-font-mono);
+}
+
+/* ── Level Badges ── */
+
+.level-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--fc-font-mono);
+}
+
+.level-L3 { background: rgba(47,191,113,0.15); color: var(--fc-success); }
+.level-L2 { background: rgba(74,158,255,0.15); color: var(--fc-info); }
+.level-L1 { background: rgba(255,176,32,0.15); color: var(--fc-warn); }
+.level-L0 { background: rgba(139,127,119,0.15); color: var(--fc-muted); }
+
+/* ── Chart containers ── */
+
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 260px;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.chart-controls button {
+  background: var(--fc-surface-hover);
+  color: var(--fc-text-secondary);
+  border: 1px solid var(--fc-border);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-controls button:hover,
+.chart-controls button.active {
+  background: var(--fc-accent);
+  color: white;
+  border-color: var(--fc-accent);
+}
+
+/* ── Tables ── */
+
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--fc-font-mono);
+}
+
+.lb-table th {
+  text-align: left;
+  color: var(--fc-text-secondary);
+  font-weight: 500;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--fc-border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lb-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+}
+
+.lb-table tr:hover td {
+  background: var(--fc-surface-hover);
+}
+
+.sharpe-good { color: var(--fc-success); }
+.sharpe-ok   { color: var(--fc-warn); }
+.sharpe-bad  { color: var(--fc-error); }
+
+/* ── Risk Gauge ── */
+
+.gauge-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.gauge-svg {
+  width: 160px;
+  height: 100px;
+}
+
+.gauge-label {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--fc-font-mono);
+}
+
+.gauge-info {
+  flex: 1;
+}
+
+.gauge-info .stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.3);
+  font-size: 13px;
+}
+
+.gauge-info .stat-row .stat-label {
+  color: var(--fc-text-secondary);
+}
+
+.gauge-info .stat-row .stat-value {
+  font-family: var(--fc-font-mono);
+  font-weight: 500;
+}
+
+/* ── Drawdown bars ── */
+
+.dd-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  margin-top: 16px;
+}
+
+.dd-bar {
+  flex: 1;
+  min-width: 20px;
+  border-radius: 3px 3px 0 0;
+  transition: height 0.3s;
+}
+
+.dd-bar-label {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--fc-text-secondary);
+  font-family: var(--fc-font-mono);
+}
+
+/* ── Actions list ── */
+
+.action-list {
+  list-style: none;
+  margin-top: 12px;
+}
+
+.action-list li {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--fc-text-secondary);
+}
+
+.action-list li::before {
+  content: '→ ';
+  color: var(--fc-accent);
+}
+
+/* ── Footer ── */
+
+.dashboard-footer {
+  text-align: center;
+  padding: 24px 0 8px;
+  color: var(--fc-text-secondary);
+  font-size: 12px;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 768px) {
+  .panels {
+    grid-template-columns: 1fr;
+  }
+
+  .fund-hero .equity {
+    font-size: 32px;
+  }
+
+  .mini-stats {
+    gap: 16px;
+  }
+
+  .gauge-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
