@@ -196,16 +196,13 @@
           const tbody = document.querySelector("#alloc-table tbody");
           for (const a of items) {
             const tr = document.createElement("tr");
-            tr.innerHTML =
-              "<td>" +
-              a.strategyId +
-              "</td>" +
-              "<td>$" +
-              fmt(a.capitalUsd) +
-              "</td>" +
-              "<td>" +
-              a.weightPct.toFixed(1) +
-              "%</td>";
+            const td1 = document.createElement("td");
+            td1.textContent = a.strategyId;
+            const td2 = document.createElement("td");
+            td2.textContent = "$" + fmt(a.capitalUsd);
+            const td3 = document.createElement("td");
+            td3.textContent = a.weightPct.toFixed(1) + "%";
+            tr.append(td1, td2, td3);
             tbody.appendChild(tr);
           }
         }
@@ -326,35 +323,27 @@
             const sharpeClass =
               e.sharpe >= 1 ? "sharpe-good" : e.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad";
 
-            tr.innerHTML =
-              "<td>" +
-              e.rank +
-              "</td>" +
-              "<td>" +
-              e.strategyName +
-              "</td>" +
-              '<td><span class="level-badge ' +
-              lvlClass +
-              '">' +
-              lvlShort +
-              "</span></td>" +
-              "<td>" +
-              e.leaderboardScore.toFixed(3) +
-              "</td>" +
-              "<td>" +
-              e.fitness.toFixed(3) +
-              "</td>" +
-              '<td class="' +
-              sharpeClass +
-              '">' +
-              e.sharpe.toFixed(2) +
-              "</td>" +
-              "<td>" +
-              e.maxDrawdown.toFixed(1) +
-              "%</td>" +
-              "<td>" +
-              e.totalTrades +
-              "</td>";
+            const tdRank = document.createElement("td");
+            tdRank.textContent = String(e.rank);
+            const tdName = document.createElement("td");
+            tdName.textContent = e.strategyName;
+            const tdLevel = document.createElement("td");
+            const lvlSpan = document.createElement("span");
+            lvlSpan.className = "level-badge " + lvlClass;
+            lvlSpan.textContent = lvlShort;
+            tdLevel.appendChild(lvlSpan);
+            const tdScore = document.createElement("td");
+            tdScore.textContent = e.leaderboardScore.toFixed(3);
+            const tdFit = document.createElement("td");
+            tdFit.textContent = e.fitness.toFixed(3);
+            const tdSharpe = document.createElement("td");
+            tdSharpe.className = sharpeClass;
+            tdSharpe.textContent = e.sharpe.toFixed(2);
+            const tdDD = document.createElement("td");
+            tdDD.textContent = e.maxDrawdown.toFixed(1) + "%";
+            const tdTrades = document.createElement("td");
+            tdTrades.textContent = String(e.totalTrades);
+            tr.append(tdRank, tdName, tdLevel, tdScore, tdFit, tdSharpe, tdDD, tdTrades);
             lbTable.appendChild(tr);
           }
         }
