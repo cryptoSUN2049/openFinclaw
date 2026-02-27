@@ -266,6 +266,18 @@ const finTradingPlugin = {
               params.exchange as string | undefined,
             );
 
+            const existingOrder = (await bridge.fetchOrder(orderId, symbol)) as Record<
+              string,
+              unknown
+            >;
+            const existingSide = existingOrder.side;
+            if (existingSide !== "buy" && existingSide !== "sell") {
+              throw new Error(
+                `Unable to infer existing order side for ${orderId}. Found: ${String(existingSide)}`,
+              );
+            }
+            const existingType = existingOrder.type === "limit" ? "limit" : "market";
+
             // Risk evaluation for modifications
             const riskCtrl = getRiskController(api);
             if (riskCtrl && typeof params.amount === "number") {
@@ -277,8 +289,8 @@ const finTradingPlugin = {
                 {
                   exchange: exchangeId,
                   symbol,
-                  side: "buy",
-                  type: "limit",
+                  side: existingSide,
+                  type: typeof params.price === "number" ? "limit" : existingType,
                   amount: params.amount as number,
                 },
                 estimatedValueUsd,
@@ -328,8 +340,8 @@ const finTradingPlugin = {
             // TODO: Infer side and type from the original order.
             const replacement = await bridge.placeOrder({
               symbol,
-              side: "buy",
-              type: newPrice ? "limit" : "market",
+              side: existingSide,
+              type: newPrice ? "limit" : existingType,
               amount: newAmount,
               price: newPrice,
             });

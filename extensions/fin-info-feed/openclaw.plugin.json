@@ -6,8 +6,18 @@
   "configSchema": {
     "type": "object",
     "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["stub", "live"],
+        "default": "stub"
+      },
       "apiKey": { "type": "string" },
-      "endpoint": { "type": "string" }
+      "endpoint": { "type": "string" },
+      "requestTimeoutMs": {
+        "type": "number",
+        "default": 15000,
+        "description": "HTTP request timeout in milliseconds"
+      }
     }
   },
   "uiHints": {

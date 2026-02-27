@@ -19,14 +19,16 @@ const plugin = {
     const dbPath = api.resolvePath("state/fin-paper-trading.sqlite");
     const store = new PaperStore(dbPath);
 
-    const config = api.config?.financial?.paperTrading;
+    const config = (api.config?.financial?.paperTrading ?? {}) as Record<string, unknown>;
     const slippageBps =
-      ((config as Record<string, unknown> | undefined)?.slippageBps as number) ?? 5;
+      (typeof config.constantSlippageBps === "number" ? config.constantSlippageBps : undefined) ??
+      // Backward compatibility for pre-schema key naming.
+      (typeof config.slippageBps === "number" ? config.slippageBps : undefined) ??
+      5;
     const market =
-      ((config as Record<string, unknown> | undefined)?.market as
-        | "crypto"
-        | "equity"
-        | "commodity") ?? "crypto";
+      config.market === "crypto" || config.market === "equity" || config.market === "commodity"
+        ? config.market
+        : "crypto";
 
     const engine = new PaperEngine({ store, slippageBps, market });
 

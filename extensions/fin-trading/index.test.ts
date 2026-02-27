@@ -33,6 +33,10 @@ vi.mock("./src/ccxt-bridge.js", () => ({
       const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
       return ex.fetchTicker(symbol);
     }
+    async fetchOrder(orderId: string, symbol: string) {
+      const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
+      return ex.fetchOrder(orderId, symbol);
+    }
   },
 }));
 
@@ -43,6 +47,7 @@ function createMockExchange() {
     fetchPositions: vi.fn(),
     fetchBalance: vi.fn(),
     fetchTicker: vi.fn(),
+    fetchOrder: vi.fn(),
   };
 }
 
@@ -122,6 +127,7 @@ describe("fin-trading plugin — risk control", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExchange = createMockExchange();
+    mockExchange.fetchOrder.mockResolvedValue({ side: "buy", type: "limit" });
   });
 
   describe("fin_place_order with risk controller", () => {
@@ -267,6 +273,36 @@ describe("fin-trading plugin — risk control", () => {
       expect(result.rejected).toBe(true);
       expect(mockExchange.cancelOrder).not.toHaveBeenCalled();
     });
+
+    it("preserves original side/type when replacing an order", async () => {
+      const { api, tools } = createFakeApi(mockExchange);
+      finTradingPlugin.register(api);
+
+      mockExchange.fetchOrder.mockResolvedValue({ side: "sell", type: "limit" });
+      mockExchange.cancelOrder.mockResolvedValue({ id: "order-123", status: "cancelled" });
+      mockExchange.createOrder.mockResolvedValue({ id: "order-124", status: "open" });
+
+      const tool = tools.get("fin_modify_order")!;
+      const result = parseResult(
+        await tool.execute("call-6", {
+          exchange: "test-ex",
+          orderId: "order-123",
+          symbol: "BTC/USDT",
+          amount: 2,
+          price: 64000,
+        }),
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockExchange.createOrder).toHaveBeenCalledWith(
+        "BTC/USDT",
+        "limit",
+        "sell",
+        2,
+        64000,
+        undefined,
+      );
+    });
   });
 
   describe("fin_cancel_order", () => {
@@ -278,7 +314,7 @@ describe("fin-trading plugin — risk control", () => {
 
       const tool = tools.get("fin_cancel_order")!;
       const result = parseResult(
-        await tool.execute("call-6", {
+        await tool.execute("call-7", {
           exchange: "test-ex",
           orderId: "order-123",
           symbol: "BTC/USDT",

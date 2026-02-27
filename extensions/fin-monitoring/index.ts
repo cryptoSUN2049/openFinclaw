@@ -3,6 +3,74 @@ import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { AlertEngine } from "./src/alert-engine.js";
 import type { AlertCondition } from "./src/alert-engine.js";
 
+type MarketDataTicker = {
+  last?: number;
+  close?: number;
+  bid?: number;
+  ask?: number;
+};
+
+type DataProvider = {
+  getTicker: (
+    symbol: string,
+    market: "crypto" | "equity" | "commodity",
+  ) => Promise<MarketDataTicker>;
+};
+
+type MonitoringConfig = {
+  autoEvaluate: boolean;
+  runOnStart: boolean;
+  pollIntervalMs: number;
+};
+
+function readEnv(keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function parseBool(value: string | undefined, defaultValue: boolean): boolean {
+  if (value == null) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return defaultValue;
+}
+
+function resolveMonitoringConfig(api: OpenClawPluginApi): MonitoringConfig {
+  const raw = (api.pluginConfig ?? {}) as Record<string, unknown>;
+  const autoRaw =
+    typeof raw.autoEvaluate === "boolean"
+      ? String(raw.autoEvaluate)
+      : readEnv(["OPENFINCLAW_FIN_MONITORING_AUTO_EVALUATE", "FIN_MONITORING_AUTO_EVALUATE"]);
+  const startRaw =
+    typeof raw.runOnStart === "boolean"
+      ? String(raw.runOnStart)
+      : readEnv(["OPENFINCLAW_FIN_MONITORING_RUN_ON_START", "FIN_MONITORING_RUN_ON_START"]);
+  const pollRaw =
+    raw.pollIntervalMs ??
+    readEnv(["OPENFINCLAW_FIN_MONITORING_POLL_INTERVAL_MS", "FIN_MONITORING_POLL_INTERVAL_MS"]);
+  const poll = Number(pollRaw);
+  const pollIntervalMs = Number.isFinite(poll) && poll >= 10_000 ? Math.floor(poll) : 5 * 60_000;
+
+  return {
+    autoEvaluate: parseBool(autoRaw, true),
+    runOnStart: parseBool(startRaw, true),
+    pollIntervalMs,
+  };
+}
+
+function extractTickerPrice(ticker: MarketDataTicker): number | null {
+  if (typeof ticker.last === "number") return ticker.last;
+  if (typeof ticker.close === "number") return ticker.close;
+  if (typeof ticker.bid === "number" && typeof ticker.ask === "number") {
+    return (ticker.bid + ticker.ask) / 2;
+  }
+  return null;
+}
+
 const finMonitoringPlugin = {
   id: "fin-monitoring",
   name: "Financial Monitoring",
@@ -12,12 +80,103 @@ const finMonitoringPlugin = {
 
   register(api: OpenClawPluginApi) {
     const alertEngine = new AlertEngine();
+    const config = resolveMonitoringConfig(api);
+    const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+    let checking = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    const evaluatePriceAlerts = async () => {
+      const active = alertEngine
+        .listAlerts()
+        .filter((a) => !a.triggeredAt)
+        .filter(
+          (a) => a.condition.kind === "price_above" || a.condition.kind === "price_below",
+        ) as Array<{ id: string; condition: Extract<AlertCondition, { symbol: string }> }>;
+
+      if (active.length === 0) {
+        return {
+          checkedAlerts: 0,
+          checkedSymbols: 0,
+          triggeredCount: 0,
+          triggeredAlerts: [],
+        };
+      }
+
+      const provider = runtime.services?.get?.("fin-data-provider") as DataProvider | undefined;
+      if (!provider || typeof provider.getTicker !== "function") {
+        throw new Error(
+          "fin-data-provider service unavailable. Enable fin-data-bus plugin to auto-evaluate price alerts.",
+        );
+      }
+
+      const symbols = [...new Set(active.map((a) => a.condition.symbol))];
+      const triggered = [];
+      for (const symbol of symbols) {
+        const ticker = await provider.getTicker(symbol, "crypto");
+        const price = extractTickerPrice(ticker);
+        if (price == null) {
+          continue;
+        }
+        triggered.push(...alertEngine.checkPrice(symbol, price));
+      }
+
+      return {
+        checkedAlerts: active.length,
+        checkedSymbols: symbols.length,
+        triggeredCount: triggered.length,
+        triggeredAlerts: triggered,
+      };
+    };
+
+    const runScheduledEvaluation = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const result = await evaluatePriceAlerts();
+        if (result.triggeredCount > 0) {
+          api.logger.info(
+            `fin-monitoring: triggered ${result.triggeredCount} alert(s) on ${result.checkedSymbols} symbol(s)`,
+          );
+        }
+      } catch (err) {
+        api.logger.warn(
+          `fin-monitoring: scheduled alert evaluation failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      } finally {
+        checking = false;
+      }
+    };
 
     // Expose the alert engine for other fin-* plugins to consume.
     api.registerService({
       id: "fin-alert-engine",
       start: () => {},
       instance: alertEngine,
+    } as Parameters<typeof api.registerService>[0]);
+
+    api.registerService({
+      id: "fin-monitoring-scheduler",
+      start: () => {
+        if (!config.autoEvaluate) {
+          return;
+        }
+        if (config.runOnStart) {
+          void runScheduledEvaluation();
+        }
+        timer = setInterval(() => {
+          void runScheduledEvaluation();
+        }, config.pollIntervalMs);
+      },
+      stop: () => {
+        if (!timer) {
+          return;
+        }
+        clearInterval(timer);
+        timer = undefined;
+      },
+      instance: {
+        triggerNow: runScheduledEvaluation,
+      },
     } as Parameters<typeof api.registerService>[0]);
 
     // --- fin_set_alert ---
@@ -157,11 +316,47 @@ const finMonitoringPlugin = {
       { names: ["fin_remove_alert"] },
     );
 
-    // --- Cron tasks (TODO: wire to gateway cron API when available) ---
-    // fin:price-alerts    — every 5 min — evaluate all price alerts against latest market data
-    // fin:portfolio-check  — daily 9:00 and 17:00 — run portfolio health check
-    // fin:daily-digest     — daily 7:00 — generate morning digest of market events and portfolio status
-    // fin:weekly-report    — weekly Sunday 10:00 — comprehensive weekly performance report
+    // --- fin_monitor_run_checks ---
+    api.registerTool(
+      {
+        name: "fin_monitor_run_checks",
+        label: "Run Monitoring Checks",
+        description:
+          "Run monitoring checks now (price alerts, optional P&L threshold alerts) and return trigger results.",
+        parameters: Type.Object({
+          pnlUsd: Type.Optional(
+            Type.Number({
+              description: "Current P&L in USD. If provided, pnl_threshold alerts are evaluated.",
+            }),
+          ),
+        }),
+        async execute(_id: string, params: Record<string, unknown>) {
+          try {
+            const priceResult = await evaluatePriceAlerts();
+            const pnlUsd = typeof params.pnlUsd === "number" ? params.pnlUsd : undefined;
+            const pnlTriggered = pnlUsd == null ? [] : alertEngine.checkPnl(pnlUsd);
+
+            const result = {
+              ...priceResult,
+              pnlUsd,
+              pnlTriggeredCount: pnlTriggered.length,
+              pnlTriggeredAlerts: pnlTriggered,
+            };
+            return {
+              content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+              details: result,
+            };
+          } catch (err) {
+            const error = { error: err instanceof Error ? err.message : String(err) };
+            return {
+              content: [{ type: "text" as const, text: JSON.stringify(error) }],
+              details: error,
+            };
+          }
+        },
+      },
+      { names: ["fin_monitor_run_checks"] },
+    );
   },
 };
 

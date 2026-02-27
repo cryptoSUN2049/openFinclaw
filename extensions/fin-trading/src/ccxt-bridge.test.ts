@@ -100,6 +100,53 @@ describe("CcxtBridge", () => {
 });
 
 describe("CcxtBridge error handling", () => {
+  it("retries read calls once on RequestTimeout and then succeeds", async () => {
+    class RequestTimeout extends Error {
+      constructor(msg: string) {
+        super(msg);
+        this.name = "RequestTimeout";
+        Object.setPrototypeOf(this, new.target.prototype);
+      }
+    }
+
+    const fetchBalance = vi
+      .fn()
+      .mockRejectedValueOnce(new RequestTimeout("timed out"))
+      .mockResolvedValue({ USDT: { free: 1000, used: 0, total: 1000 } });
+    const ex = makeMockExchange({ fetchBalance });
+    const bridge = new CcxtBridge(ex);
+
+    const result = await bridge.fetchBalance();
+    expect(result.USDT).toBeDefined();
+    expect(fetchBalance).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry write calls to avoid duplicate order creation", async () => {
+    class NetworkError extends Error {
+      constructor(msg: string) {
+        super(msg);
+        this.name = "NetworkError";
+        Object.setPrototypeOf(this, new.target.prototype);
+      }
+    }
+
+    const createOrder = vi.fn().mockRejectedValue(new NetworkError("Connection refused"));
+    const ex = makeMockExchange({ createOrder });
+    const bridge = new CcxtBridge(ex);
+
+    await expect(
+      bridge.placeOrder({
+        symbol: "BTC/USDT",
+        side: "buy",
+        type: "market",
+        amount: 0.001,
+      }),
+    ).rejects.toMatchObject({
+      category: "network",
+    });
+    expect(createOrder).toHaveBeenCalledTimes(1);
+  });
+
   it("wraps AuthenticationError as 'auth' category", async () => {
     class AuthenticationError extends Error {
       constructor(msg: string) {

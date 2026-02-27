@@ -1,3 +1,6 @@
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { OpenClawConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { note } from "../terminal/note.js";
@@ -6,12 +9,94 @@ import { guardCancel } from "./onboard-helpers.js";
 
 type ExchangeId = "binance" | "okx" | "bybit" | "hyperliquid";
 
+const DEFAULT_TRADING_LIMITS = {
+  maxAutoTradeUsd: 100,
+  confirmThresholdUsd: 500,
+  maxDailyLossUsd: 1000,
+  maxPositionPct: 25,
+  maxLeverage: 1,
+} as const;
+
+const FINANCIAL_PLUGIN_IDS = [
+  "fin-core",
+  "fin-data-bus",
+  "fin-market-data",
+  "fin-trading",
+  "fin-portfolio",
+  "fin-monitoring",
+  "fin-paper-trading",
+  "fin-strategy-engine",
+  "fin-strategy-memory",
+  "fin-fund-manager",
+  "fin-expert-sdk",
+  "fin-info-feed",
+] as const;
+
 interface ExchangeEntry {
   exchange: ExchangeId;
   apiKey: string;
   secret: string;
   passphrase?: string;
   testnet?: boolean;
+}
+
+const requireFromModule = createRequire(import.meta.url);
+
+async function importCcxt(): Promise<Record<string, unknown>> {
+  try {
+    // eslint-disable-next-line no-implied-eval -- dynamic import for optional peer dep
+    return (await Function('return import("ccxt")')()) as Record<string, unknown>;
+  } catch (firstErr) {
+    const moduleDir = dirname(fileURLToPath(import.meta.url));
+    const candidatePaths = [
+      process.cwd(),
+      join(process.cwd(), "extensions/fin-core"),
+      join(moduleDir, "../../extensions/fin-core"),
+      join(moduleDir, "../../../extensions/fin-core"),
+    ];
+
+    for (const basePath of candidatePaths) {
+      try {
+        const resolved = requireFromModule.resolve("ccxt", { paths: [basePath] });
+        return (await import(pathToFileURL(resolved).href)) as Record<string, unknown>;
+      } catch {
+        // Keep trying candidate locations.
+      }
+    }
+
+    const reason = firstErr instanceof Error ? firstErr.message : String(firstErr);
+    throw new Error(
+      `ccxt package not found (${reason}). Install it with pnpm (not uv): pnpm add -w ccxt`,
+      { cause: firstErr },
+    );
+  }
+}
+
+export function ensureFinancialPluginsEnabled(cfg: OpenClawConfig): OpenClawConfig {
+  const entries = {
+    ...cfg.plugins?.entries,
+  } as Record<string, { enabled?: boolean; config?: Record<string, unknown> }>;
+
+  for (const pluginId of FINANCIAL_PLUGIN_IDS) {
+    entries[pluginId] = {
+      ...entries[pluginId],
+      enabled: true,
+    };
+  }
+
+  const allow = cfg.plugins?.allow;
+  const mergedAllow = Array.isArray(allow)
+    ? Array.from(new Set([...allow, ...FINANCIAL_PLUGIN_IDS]))
+    : undefined;
+
+  return {
+    ...cfg,
+    plugins: {
+      ...cfg.plugins,
+      ...(mergedAllow ? { allow: mergedAllow } : {}),
+      entries,
+    },
+  };
 }
 
 /** Run the financial configuration wizard section. */
@@ -25,7 +110,7 @@ export async function promptFinancialConfig(
     [
       "Configure exchange connections and trading risk limits.",
       "API keys are stored locally in your config file — never transmitted.",
-      "Docs: https://docs.openclaw.ai/financial/setup",
+      "Docs: https://docs.openclaw.ai/tools/plugin",
     ].join("\n"),
     "Financial configuration",
   );
@@ -173,14 +258,8 @@ export async function promptFinancialConfig(
 
       if (shouldTest) {
         try {
-          // Dynamic import — ccxt must be installed as a peer dependency
-          let ccxt: Record<string, unknown>;
-          try {
-            // eslint-disable-next-line no-implied-eval -- dynamic import for optional peer dep
-            ccxt = await (Function('return import("ccxt")')() as Promise<Record<string, unknown>>);
-          } catch {
-            throw new Error("ccxt package not found. Install it: pnpm add ccxt");
-          }
+          // Dynamic import — ccxt comes from root dependency or fin-core workspace dependency.
+          const ccxt = await importCcxt();
           const ExchangeClass = ccxt[exchangeType];
           if (typeof ExchangeClass !== "function") {
             throw new Error(`Unsupported exchange: ${exchangeType}`);
@@ -272,7 +351,9 @@ export async function promptFinancialConfig(
       const maxAutoInput = guardCancel(
         await text({
           message: "Max auto-trade size (USD) — orders below this execute automatically",
-          initialValue: String(Number(existingTrading.maxAutoTradeUsd) || 500),
+          initialValue: String(
+            Number(existingTrading.maxAutoTradeUsd) || DEFAULT_TRADING_LIMITS.maxAutoTradeUsd,
+          ),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") > 0
               ? undefined
@@ -284,7 +365,10 @@ export async function promptFinancialConfig(
       const confirmThresholdInput = guardCancel(
         await text({
           message: "Confirmation threshold (USD) — orders above this require user confirmation",
-          initialValue: String(Number(existingTrading.confirmThresholdUsd) || 5000),
+          initialValue: String(
+            Number(existingTrading.confirmThresholdUsd) ||
+              DEFAULT_TRADING_LIMITS.confirmThresholdUsd,
+          ),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") > 0
               ? undefined
@@ -296,7 +380,9 @@ export async function promptFinancialConfig(
       const maxDailyLossInput = guardCancel(
         await text({
           message: "Max daily loss limit (USD) — trading halts when reached",
-          initialValue: String(Number(existingTrading.maxDailyLossUsd) || 2000),
+          initialValue: String(
+            Number(existingTrading.maxDailyLossUsd) || DEFAULT_TRADING_LIMITS.maxDailyLossUsd,
+          ),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") > 0
               ? undefined
@@ -308,7 +394,9 @@ export async function promptFinancialConfig(
       const maxLeverageInput = guardCancel(
         await text({
           message: "Max leverage allowed",
-          initialValue: String(Number(existingTrading.maxLeverage) || 5),
+          initialValue: String(
+            Number(existingTrading.maxLeverage) || DEFAULT_TRADING_LIMITS.maxLeverage,
+          ),
           validate: (v) =>
             Number.isFinite(Number(v ?? "")) && Number(v ?? "") >= 1
               ? undefined
@@ -344,14 +432,21 @@ export async function promptFinancialConfig(
       exchanges: existingExchanges,
       trading: {
         enabled: (existingTrading.enabled as boolean) ?? false,
-        maxAutoTradeUsd: (existingTrading.maxAutoTradeUsd as number) ?? 500,
-        confirmThresholdUsd: (existingTrading.confirmThresholdUsd as number) ?? 5000,
-        maxDailyLossUsd: (existingTrading.maxDailyLossUsd as number) ?? 2000,
-        maxPositionPct: (existingTrading.maxPositionPct as number) ?? 25,
-        maxLeverage: (existingTrading.maxLeverage as number) ?? 5,
+        maxAutoTradeUsd:
+          (existingTrading.maxAutoTradeUsd as number) ?? DEFAULT_TRADING_LIMITS.maxAutoTradeUsd,
+        confirmThresholdUsd:
+          (existingTrading.confirmThresholdUsd as number) ??
+          DEFAULT_TRADING_LIMITS.confirmThresholdUsd,
+        maxDailyLossUsd:
+          (existingTrading.maxDailyLossUsd as number) ?? DEFAULT_TRADING_LIMITS.maxDailyLossUsd,
+        maxPositionPct:
+          (existingTrading.maxPositionPct as number) ?? DEFAULT_TRADING_LIMITS.maxPositionPct,
+        maxLeverage: (existingTrading.maxLeverage as number) ?? DEFAULT_TRADING_LIMITS.maxLeverage,
       },
     },
   } as OpenClawConfig;
+
+  nextConfig = ensureFinancialPluginsEnabled(nextConfig);
 
   return nextConfig;
 }
