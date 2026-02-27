@@ -372,6 +372,33 @@ const finCorePlugin = {
 
     // ── Trading Dashboard API ──
 
+    // SSE stream for real-time dashboard updates
+    api.registerHttpRoute({
+      path: "/api/v1/finance/trading/stream",
+      handler: async (
+        req: { on: (event: string, cb: () => void) => void },
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          write: (chunk: string) => boolean;
+          end: (body?: string) => void;
+        },
+      ) => {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        });
+        // Send current data immediately
+        res.write(`data: ${JSON.stringify(gatherTradingData())}\n\n`);
+        // Push updates every 10 seconds
+        const interval = setInterval(() => {
+          res.write(`data: ${JSON.stringify(gatherTradingData())}\n\n`);
+        }, 10000);
+        // Clean up when client disconnects
+        req.on("close", () => clearInterval(interval));
+      },
+    });
+
     api.registerHttpRoute({
       path: "/api/v1/finance/trading",
       handler: async (

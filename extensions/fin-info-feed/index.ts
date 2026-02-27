@@ -7,30 +7,64 @@ const json = (payload: unknown) => ({
 });
 
 type InfoFeedConfig = {
+  mode: "stub" | "live";
   apiKey?: string;
   endpoint?: string;
+  requestTimeoutMs: number;
 };
+
+function readEnv(keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
 
 /**
  * Resolve Info Feed configuration from plugin config.
  */
 function resolveConfig(api: OpenClawPluginApi): InfoFeedConfig {
   const raw = api.pluginConfig as Record<string, unknown> | undefined;
+  const modeRaw =
+    (typeof raw?.mode === "string" ? raw.mode : undefined) ??
+    readEnv(["OPENFINCLAW_FIN_INFO_MODE", "FIN_INFO_FEED_MODE"]);
+  const timeoutRaw =
+    raw?.requestTimeoutMs ??
+    readEnv(["OPENFINCLAW_FIN_INFO_TIMEOUT_MS", "FIN_INFO_FEED_TIMEOUT_MS"]);
+  const timeout = Number(timeoutRaw);
+
   return {
-    apiKey: typeof raw?.apiKey === "string" ? raw.apiKey : undefined,
-    endpoint: typeof raw?.endpoint === "string" ? raw.endpoint : undefined,
+    mode: modeRaw === "live" ? "live" : "stub",
+    apiKey:
+      (typeof raw?.apiKey === "string" ? raw.apiKey : undefined) ??
+      readEnv(["OPENFINCLAW_FIN_INFO_API_KEY", "FIN_INFO_FEED_API_KEY"]),
+    endpoint:
+      (typeof raw?.endpoint === "string" ? raw.endpoint : undefined) ??
+      readEnv(["OPENFINCLAW_FIN_INFO_ENDPOINT", "FIN_INFO_FEED_ENDPOINT"]),
+    requestTimeoutMs: Number.isFinite(timeout) && timeout >= 1000 ? Math.floor(timeout) : 15_000,
   };
 }
 
 /**
- * Send a request to the Info Feed API.
- * This is a placeholder that will be replaced with actual HTTP calls.
+ * Send a request to the Info Feed API or return explicit stub output.
  */
 async function feedRequest(
   config: InfoFeedConfig,
   path: string,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  if (config.mode === "stub") {
+    return {
+      status: "stub",
+      mode: "stub",
+      path,
+      body,
+      message:
+        "Info Feed running in stub mode. Set fin-info-feed.mode=live to call the real backend.",
+    };
+  }
+
   if (!config.apiKey) {
     throw new Error("Info Feed API key not configured. Set fin-info-feed.apiKey in plugin config.");
   }
@@ -40,24 +74,40 @@ async function feedRequest(
     );
   }
 
-  // TODO: Implement actual HTTP request to the Info Feed API.
-  // const url = `${config.endpoint}${path}`;
-  // const response = await fetch(url, {
-  //   method: "POST",
-  //   headers: {
-  //     "Content-Type": "application/json",
-  //     "Authorization": `Bearer ${config.apiKey}`,
-  //   },
-  //   body: JSON.stringify(body),
-  // });
-  // if (!response.ok) throw new Error(`Info Feed API error: ${response.status}`);
-  // return await response.json();
+  const url = new URL(path, config.endpoint).toString();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(config.requestTimeoutMs),
+  });
+
+  const raw = await response.text();
+  let payload: unknown = {};
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      payload = { raw };
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      (payload as { error?: unknown; message?: unknown })?.error ??
+      (payload as { error?: unknown; message?: unknown })?.message ??
+      raw;
+    throw new Error(`Info Feed API error (${response.status}): ${String(message).slice(0, 240)}`);
+  }
 
   return {
-    status: "stub",
-    path,
-    body,
-    message: "Info Feed integration pending — configure endpoint and API key.",
+    status: "ok",
+    mode: "live",
+    endpoint: url,
+    data: payload,
   };
 }
 

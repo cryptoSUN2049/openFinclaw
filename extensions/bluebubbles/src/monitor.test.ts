@@ -269,6 +269,7 @@ function createMockRuntime(): PluginRuntime {
         () => "/tmp/openclaw",
       ) as unknown as PluginRuntime["state"]["resolveStateDir"],
     },
+    services: new Map<string, unknown>(),
   };
 }
 

@@ -65,9 +65,12 @@ describe.skipIf(!LIVE || !API_KEY || !SECRET)("Binance Testnet E2E", () => {
     const total = balance.total as Record<string, number> | undefined;
     if (total) {
       const nonZero = Object.entries(total).filter(([, v]) => Number(v) > 0);
-      console.log(
-        `  Non-zero balances: ${nonZero.map(([k, v]) => `${k}: ${v}`).join(", ") || "(none)"}`,
-      );
+      const preview = nonZero
+        .slice(0, 10)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", ");
+      const suffix = nonZero.length > 10 ? ` ... (+${nonZero.length - 10} more)` : "";
+      console.log(`  Non-zero balances (${nonZero.length}): ${preview || "(none)"}${suffix}`);
     }
   });
 

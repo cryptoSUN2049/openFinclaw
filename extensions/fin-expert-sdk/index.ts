@@ -7,35 +7,69 @@ const json = (payload: unknown) => ({
 });
 
 type ExpertSdkConfig = {
+  mode: "stub" | "live";
   apiKey?: string;
   endpoint?: string;
   tier?: "basic" | "pro" | "enterprise";
+  requestTimeoutMs: number;
 };
+
+function readEnv(keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
 
 /**
  * Resolve Expert SDK configuration from plugin config or fin-core FinancialConfig.
  */
 function resolveConfig(api: OpenClawPluginApi): ExpertSdkConfig {
   const raw = api.pluginConfig as Record<string, unknown> | undefined;
+  const modeRaw =
+    (typeof raw?.mode === "string" ? raw.mode : undefined) ??
+    readEnv(["OPENFINCLAW_FIN_EXPERT_MODE", "FIN_EXPERT_SDK_MODE"]);
+  const tierRaw =
+    (typeof raw?.tier === "string" ? raw.tier : undefined) ??
+    readEnv(["OPENFINCLAW_FIN_EXPERT_TIER", "FIN_EXPERT_SDK_TIER"]);
+  const timeoutRaw =
+    raw?.requestTimeoutMs ??
+    readEnv(["OPENFINCLAW_FIN_EXPERT_TIMEOUT_MS", "FIN_EXPERT_SDK_TIMEOUT_MS"]);
+  const timeout = Number(timeoutRaw);
+
   return {
-    apiKey: typeof raw?.apiKey === "string" ? raw.apiKey : undefined,
-    endpoint: typeof raw?.endpoint === "string" ? raw.endpoint : undefined,
-    tier:
-      raw?.tier === "basic" || raw?.tier === "pro" || raw?.tier === "enterprise"
-        ? raw.tier
-        : "basic",
+    mode: modeRaw === "live" ? "live" : "stub",
+    apiKey:
+      (typeof raw?.apiKey === "string" ? raw.apiKey : undefined) ??
+      readEnv(["OPENFINCLAW_FIN_EXPERT_API_KEY", "FIN_EXPERT_SDK_API_KEY"]),
+    endpoint:
+      (typeof raw?.endpoint === "string" ? raw.endpoint : undefined) ??
+      readEnv(["OPENFINCLAW_FIN_EXPERT_ENDPOINT", "FIN_EXPERT_SDK_ENDPOINT"]),
+    tier: tierRaw === "basic" || tierRaw === "pro" || tierRaw === "enterprise" ? tierRaw : "basic",
+    requestTimeoutMs: Number.isFinite(timeout) && timeout >= 1000 ? Math.floor(timeout) : 15_000,
   };
 }
 
 /**
- * Send a request to the Expert API.
- * This is a placeholder that will be replaced with actual HTTP calls.
+ * Send a request to the Expert API or return explicit stub output.
  */
 async function expertRequest(
   config: ExpertSdkConfig,
   path: string,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  if (config.mode === "stub") {
+    return {
+      status: "stub",
+      mode: "stub",
+      path,
+      body,
+      message:
+        "Expert SDK running in stub mode. Set fin-expert-sdk.mode=live to call the real backend.",
+    };
+  }
+
   if (!config.apiKey) {
     throw new Error(
       "Expert SDK API key not configured. Set fin-expert-sdk.apiKey in plugin config.",
@@ -47,25 +81,41 @@ async function expertRequest(
     );
   }
 
-  // TODO: Implement actual HTTP request to the Expert API.
-  // const url = `${config.endpoint}${path}`;
-  // const response = await fetch(url, {
-  //   method: "POST",
-  //   headers: {
-  //     "Content-Type": "application/json",
-  //     "Authorization": `Bearer ${config.apiKey}`,
-  //     "X-Expert-Tier": config.tier ?? "basic",
-  //   },
-  //   body: JSON.stringify(body),
-  // });
-  // if (!response.ok) throw new Error(`Expert API error: ${response.status}`);
-  // return await response.json();
+  const url = new URL(path, config.endpoint).toString();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+      "X-Expert-Tier": config.tier ?? "basic",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(config.requestTimeoutMs),
+  });
+
+  const raw = await response.text();
+  let payload: unknown = {};
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      payload = { raw };
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      (payload as { error?: unknown; message?: unknown })?.error ??
+      (payload as { error?: unknown; message?: unknown })?.message ??
+      raw;
+    throw new Error(`Expert API error (${response.status}): ${String(message).slice(0, 240)}`);
+  }
 
   return {
-    status: "stub",
-    path,
-    body,
-    message: "Expert SDK integration pending — configure endpoint and API key.",
+    status: "ok",
+    mode: "live",
+    endpoint: url,
+    data: payload,
   };
 }
 

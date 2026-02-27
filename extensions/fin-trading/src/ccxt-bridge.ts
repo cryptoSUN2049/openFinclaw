@@ -24,6 +24,25 @@ export class CcxtBridgeError extends Error {
   }
 }
 
+const NETWORK_ERROR_NAMES = new Set([
+  "NetworkError",
+  "RequestTimeout",
+  "ExchangeNotAvailable",
+  "DDoSProtection",
+  "RateLimitExceeded",
+]);
+
+const READ_RETRY_ATTEMPTS = 2;
+const READ_RETRY_BASE_DELAY_MS = 300;
+
+function getErrorName(err: unknown): string {
+  return (err as { constructor?: { name?: string } })?.constructor?.name ?? "";
+}
+
+function isRetryableNetworkError(err: unknown): boolean {
+  return NETWORK_ERROR_NAMES.has(getErrorName(err));
+}
+
 /**
  * Wrap a CCXT error into a categorized CcxtBridgeError.
  * Detects common error class names without importing ccxt at the call-site.
@@ -31,7 +50,7 @@ export class CcxtBridgeError extends Error {
 function wrapCcxtError(err: unknown, context: string): CcxtBridgeError {
   if (err instanceof CcxtBridgeError) return err;
 
-  const name = (err as { constructor?: { name?: string } })?.constructor?.name ?? "";
+  const name = getErrorName(err);
   const message = err instanceof Error ? err.message : String(err);
 
   if (name === "AuthenticationError" || name === "PermissionDenied") {
@@ -62,6 +81,27 @@ function wrapCcxtError(err: unknown, context: string): CcxtBridgeError {
 
 export class CcxtBridge {
   constructor(private exchange: unknown) {}
+
+  /**
+   * Retry read-only CCXT calls once on transient network/rate-limit failures.
+   * Write operations are intentionally not retried to avoid duplicate orders.
+   */
+  private async callReadWithRetry<T>(context: string, fn: () => Promise<T>): Promise<T> {
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= READ_RETRY_ATTEMPTS; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (!isRetryableNetworkError(err) || attempt >= READ_RETRY_ATTEMPTS) {
+          break;
+        }
+        const delayMs = READ_RETRY_BASE_DELAY_MS * attempt;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    throw wrapCcxtError(lastErr, context);
+  }
 
   async placeOrder(params: {
     symbol: string;
@@ -96,47 +136,42 @@ export class CcxtBridge {
   }
 
   async fetchPositions(symbol?: string): Promise<unknown[]> {
-    try {
-      const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
-      return (await ex.fetchPositions(symbol ? [symbol] : undefined)) as unknown[];
-    } catch (err) {
-      throw wrapCcxtError(err, `fetchPositions ${symbol ?? "all"}`);
-    }
+    const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    return await this.callReadWithRetry(
+      `fetchPositions ${symbol ?? "all"}`,
+      async () => (await ex.fetchPositions(symbol ? [symbol] : undefined)) as unknown[],
+    );
   }
 
   async fetchBalance(): Promise<Record<string, unknown>> {
-    try {
-      const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
-      return (await ex.fetchBalance()) as Record<string, unknown>;
-    } catch (err) {
-      throw wrapCcxtError(err, "fetchBalance");
-    }
+    const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    return await this.callReadWithRetry(
+      "fetchBalance",
+      async () => (await ex.fetchBalance()) as Record<string, unknown>,
+    );
   }
 
   async fetchTicker(symbol: string): Promise<Record<string, unknown>> {
-    try {
-      const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
-      return (await ex.fetchTicker(symbol)) as Record<string, unknown>;
-    } catch (err) {
-      throw wrapCcxtError(err, `fetchTicker ${symbol}`);
-    }
+    const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    return await this.callReadWithRetry(
+      `fetchTicker ${symbol}`,
+      async () => (await ex.fetchTicker(symbol)) as Record<string, unknown>,
+    );
   }
 
   async fetchOpenOrders(symbol?: string): Promise<unknown[]> {
-    try {
-      const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
-      return (await ex.fetchOpenOrders(symbol)) as unknown[];
-    } catch (err) {
-      throw wrapCcxtError(err, `fetchOpenOrders ${symbol ?? "all"}`);
-    }
+    const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    return await this.callReadWithRetry(
+      `fetchOpenOrders ${symbol ?? "all"}`,
+      async () => (await ex.fetchOpenOrders(symbol)) as unknown[],
+    );
   }
 
   async fetchOrder(orderId: string, symbol: string): Promise<Record<string, unknown>> {
-    try {
-      const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
-      return (await ex.fetchOrder(orderId, symbol)) as Record<string, unknown>;
-    } catch (err) {
-      throw wrapCcxtError(err, `fetchOrder ${orderId}`);
-    }
+    const ex = this.exchange as Record<string, (...args: unknown[]) => Promise<unknown>>;
+    return await this.callReadWithRetry(
+      `fetchOrder ${orderId}`,
+      async () => (await ex.fetchOrder(orderId, symbol)) as Record<string, unknown>,
+    );
   }
 }

@@ -14,11 +14,11 @@
         "type": "object",
         "properties": {
           "enabled": { "type": "boolean", "default": false },
-          "maxAutoTradeUsd": { "type": "number", "default": 500 },
-          "confirmThresholdUsd": { "type": "number", "default": 5000 },
-          "maxDailyLossUsd": { "type": "number", "default": 2000 },
+          "maxAutoTradeUsd": { "type": "number", "default": 100 },
+          "confirmThresholdUsd": { "type": "number", "default": 500 },
+          "maxDailyLossUsd": { "type": "number", "default": 1000 },
           "maxPositionPct": { "type": "number", "default": 25 },
-          "maxLeverage": { "type": "number", "default": 5 }
+          "maxLeverage": { "type": "number", "default": 1 }
         }
       }
     }
