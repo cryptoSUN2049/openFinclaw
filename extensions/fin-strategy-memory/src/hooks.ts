@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { ErrorBook } from "./error-book.js";
 import type { TradeJournal } from "./trade-journal.js";
 import type { ErrorPattern, TradeEntry } from "./types.js";
@@ -128,7 +129,7 @@ export function handleTradeToolCall(event: AfterToolCallEvent, journal: TradeJou
   const params = event.params;
 
   const entry: TradeEntry = {
-    id: `auto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `auto-${Date.now()}-${randomUUID().slice(0, 8)}`,
     timestamp: Date.now(),
     source: event.toolName === "fin_paper_order" ? "paper" : "live",
     symbol: (params.symbol as string) ?? "UNKNOWN",

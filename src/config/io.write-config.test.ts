@@ -182,7 +182,6 @@ describe("config io write", () => {
 
   it("does not mutate caller config when unsetPaths is applied on first write", async () => {
     await withTempHome("openclaw-config-io-", async (home) => {
-      const configPath = path.join(home, ".openclaw", "openclaw.json");
       const io = createConfigIO({
         env: {} as NodeJS.ProcessEnv,
         homedir: () => home,
@@ -201,7 +200,7 @@ describe("config io write", () => {
         commands: { ownerDisplay: "hash" },
       });
       expectInputOwnerDisplayUnchanged(input);
-      expect((await readPersistedCommands(configPath)) ?? {}).not.toHaveProperty("ownerDisplay");
+      expect((await readPersistedCommands(io.configPath)) ?? {}).not.toHaveProperty("ownerDisplay");
     });
   });
 

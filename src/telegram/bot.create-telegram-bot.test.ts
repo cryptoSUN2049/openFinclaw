@@ -334,7 +334,9 @@ describe("createTelegramBot", () => {
         expect(pairingText, testCase.name).toContain("Your Telegram user id: 999");
         expect(pairingText, testCase.name).toContain("Pairing code:");
         expect(pairingText, testCase.name).toContain("PAIRME12");
-        expect(pairingText, testCase.name).toContain("openclaw pairing approve telegram PAIRME12");
+        expect(pairingText, testCase.name).toContain(
+          "openfinclaw pairing approve telegram PAIRME12",
+        );
         expect(pairingText, testCase.name).not.toContain("<code>");
       }
     }

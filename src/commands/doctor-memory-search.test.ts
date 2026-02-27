@@ -160,8 +160,8 @@ describe("noteMemorySearchHealth", () => {
 
     const message = note.mock.calls[0]?.[0] as string;
     expect(message).toContain("Gateway memory probe for default agent is not ready");
-    expect(message).toContain("openclaw configure --section model");
-    expect(message).not.toContain("openclaw auth add --provider");
+    expect(message).toContain("openfinclaw configure --section model");
+    expect(message).not.toContain("openfinclaw auth add --provider");
   });
 
   it("uses model configure hint in auto mode when no provider credentials are found", async () => {
@@ -175,8 +175,8 @@ describe("noteMemorySearchHealth", () => {
 
     expect(note).toHaveBeenCalledTimes(1);
     const message = String(note.mock.calls[0]?.[0] ?? "");
-    expect(message).toContain("openclaw configure --section model");
-    expect(message).not.toContain("openclaw auth add --provider");
+    expect(message).toContain("openfinclaw configure --section model");
+    expect(message).not.toContain("openfinclaw auth add --provider");
   });
 });
 

@@ -71,10 +71,10 @@ describe("doctor state integrity oauth dir checks", () => {
 
   beforeEach(() => {
     envSnapshot = captureEnv();
-    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-doctor-state-integrity-"));
+    tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "openfinclaw-doctor-state-integrity-"));
     process.env.HOME = tempHome;
     process.env.OPENCLAW_HOME = tempHome;
-    process.env.OPENCLAW_STATE_DIR = path.join(tempHome, ".openclaw");
+    process.env.OPENCLAW_STATE_DIR = path.join(tempHome, ".openfinclaw");
     delete process.env.OPENCLAW_OAUTH_DIR;
     fs.mkdirSync(process.env.OPENCLAW_STATE_DIR, { recursive: true, mode: 0o700 });
     vi.mocked(note).mockClear();
@@ -166,8 +166,8 @@ describe("doctor state integrity oauth dir checks", () => {
 
     const text = stateIntegrityText();
     expect(text).toContain("recent sessions are missing transcripts");
-    expect(text).toMatch(/openclaw sessions --store ".*sessions\.json"/);
-    expect(text).toMatch(/openclaw sessions cleanup --store ".*sessions\.json" --dry-run/);
+    expect(text).toMatch(/openfinclaw sessions --store ".*sessions\.json"/);
+    expect(text).toMatch(/openfinclaw sessions cleanup --store ".*sessions\.json" --dry-run/);
     expect(text).not.toContain("--active");
     expect(text).not.toContain(" ls ");
   });

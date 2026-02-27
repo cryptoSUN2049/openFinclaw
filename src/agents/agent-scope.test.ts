@@ -425,6 +425,6 @@ describe("resolveAgentConfig", () => {
     vi.stubEnv("OPENCLAW_STATE_DIR", "");
 
     const agentDir = resolveAgentDir({} as OpenClawConfig, "main");
-    expect(agentDir).toBe(path.join(path.resolve(home), ".openclaw", "agents", "main", "agent"));
+    expect(agentDir).toBe(path.join(path.resolve(home), ".openfinclaw", "agents", "main", "agent"));
   });
 });

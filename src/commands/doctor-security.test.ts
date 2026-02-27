@@ -117,6 +117,6 @@ describe("noteSecurityWarnings gateway exposure", () => {
     const message = lastMessage();
     expect(message).toContain("disables approval forwarding only");
     expect(message).toContain("exec-approvals.json");
-    expect(message).toContain("openclaw approvals get --gateway");
+    expect(message).toContain("openfinclaw approvals get --gateway");
   });
 });
