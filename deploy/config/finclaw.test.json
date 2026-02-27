@@ -85,6 +85,26 @@
       "groupPolicy": "open"
     }
   },
+  "plugins": {
+    "enabled": true,
+    "slots": {
+      "memory": "none"
+    },
+    "entries": {
+      "fin-core": { "enabled": true },
+      "fin-trading": { "enabled": true },
+      "fin-market-data": { "enabled": true },
+      "fin-portfolio": { "enabled": true },
+      "fin-expert-sdk": { "enabled": true },
+      "fin-info-feed": { "enabled": true },
+      "fin-monitoring": { "enabled": true },
+      "fin-data-bus": { "enabled": true },
+      "fin-paper-trading": { "enabled": true },
+      "fin-strategy-engine": { "enabled": true },
+      "fin-strategy-memory": { "enabled": true },
+      "fin-fund-manager": { "enabled": true }
+    }
+  },
   "financial": {
     "exchanges": {
       "binance-testnet": {

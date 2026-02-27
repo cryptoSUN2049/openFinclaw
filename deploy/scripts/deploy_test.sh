@@ -84,12 +84,14 @@ prepare_config() {
         set +a
     fi
 
-    # 替换占位符
+    # 替换占位符 (所有 ${VAR} 引用)
     sed \
         -e "s|\${GATEWAY_AUTH_TOKEN}|${GATEWAY_AUTH_TOKEN:-finclaw-test}|g" \
         -e "s|\${LITELLM_BASE_URL}|${LITELLM_BASE_URL}|g" \
         -e "s|\${LITELLM_API_KEY}|${LITELLM_API_KEY}|g" \
         -e "s|\${TELEGRAM_BOT_TOKEN}|${TELEGRAM_BOT_TOKEN}|g" \
+        -e "s|\${BINANCE_TESTNET_API_KEY}|${BINANCE_TESTNET_API_KEY:-${BINANCE_API_KEY}}|g" \
+        -e "s|\${BINANCE_TESTNET_SECRET}|${BINANCE_TESTNET_SECRET:-${BINANCE_API_SECRET}}|g" \
         "$CONFIG_TEMPLATE" > "$CONFIG_RUNTIME"
 
     echo -e "${BLUE}Config prepared: $CONFIG_RUNTIME${NC}"
