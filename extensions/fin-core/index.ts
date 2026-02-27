@@ -432,7 +432,7 @@ const finCorePlugin = {
         const safeJson = JSON.stringify(tradingData).replace(/<\//g, "<\\/");
         const html = tradingDashboardTemplate
           .replace("/*__TRADING_CSS__*/", tradingDashboardCss)
-          .replace("/*__TRADING_DATA__*/{}", safeJson);
+          .replace("/*__TRADING_DATA__*/ {}", safeJson);
 
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(html);
