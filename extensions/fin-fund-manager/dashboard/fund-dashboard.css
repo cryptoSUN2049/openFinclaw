@@ -1,13 +1,13 @@
 /* Fund Dashboard — LOBSTER_PALETTE theme */
 
 :root {
-  --fc-accent: #FF5A2D;
-  --fc-accent-bright: #FF7A50;
-  --fc-success: #2FBF71;
-  --fc-warn: #FFB020;
-  --fc-error: #E23D2D;
-  --fc-info: #4A9EFF;
-  --fc-muted: #8B7F77;
+  --fc-accent: #ff5a2d;
+  --fc-accent-bright: #ff7a50;
+  --fc-success: #2fbf71;
+  --fc-warn: #ffb020;
+  --fc-error: #e23d2d;
+  --fc-info: #4a9eff;
+  --fc-muted: #8b7f77;
   --fc-bg: #0d1117;
   --fc-surface: #161b22;
   --fc-surface-hover: #1c2128;
@@ -15,11 +15,15 @@
   --fc-text: #e6edf3;
   --fc-text-secondary: #8b949e;
   --fc-radius: 8px;
-  --fc-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  --fc-font-mono: 'SF Mono', SFMono-Regular, 'Cascadia Code', Menlo, Monaco, monospace;
+  --fc-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+  --fc-font-mono: "SF Mono", SFMono-Regular, "Cascadia Code", Menlo, Monaco, monospace;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   font-family: var(--fc-font);
@@ -92,7 +96,9 @@ body {
   gap: 8px;
 }
 
-.panel-title .icon { font-size: 16px; }
+.panel-title .icon {
+  font-size: 16px;
+}
 
 .panel-full {
   grid-column: 1 / -1;
@@ -119,8 +125,12 @@ body {
   margin-top: 4px;
 }
 
-.pnl-positive { color: var(--fc-success); }
-.pnl-negative { color: var(--fc-error); }
+.pnl-positive {
+  color: var(--fc-success);
+}
+.pnl-negative {
+  color: var(--fc-error);
+}
 
 .fund-hero .risk-badge {
   display: inline-block;
@@ -133,10 +143,26 @@ body {
   letter-spacing: 0.5px;
 }
 
-.risk-normal   { background: rgba(47,191,113,0.15); color: var(--fc-success); border: 1px solid rgba(47,191,113,0.3); }
-.risk-caution  { background: rgba(255,176,32,0.15); color: var(--fc-warn); border: 1px solid rgba(255,176,32,0.3); }
-.risk-warning  { background: rgba(255,90,45,0.15); color: var(--fc-accent); border: 1px solid rgba(255,90,45,0.3); }
-.risk-critical { background: rgba(226,61,45,0.15); color: var(--fc-error); border: 1px solid rgba(226,61,45,0.3); }
+.risk-normal {
+  background: rgba(47, 191, 113, 0.15);
+  color: var(--fc-success);
+  border: 1px solid rgba(47, 191, 113, 0.3);
+}
+.risk-caution {
+  background: rgba(255, 176, 32, 0.15);
+  color: var(--fc-warn);
+  border: 1px solid rgba(255, 176, 32, 0.3);
+}
+.risk-warning {
+  background: rgba(255, 90, 45, 0.15);
+  color: var(--fc-accent);
+  border: 1px solid rgba(255, 90, 45, 0.3);
+}
+.risk-critical {
+  background: rgba(226, 61, 45, 0.15);
+  color: var(--fc-error);
+  border: 1px solid rgba(226, 61, 45, 0.3);
+}
 
 .mini-stats {
   display: flex;
@@ -173,10 +199,22 @@ body {
   font-family: var(--fc-font-mono);
 }
 
-.level-L3 { background: rgba(47,191,113,0.15); color: var(--fc-success); }
-.level-L2 { background: rgba(74,158,255,0.15); color: var(--fc-info); }
-.level-L1 { background: rgba(255,176,32,0.15); color: var(--fc-warn); }
-.level-L0 { background: rgba(139,127,119,0.15); color: var(--fc-muted); }
+.level-L3 {
+  background: rgba(47, 191, 113, 0.15);
+  color: var(--fc-success);
+}
+.level-L2 {
+  background: rgba(74, 158, 255, 0.15);
+  color: var(--fc-info);
+}
+.level-L1 {
+  background: rgba(255, 176, 32, 0.15);
+  color: var(--fc-warn);
+}
+.level-L0 {
+  background: rgba(139, 127, 119, 0.15);
+  color: var(--fc-muted);
+}
 
 /* ── Chart containers ── */
 
@@ -232,16 +270,22 @@ body {
 
 .lb-table td {
   padding: 8px 6px;
-  border-bottom: 1px solid rgba(48,54,61,0.5);
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
 }
 
 .lb-table tr:hover td {
   background: var(--fc-surface-hover);
 }
 
-.sharpe-good { color: var(--fc-success); }
-.sharpe-ok   { color: var(--fc-warn); }
-.sharpe-bad  { color: var(--fc-error); }
+.sharpe-good {
+  color: var(--fc-success);
+}
+.sharpe-ok {
+  color: var(--fc-warn);
+}
+.sharpe-bad {
+  color: var(--fc-error);
+}
 
 /* ── Risk Gauge ── */
 
@@ -270,7 +314,7 @@ body {
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(48,54,61,0.3);
+  border-bottom: 1px solid rgba(48, 54, 61, 0.3);
   font-size: 13px;
 }
 
@@ -323,7 +367,7 @@ body {
 }
 
 .action-list li::before {
-  content: '→ ';
+  content: "→ ";
   color: var(--fc-accent);
 }
 

@@ -1,253 +1,364 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinClaw Fund Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <style>/*__FUND_CSS__*/</style>
-</head>
-<body>
-<div class="dashboard">
-  <header class="dashboard-header">
-    <h1><span>FinClaw</span> Fund Dashboard</h1>
-    <div class="timestamp" id="timestamp"></div>
-  </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinClaw Fund Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+      /*__FUND_CSS__*/
+    </style>
+  </head>
+  <body>
+    <div class="dashboard">
+      <header class="dashboard-header">
+        <h1><span>FinClaw</span> Fund Dashboard</h1>
+        <div class="timestamp" id="timestamp"></div>
+      </header>
 
-  <div class="panels">
-    <!-- Panel 1: Fund Hero -->
-    <div class="panel panel-full" id="panel-hero">
-      <div class="fund-hero">
-        <div class="equity" id="hero-equity">$0</div>
-        <div class="pnl" id="hero-pnl">+$0 (+0.0%)</div>
-        <div class="risk-badge" id="hero-risk">normal</div>
-        <div class="mini-stats">
-          <div class="mini-stat">
-            <div class="label">Active Strategies</div>
-            <div class="value" id="hero-active">0</div>
+      <div class="panels">
+        <!-- Panel 1: Fund Hero -->
+        <div class="panel panel-full" id="panel-hero">
+          <div class="fund-hero">
+            <div class="equity" id="hero-equity">$0</div>
+            <div class="pnl" id="hero-pnl">+$0 (+0.0%)</div>
+            <div class="risk-badge" id="hero-risk">normal</div>
+            <div class="mini-stats">
+              <div class="mini-stat">
+                <div class="label">Active Strategies</div>
+                <div class="value" id="hero-active">0</div>
+              </div>
+              <div class="mini-stat">
+                <div class="label">L3 Live</div>
+                <div class="value" id="hero-l3">0</div>
+              </div>
+              <div class="mini-stat">
+                <div class="label">Cash Reserve</div>
+                <div class="value" id="hero-cash">0%</div>
+              </div>
+            </div>
           </div>
-          <div class="mini-stat">
-            <div class="label">L3 Live</div>
-            <div class="value" id="hero-l3">0</div>
+        </div>
+
+        <!-- Panel 2: Allocation Doughnut + Table -->
+        <div class="panel">
+          <div class="panel-title"><span class="icon">💼</span> Capital Allocation</div>
+          <div class="chart-container" style="height: 200px">
+            <canvas id="alloc-chart"></canvas>
           </div>
-          <div class="mini-stat">
-            <div class="label">Cash Reserve</div>
-            <div class="value" id="hero-cash">0%</div>
+          <table class="lb-table" id="alloc-table" style="margin-top: 12px">
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th>Alloc</th>
+                <th>Weight</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Panel 3: Risk Gauge -->
+        <div class="panel">
+          <div class="panel-title"><span class="icon">🛡️</span> Risk Control</div>
+          <div class="gauge-container">
+            <svg class="gauge-svg" viewBox="0 0 160 100">
+              <path
+                d="M 20 90 A 60 60 0 0 1 140 90"
+                fill="none"
+                stroke="#30363d"
+                stroke-width="12"
+                stroke-linecap="round"
+              />
+              <path
+                id="gauge-arc"
+                d="M 20 90 A 60 60 0 0 1 140 90"
+                fill="none"
+                stroke="#2FBF71"
+                stroke-width="12"
+                stroke-linecap="round"
+                stroke-dasharray="0 999"
+              />
+              <text
+                id="gauge-text"
+                x="80"
+                y="80"
+                text-anchor="middle"
+                font-size="20"
+                font-weight="700"
+                font-family="SF Mono, monospace"
+                fill="#e6edf3"
+              >
+                0%
+              </text>
+            </svg>
+            <div class="gauge-info">
+              <div class="stat-row">
+                <span class="stat-label">Daily DD</span
+                ><span class="stat-value" id="risk-dd">0%</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Max Allowed</span
+                ><span class="stat-value" id="risk-max">10%</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Exposure</span
+                ><span class="stat-value" id="risk-exposure">0%</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Scale Factor</span
+                ><span class="stat-value" id="risk-scale">100%</span>
+              </div>
+            </div>
+          </div>
+          <ul class="action-list" id="risk-actions"></ul>
+        </div>
+
+        <!-- Panel 4: Leaderboard Table -->
+        <div class="panel panel-full">
+          <div class="panel-title"><span class="icon">📊</span> Strategy Leaderboard</div>
+          <table class="lb-table" id="lb-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Strategy</th>
+                <th>Level</th>
+                <th>Score</th>
+                <th>Fitness</th>
+                <th>Sharpe</th>
+                <th>MaxDD</th>
+                <th>Trades</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div
+            id="lb-empty"
+            style="
+              display: none;
+              text-align: center;
+              padding: 24px;
+              color: var(--fc-text-secondary);
+            "
+          >
+            No eligible strategies found. Register strategies and run a rebalance.
           </div>
         </div>
       </div>
+
+      <footer class="dashboard-footer">Generated by OpenFinClaw Fund Manager</footer>
     </div>
 
-    <!-- Panel 2: Allocation Doughnut + Table -->
-    <div class="panel">
-      <div class="panel-title"><span class="icon">💼</span> Capital Allocation</div>
-      <div class="chart-container" style="height: 200px;">
-        <canvas id="alloc-chart"></canvas>
-      </div>
-      <table class="lb-table" id="alloc-table" style="margin-top: 12px;">
-        <thead><tr><th>Strategy</th><th>Alloc</th><th>Weight</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
+    <script>
+      (function () {
+        const DATA = /*__FUND_DATA__*/ {};
 
-    <!-- Panel 3: Risk Gauge -->
-    <div class="panel">
-      <div class="panel-title"><span class="icon">🛡️</span> Risk Control</div>
-      <div class="gauge-container">
-        <svg class="gauge-svg" viewBox="0 0 160 100">
-          <path d="M 20 90 A 60 60 0 0 1 140 90" fill="none" stroke="#30363d" stroke-width="12" stroke-linecap="round" />
-          <path id="gauge-arc" d="M 20 90 A 60 60 0 0 1 140 90" fill="none" stroke="#2FBF71" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 999" />
-          <text id="gauge-text" x="80" y="80" text-anchor="middle" font-size="20" font-weight="700" font-family="SF Mono, monospace" fill="#e6edf3">0%</text>
-        </svg>
-        <div class="gauge-info">
-          <div class="stat-row"><span class="stat-label">Daily DD</span><span class="stat-value" id="risk-dd">0%</span></div>
-          <div class="stat-row"><span class="stat-label">Max Allowed</span><span class="stat-value" id="risk-max">10%</span></div>
-          <div class="stat-row"><span class="stat-label">Exposure</span><span class="stat-value" id="risk-exposure">0%</span></div>
-          <div class="stat-row"><span class="stat-label">Scale Factor</span><span class="stat-value" id="risk-scale">100%</span></div>
-        </div>
-      </div>
-      <ul class="action-list" id="risk-actions"></ul>
-    </div>
+        // Timestamp
+        document.getElementById("timestamp").textContent = new Date().toLocaleString();
 
-    <!-- Panel 4: Leaderboard Table -->
-    <div class="panel panel-full">
-      <div class="panel-title"><span class="icon">📊</span> Strategy Leaderboard</div>
-      <table class="lb-table" id="lb-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Strategy</th>
-            <th>Level</th>
-            <th>Score</th>
-            <th>Fitness</th>
-            <th>Sharpe</th>
-            <th>MaxDD</th>
-            <th>Trades</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div id="lb-empty" style="display:none; text-align:center; padding:24px; color:var(--fc-text-secondary);">
-        No eligible strategies found. Register strategies and run a rebalance.
-      </div>
-    </div>
-  </div>
+        // ── Panel 1: Hero ──
+        const s = DATA.status || {};
+        const fmt = (n) => (n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
+        const signed = (n) => (n >= 0 ? "+" : "") + fmt(n);
 
-  <footer class="dashboard-footer">
-    Generated by OpenFinClaw Fund Manager
-  </footer>
-</div>
+        document.getElementById("hero-equity").textContent = "$" + fmt(s.totalEquity || 0);
 
-<script>
-(function() {
-  const DATA = /*__FUND_DATA__*/{};
+        const pnlEl = document.getElementById("hero-pnl");
+        const pnl = s.todayPnl || 0;
+        const pnlPct = s.todayPnlPct || 0;
+        pnlEl.textContent = signed(pnl) + " (" + signed(pnlPct) + "%)";
+        pnlEl.className = "pnl " + (pnl >= 0 ? "pnl-positive" : "pnl-negative");
 
-  // Timestamp
-  document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        const riskEl = document.getElementById("hero-risk");
+        riskEl.textContent = (s.riskLevel || "normal").toUpperCase();
+        riskEl.className = "risk-badge risk-" + (s.riskLevel || "normal");
 
-  // ── Panel 1: Hero ──
-  const s = DATA.status || {};
-  const fmt = (n) => (n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
-  const signed = (n) => (n >= 0 ? '+' : '') + fmt(n);
+        const byLevel = s.byLevel || {};
+        const active =
+          (byLevel.L3_LIVE || 0) + (byLevel.L2_PAPER || 0) + (byLevel.L1_BACKTEST || 0);
+        document.getElementById("hero-active").textContent = active;
+        document.getElementById("hero-l3").textContent = byLevel.L3_LIVE || 0;
 
-  document.getElementById('hero-equity').textContent = '$' + fmt(s.totalEquity || 0);
+        // Cash reserve from allocations
+        const alloc = DATA.allocations || {};
+        const cashPct =
+          alloc.totalCapital > 0
+            ? (((alloc.cashReserve || 0) / alloc.totalCapital) * 100).toFixed(1)
+            : "0";
+        document.getElementById("hero-cash").textContent = cashPct + "%";
 
-  const pnlEl = document.getElementById('hero-pnl');
-  const pnl = s.todayPnl || 0;
-  const pnlPct = s.todayPnlPct || 0;
-  pnlEl.textContent = signed(pnl) + ' (' + signed(pnlPct) + '%)';
-  pnlEl.className = 'pnl ' + (pnl >= 0 ? 'pnl-positive' : 'pnl-negative');
+        // ── Panel 2: Allocation Doughnut ──
+        const items = alloc.items || [];
+        const allocCtx = document.getElementById("alloc-chart");
 
-  const riskEl = document.getElementById('hero-risk');
-  riskEl.textContent = (s.riskLevel || 'normal').toUpperCase();
-  riskEl.className = 'risk-badge risk-' + (s.riskLevel || 'normal');
+        // Allocation table (always populated, independent of Chart.js)
+        if (items.length > 0) {
+          const tbody = document.querySelector("#alloc-table tbody");
+          for (const a of items) {
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+              "<td>" +
+              a.strategyId +
+              "</td>" +
+              "<td>$" +
+              fmt(a.capitalUsd) +
+              "</td>" +
+              "<td>" +
+              a.weightPct.toFixed(1) +
+              "%</td>";
+            tbody.appendChild(tr);
+          }
+        }
 
-  const byLevel = s.byLevel || {};
-  const active = (byLevel.L3_LIVE || 0) + (byLevel.L2_PAPER || 0) + (byLevel.L1_BACKTEST || 0);
-  document.getElementById('hero-active').textContent = active;
-  document.getElementById('hero-l3').textContent = byLevel.L3_LIVE || 0;
+        // Doughnut chart (graceful fallback if Chart.js CDN fails)
+        if (allocCtx && items.length > 0 && typeof Chart !== "undefined") {
+          try {
+            const colors = [
+              "#FF5A2D",
+              "#4A9EFF",
+              "#2FBF71",
+              "#FFB020",
+              "#E23D2D",
+              "#8B7F77",
+              "#FF7A50",
+            ];
+            const labels = items.map((a) => a.strategyId);
+            const values = items.map((a) => a.capitalUsd);
+            if (alloc.cashReserve > 0) {
+              labels.push("Cash Reserve");
+              values.push(alloc.cashReserve);
+              colors.push("#30363d");
+            }
 
-  // Cash reserve from allocations
-  const alloc = DATA.allocations || {};
-  const cashPct = alloc.totalCapital > 0
-    ? ((alloc.cashReserve || 0) / alloc.totalCapital * 100).toFixed(1)
-    : '0';
-  document.getElementById('hero-cash').textContent = cashPct + '%';
+            new Chart(allocCtx, {
+              type: "doughnut",
+              data: {
+                labels: labels,
+                datasets: [
+                  {
+                    data: values,
+                    backgroundColor: colors.slice(0, labels.length),
+                    borderColor: "#161b22",
+                    borderWidth: 2,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: "right",
+                    labels: { color: "#8b949e", font: { size: 11 } },
+                  },
+                },
+              },
+            });
+          } catch (e) {
+            // Chart.js not available — table still works
+            console.warn("Chart.js unavailable:", e);
+          }
+        }
 
-  // ── Panel 2: Allocation Doughnut ──
-  const items = alloc.items || [];
-  const allocCtx = document.getElementById('alloc-chart');
+        // ── Panel 3: Risk Gauge ──
+        const risk = DATA.risk || {};
+        const dd = risk.dailyDrawdown || 0;
+        const maxDD = risk.maxAllowedDrawdown || 10;
 
-  if (allocCtx && items.length > 0) {
-    const colors = ['#FF5A2D', '#4A9EFF', '#2FBF71', '#FFB020', '#E23D2D', '#8B7F77', '#FF7A50'];
-    const labels = items.map(a => a.strategyId);
-    const values = items.map(a => a.capitalUsd);
-    if (alloc.cashReserve > 0) {
-      labels.push('Cash Reserve');
-      values.push(alloc.cashReserve);
-      colors.push('#30363d');
-    }
+        // Gauge arc: total arc length ~188.5 (half circle r=60)
+        const arcLen = 188.5;
+        const ratio = Math.min(dd / maxDD, 1);
+        const gaugeArc = document.getElementById("gauge-arc");
+        gaugeArc.setAttribute("stroke-dasharray", ratio * arcLen + " " + arcLen);
 
-    new Chart(allocCtx, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{
-          data: values,
-          backgroundColor: colors.slice(0, labels.length),
-          borderColor: '#161b22',
-          borderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: { color: '#8b949e', font: { size: 11 } },
-          },
-        },
-      },
-    });
+        // Color based on risk level
+        const riskColors = {
+          normal: "#2FBF71",
+          caution: "#FFB020",
+          warning: "#FF5A2D",
+          critical: "#E23D2D",
+        };
+        gaugeArc.setAttribute("stroke", riskColors[risk.riskLevel] || "#2FBF71");
 
-    // Allocation table
-    const tbody = document.querySelector('#alloc-table tbody');
-    for (const a of items) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + a.strategyId + '</td>'
-        + '<td>$' + fmt(a.capitalUsd) + '</td>'
-        + '<td>' + a.weightPct.toFixed(1) + '%</td>';
-      tbody.appendChild(tr);
-    }
-  }
+        document.getElementById("gauge-text").textContent = dd.toFixed(1) + "%";
+        document.getElementById("risk-dd").textContent = "-" + dd.toFixed(1) + "%";
+        document.getElementById("risk-max").textContent = maxDD + "%";
+        document.getElementById("risk-exposure").textContent =
+          (risk.exposurePct || 0).toFixed(1) + "%";
+        document.getElementById("risk-scale").textContent =
+          ((risk.scaleFactor || 1) * 100).toFixed(0) + "%";
 
-  // ── Panel 3: Risk Gauge ──
-  const risk = DATA.risk || {};
-  const dd = risk.dailyDrawdown || 0;
-  const maxDD = risk.maxAllowedDrawdown || 10;
+        // Action recommendations
+        const actions = risk.actions || getDefaultActions(risk.riskLevel);
+        const actionList = document.getElementById("risk-actions");
+        for (const a of actions) {
+          const li = document.createElement("li");
+          li.textContent = a;
+          actionList.appendChild(li);
+        }
 
-  // Gauge arc: total arc length ~188.5 (half circle r=60)
-  const arcLen = 188.5;
-  const ratio = Math.min(dd / maxDD, 1);
-  const gaugeArc = document.getElementById('gauge-arc');
-  gaugeArc.setAttribute('stroke-dasharray', (ratio * arcLen) + ' ' + arcLen);
+        function getDefaultActions(level) {
+          switch (level) {
+            case "critical":
+              return ["HALT all trading immediately", "Notify user", "Close risky positions"];
+            case "warning":
+              return ["Shrink all positions by 50%", "No new entries", "Monitor closely"];
+            case "caution":
+              return ["Reduce new position sizes by 20%", "Tighten stop losses"];
+            default:
+              return ["Normal operations"];
+          }
+        }
 
-  // Color based on risk level
-  const riskColors = { normal: '#2FBF71', caution: '#FFB020', warning: '#FF5A2D', critical: '#E23D2D' };
-  gaugeArc.setAttribute('stroke', riskColors[risk.riskLevel] || '#2FBF71');
+        // ── Panel 4: Leaderboard ──
+        const lb = DATA.leaderboard || [];
+        const lbTable = document.querySelector("#lb-table tbody");
+        const lbEmpty = document.getElementById("lb-empty");
 
-  document.getElementById('gauge-text').textContent = dd.toFixed(1) + '%';
-  document.getElementById('risk-dd').textContent = '-' + dd.toFixed(1) + '%';
-  document.getElementById('risk-max').textContent = maxDD + '%';
-  document.getElementById('risk-exposure').textContent = (risk.exposurePct || 0).toFixed(1) + '%';
-  document.getElementById('risk-scale').textContent = ((risk.scaleFactor || 1) * 100).toFixed(0) + '%';
+        if (lb.length === 0) {
+          lbEmpty.style.display = "block";
+          document.getElementById("lb-table").style.display = "none";
+        } else {
+          for (const e of lb) {
+            const tr = document.createElement("tr");
+            const lvlShort = e.level.replace("_", "").slice(0, 3);
+            const lvlClass = "level-" + e.level.split("_")[0];
+            const sharpeClass =
+              e.sharpe >= 1 ? "sharpe-good" : e.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad";
 
-  // Action recommendations
-  const actions = (risk.actions || getDefaultActions(risk.riskLevel));
-  const actionList = document.getElementById('risk-actions');
-  for (const a of actions) {
-    const li = document.createElement('li');
-    li.textContent = a;
-    actionList.appendChild(li);
-  }
-
-  function getDefaultActions(level) {
-    switch(level) {
-      case 'critical': return ['HALT all trading immediately', 'Notify user', 'Close risky positions'];
-      case 'warning': return ['Shrink all positions by 50%', 'No new entries', 'Monitor closely'];
-      case 'caution': return ['Reduce new position sizes by 20%', 'Tighten stop losses'];
-      default: return ['Normal operations'];
-    }
-  }
-
-  // ── Panel 4: Leaderboard ──
-  const lb = DATA.leaderboard || [];
-  const lbTable = document.querySelector('#lb-table tbody');
-  const lbEmpty = document.getElementById('lb-empty');
-
-  if (lb.length === 0) {
-    lbEmpty.style.display = 'block';
-    document.getElementById('lb-table').style.display = 'none';
-  } else {
-    for (const e of lb) {
-      const tr = document.createElement('tr');
-      const lvlShort = e.level.replace('_', '').slice(0, 3);
-      const lvlClass = 'level-' + e.level.split('_')[0];
-      const sharpeClass = e.sharpe >= 1 ? 'sharpe-good' : e.sharpe >= 0 ? 'sharpe-ok' : 'sharpe-bad';
-
-      tr.innerHTML = '<td>' + e.rank + '</td>'
-        + '<td>' + e.strategyName + '</td>'
-        + '<td><span class="level-badge ' + lvlClass + '">' + lvlShort + '</span></td>'
-        + '<td>' + e.leaderboardScore.toFixed(3) + '</td>'
-        + '<td>' + e.fitness.toFixed(3) + '</td>'
-        + '<td class="' + sharpeClass + '">' + e.sharpe.toFixed(2) + '</td>'
-        + '<td>' + e.maxDrawdown.toFixed(1) + '%</td>'
-        + '<td>' + e.totalTrades + '</td>';
-      lbTable.appendChild(tr);
-    }
-  }
-})();
-</script>
-</body>
+            tr.innerHTML =
+              "<td>" +
+              e.rank +
+              "</td>" +
+              "<td>" +
+              e.strategyName +
+              "</td>" +
+              '<td><span class="level-badge ' +
+              lvlClass +
+              '">' +
+              lvlShort +
+              "</span></td>" +
+              "<td>" +
+              e.leaderboardScore.toFixed(3) +
+              "</td>" +
+              "<td>" +
+              e.fitness.toFixed(3) +
+              "</td>" +
+              '<td class="' +
+              sharpeClass +
+              '">' +
+              e.sharpe.toFixed(2) +
+              "</td>" +
+              "<td>" +
+              e.maxDrawdown.toFixed(1) +
+              "%</td>" +
+              "<td>" +
+              e.totalTrades +
+              "</td>";
+            lbTable.appendChild(tr);
+          }
+        }
+      })();
+    </script>
+  </body>
 </html>
