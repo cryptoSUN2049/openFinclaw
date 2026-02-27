@@ -78,7 +78,23 @@ const FundSchema = z
       .optional()
       .default("weekly"),
   })
-  .strict();
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.cashReservePct + data.maxTotalExposurePct > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `cashReservePct (${data.cashReservePct}) + maxTotalExposurePct (${data.maxTotalExposurePct}) exceeds 100%`,
+        path: ["maxTotalExposurePct"],
+      });
+    }
+    if (data.maxSingleStrategyPct > data.maxTotalExposurePct) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `maxSingleStrategyPct (${data.maxSingleStrategyPct}) exceeds maxTotalExposurePct (${data.maxTotalExposurePct})`,
+        path: ["maxSingleStrategyPct"],
+      });
+    }
+  });
 
 const BacktestSchema = z
   .object({
@@ -129,7 +145,7 @@ const PaperTradingSchema = z
           .optional()
           .default("internal"),
         futuOpenDHost: z.string().optional().default("127.0.0.1"),
-        futuOpenDPort: z.number().int().optional().default(11111),
+        futuOpenDPort: z.number().int().min(1).max(65535).optional().default(11111),
       })
       .strict()
       .optional(),

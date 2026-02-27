@@ -106,6 +106,102 @@ describe("FinancialSchema", () => {
     });
   });
 
+  describe("fund cross-field validation", () => {
+    it("rejects cashReservePct + maxTotalExposurePct > 100", () => {
+      expect(() =>
+        FinancialSchema.parse({ fund: { cashReservePct: 80, maxTotalExposurePct: 30 } }),
+      ).toThrow("exceeds 100%");
+    });
+
+    it("rejects maxSingleStrategyPct > maxTotalExposurePct", () => {
+      expect(() =>
+        FinancialSchema.parse({
+          fund: { maxSingleStrategyPct: 50, maxTotalExposurePct: 40, cashReservePct: 20 },
+        }),
+      ).toThrow("exceeds maxTotalExposurePct");
+    });
+
+    it("accepts valid fund percentages", () => {
+      const result = FinancialSchema.parse({
+        fund: { cashReservePct: 30, maxTotalExposurePct: 70, maxSingleStrategyPct: 30 },
+      });
+      expect(result!.fund!.cashReservePct).toBe(30);
+      expect(result!.fund!.maxTotalExposurePct).toBe(70);
+    });
+  });
+
+  describe("equity config", () => {
+    it("applies alpaca paper default", () => {
+      const result = FinancialSchema.parse({ equity: { alpaca: {} } });
+      expect(result!.equity!.alpaca!.paper).toBe(true);
+    });
+
+    it("allows explicit alpaca config", () => {
+      const result = FinancialSchema.parse({
+        equity: { alpaca: { apiKeyId: "key", apiSecretKey: "secret", paper: false } },
+      });
+      expect(result!.equity!.alpaca!.paper).toBe(false);
+    });
+  });
+
+  describe("commodity config", () => {
+    it("parses valid commodity config", () => {
+      const result = FinancialSchema.parse({ commodity: { quandlApiKey: "test-key" } });
+      expect(result!.commodity!.quandlApiKey).toBe("test-key");
+    });
+
+    it("parses empty commodity config", () => {
+      const result = FinancialSchema.parse({ commodity: {} });
+      expect(result!.commodity).toEqual({});
+    });
+  });
+
+  describe("paperTrading adapter configs", () => {
+    it("applies US adapter default", () => {
+      const result = FinancialSchema.parse({ paperTrading: { us: {} } });
+      expect(result!.paperTrading!.us!.adapter).toBe("internal");
+    });
+
+    it("applies HK adapter defaults", () => {
+      const result = FinancialSchema.parse({ paperTrading: { hk: {} } });
+      expect(result!.paperTrading!.hk!.adapter).toBe("internal");
+      expect(result!.paperTrading!.hk!.futuOpenDHost).toBe("127.0.0.1");
+      expect(result!.paperTrading!.hk!.futuOpenDPort).toBe(11111);
+    });
+
+    it("rejects invalid futuOpenDPort (out of range)", () => {
+      expect(() =>
+        FinancialSchema.parse({ paperTrading: { hk: { futuOpenDPort: 70000 } } }),
+      ).toThrow();
+    });
+
+    it("rejects negative futuOpenDPort", () => {
+      expect(() =>
+        FinancialSchema.parse({ paperTrading: { hk: { futuOpenDPort: -1 } } }),
+      ).toThrow();
+    });
+
+    it("applies CN adapter defaults", () => {
+      const result = FinancialSchema.parse({ paperTrading: { cn: {} } });
+      expect(result!.paperTrading!.cn!.adapter).toBe("internal");
+      expect(result!.paperTrading!.cn!.dataSource).toBe("akshare");
+    });
+
+    it("allows explicit CN tushare config", () => {
+      const result = FinancialSchema.parse({
+        paperTrading: { cn: { adapter: "openctp", dataSource: "tushare", tushareToken: "tok" } },
+      });
+      expect(result!.paperTrading!.cn!.adapter).toBe("openctp");
+      expect(result!.paperTrading!.cn!.dataSource).toBe("tushare");
+    });
+
+    it("rejects invalid adapter value", () => {
+      expect(() =>
+        FinancialSchema.parse({ paperTrading: { us: { adapter: "invalid" } } }),
+      ).toThrow();
+    });
+  });
+
   describe("exchange config", () => {
     it("parses valid exchange config", () => {
       const result = FinancialSchema.parse({
