@@ -89,6 +89,17 @@ export const icons = {
     </svg>
   `,
 
+  candlestick: html`
+    <svg viewBox="0 0 24 24">
+      <line x1="9" x2="9" y1="2" y2="6" />
+      <rect x="7" y="6" width="4" height="8" rx="0.5" />
+      <line x1="9" x2="9" y1="14" y2="18" />
+      <line x1="16" x2="16" y1="6" y2="9" />
+      <rect x="14" y="9" width="4" height="7" rx="0.5" />
+      <line x1="16" x2="16" y1="16" y2="22" />
+    </svg>
+  `,
+
   // UI icons
   menu: html`
     <svg viewBox="0 0 24 24">

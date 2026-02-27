@@ -73,6 +73,7 @@ import { renderCron } from "./views/cron.ts";
 import { renderDebug } from "./views/debug.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
+import { renderIframeDashboard } from "./views/iframe-dashboard.ts";
 import { renderInstances } from "./views/instances.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
@@ -152,6 +153,7 @@ export function renderApp(state: AppViewState) {
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
   const chatDisabledReason = state.connected ? null : t("chat.disconnected");
   const isChat = state.tab === "chat";
+  const isIframeTab = state.tab === "trading" || state.tab === "financeDashboard";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
@@ -314,7 +316,7 @@ export function renderApp(state: AppViewState) {
             </div>`
             : nothing
         }
-        <section class="content-header">
+        <section class="content-header" style=${isIframeTab ? "display:none" : ""}>
           <div>
             ${state.tab === "usage" ? nothing : html`<div class="page-title">${titleForTab(state.tab)}</div>`}
             ${state.tab === "usage" ? nothing : html`<div class="page-sub">${subtitleForTab(state.tab)}</div>`}
@@ -1134,6 +1136,9 @@ export function renderApp(state: AppViewState) {
               })
             : nothing
         }
+
+        ${state.tab === "trading" ? renderIframeDashboard("/dashboard/trading", "Trading Dashboard") : nothing}
+        ${state.tab === "financeDashboard" ? renderIframeDashboard("/dashboard/finance", "Finance Dashboard") : nothing}
       </main>
       ${renderExecApprovalPrompt(state)}
       ${renderGatewayUrlConfirmation(state)}
