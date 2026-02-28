@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type { MarketType } from "../../fin-data-bus/src/types.js";
 import { DecayDetector } from "./decay-detector.js";
 import { calculateCommission } from "./fill-simulation/commission-model.js";
 import { applyConstantSlippage } from "./fill-simulation/constant-slippage.js";
+import { validateLotSize } from "./market-rules/lot-size-validator.js";
 import { resolveMarket, isMarketOpen } from "./market-rules/market-calendar.js";
+import { MARKET_REGISTRY } from "./market-rules/markets/index.js";
+import { checkPriceLimit } from "./market-rules/price-limit-validator.js";
+import type { ExtendedMarketType } from "./market-rules/types.js";
 import { PaperAccount } from "./paper-account.js";
 import { PaperStore } from "./paper-store.js";
 import type { PaperAccountState, PaperOrder, DecayState } from "./types.js";
@@ -11,11 +14,11 @@ import type { PaperAccountState, PaperOrder, DecayState } from "./types.js";
 export class PaperEngine {
   private store: PaperStore;
   private slippageBps: number;
-  private market: MarketType;
+  private market: string;
   private accounts: Map<string, PaperAccount> = new Map();
   private decayDetector = new DecayDetector();
 
-  constructor(params: { store: PaperStore; slippageBps: number; market: MarketType }) {
+  constructor(params: { store: PaperStore; slippageBps: number; market: string }) {
     this.store = params.store;
     this.slippageBps = params.slippageBps;
     this.market = params.market;
@@ -43,6 +46,8 @@ export class PaperEngine {
       takeProfit?: number;
       reason?: string;
       strategyId?: string;
+      prevClose?: number;
+      isSt?: boolean;
     },
     currentPrice: number,
   ): PaperOrder {
@@ -79,7 +84,46 @@ export class PaperEngine {
         createdAt: Date.now(),
         reason: `Market ${market} is currently closed`,
         strategyId: order.strategyId,
+        market,
       };
+    }
+
+    // Lot size validation
+    const lotCheck = validateLotSize(market, order.side, order.quantity);
+    if (!lotCheck.valid) {
+      return {
+        id: randomUUID(),
+        accountId,
+        symbol: order.symbol,
+        side: order.side,
+        type: order.type,
+        quantity: order.quantity,
+        status: "rejected",
+        createdAt: Date.now(),
+        reason: lotCheck.reason,
+        strategyId: order.strategyId,
+        market,
+      };
+    }
+
+    // T+1 sellable quantity check
+    if (order.side === "sell") {
+      const sellable = account.getSellableQuantity(order.symbol);
+      if (sellable < order.quantity) {
+        return {
+          id: randomUUID(),
+          accountId,
+          symbol: order.symbol,
+          side: order.side,
+          type: order.type,
+          quantity: order.quantity,
+          status: "rejected",
+          createdAt: Date.now(),
+          reason: `Insufficient sellable quantity (T+1 settlement). Sellable: ${sellable}, requested: ${order.quantity}`,
+          strategyId: order.strategyId,
+          market,
+        };
+      }
     }
 
     // For limit orders, check if limit price condition is met
@@ -99,6 +143,7 @@ export class PaperEngine {
           createdAt: Date.now(),
           reason: "Limit price not reached",
           strategyId: order.strategyId,
+          market,
         };
       }
     }
@@ -110,9 +155,36 @@ export class PaperEngine {
       this.slippageBps,
     );
 
+    // Price limit check (after slippage, before execution)
+    const limitCheck = checkPriceLimit(market, order.symbol, fillPrice, order.prevClose, {
+      isSt: order.isSt,
+    });
+    if (!limitCheck.valid) {
+      return {
+        id: randomUUID(),
+        accountId,
+        symbol: order.symbol,
+        side: order.side,
+        type: order.type,
+        quantity: order.quantity,
+        status: "rejected",
+        createdAt: Date.now(),
+        reason: limitCheck.reason,
+        strategyId: order.strategyId,
+        market,
+      };
+    }
+
     // Calculate commission
     const notional = fillPrice * order.quantity;
-    const { commission } = calculateCommission(notional, market);
+    const { commission } = calculateCommission(notional, market, { side: order.side });
+
+    // Calculate settlement time for T+N markets
+    const marketDef = MARKET_REGISTRY[market];
+    const settlableAfter =
+      marketDef && marketDef.settlement.tPlusDays > 0
+        ? Date.now() + marketDef.settlement.tPlusDays * 86_400_000
+        : undefined;
 
     // Execute
     let result: PaperOrder;
@@ -125,6 +197,7 @@ export class PaperEngine {
         slippage: slippageCost,
         reason: order.reason,
         strategyId: order.strategyId,
+        settlableAfter,
       });
     } else {
       result = account.executeSell({
@@ -137,6 +210,9 @@ export class PaperEngine {
         strategyId: order.strategyId,
       });
     }
+
+    // Attach market type to order
+    result.market = market;
 
     // Persist
     this.store.saveOrder(result);

@@ -16,6 +16,8 @@ export interface PaperOrder {
   filledAt?: number;
   reason?: string;
   strategyId?: string;
+  /** Extended market type for the order. */
+  market?: string;
 }
 
 export interface PaperPosition {
@@ -26,6 +28,8 @@ export interface PaperPosition {
   currentPrice: number;
   unrealizedPnl: number;
   openedAt: number;
+  /** Settlement lots for T+N tracking. Undefined = all freely sellable. */
+  lots?: PositionLot[];
 }
 
 export interface PaperAccountState {
@@ -48,6 +52,13 @@ export interface DecayState {
   currentDrawdown: number;
   peakEquity: number;
   decayLevel: "healthy" | "warning" | "degrading" | "critical";
+}
+
+export interface PositionLot {
+  quantity: number;
+  entryPrice: number;
+  /** Timestamp after which this lot can be sold (used for T+1 settlement). */
+  settlableAfter: number;
 }
 
 export interface EquitySnapshot {

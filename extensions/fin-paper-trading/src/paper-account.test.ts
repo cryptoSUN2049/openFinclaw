@@ -218,6 +218,138 @@ describe("PaperAccount", () => {
     expect(history[0]!.status).toBe("filled");
   });
 
+  // --- T+1 lot tracking tests ---
+
+  it("locked lot cannot be sold (T+1)", () => {
+    const account = makeAccount(100_000);
+    const futureTime = Date.now() + 86_400_000; // 1 day ahead
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 100,
+      fillPrice: 1800,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: futureTime,
+    });
+
+    // Position exists but sellable quantity is 0 (lot is locked)
+    expect(account.getSellableQuantity("600519.SH")).toBe(0);
+  });
+
+  it("settled lot can be sold", () => {
+    const account = makeAccount(500_000);
+    const pastTime = Date.now() - 1000; // already settled
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 100,
+      fillPrice: 1800,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: pastTime,
+    });
+
+    expect(account.getSellableQuantity("600519.SH")).toBe(100);
+  });
+
+  it("FIFO lot consumption on sell", () => {
+    const account = makeAccount(1_000_000);
+    const pastTime = Date.now() - 1000;
+    // Two lots
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 100,
+      fillPrice: 1800,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: pastTime,
+    });
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 200,
+      fillPrice: 1900,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: pastTime,
+    });
+
+    expect(account.getSellableQuantity("600519.SH")).toBe(300);
+
+    // Sell 150: consumes first lot (100) entirely, second lot partially (50)
+    account.executeSell({
+      symbol: "600519.SH",
+      quantity: 150,
+      fillPrice: 2000,
+      commission: 0,
+      slippage: 0,
+    });
+
+    const pos = account.getPosition("600519.SH");
+    expect(pos).toBeDefined();
+    expect(pos!.quantity).toBe(150);
+    expect(pos!.lots).toHaveLength(1);
+    expect(pos!.lots![0]!.quantity).toBe(150); // remaining from second lot
+  });
+
+  it("mixed lots: locked + settled", () => {
+    const account = makeAccount(1_000_000);
+    const pastTime = Date.now() - 1000;
+    const futureTime = Date.now() + 86_400_000;
+
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 100,
+      fillPrice: 1800,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: pastTime,
+    });
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 200,
+      fillPrice: 1900,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: futureTime,
+    });
+
+    // Total quantity is 300 but only 100 sellable
+    expect(account.getPosition("600519.SH")!.quantity).toBe(300);
+    expect(account.getSellableQuantity("600519.SH")).toBe(100);
+  });
+
+  it("no lots means all quantity is sellable", () => {
+    const account = makeAccount(100_000);
+    account.executeBuy({
+      symbol: "BTC/USDT",
+      quantity: 0.5,
+      fillPrice: 50_000,
+      commission: 0,
+      slippage: 0,
+      // no settlableAfter
+    });
+
+    expect(account.getSellableQuantity("BTC/USDT")).toBe(0.5);
+  });
+
+  it("fromState restores lots correctly", () => {
+    const account = makeAccount(500_000);
+    const futureTime = Date.now() + 86_400_000;
+    account.executeBuy({
+      symbol: "600519.SH",
+      quantity: 100,
+      fillPrice: 1800,
+      commission: 0,
+      slippage: 0,
+      settlableAfter: futureTime,
+    });
+
+    const state = account.getState();
+    const restored = PaperAccount.fromState(state);
+    expect(restored.getSellableQuantity("600519.SH")).toBe(0);
+    expect(restored.getPosition("600519.SH")!.lots).toHaveLength(1);
+    expect(restored.getPosition("600519.SH")!.lots![0]!.settlableAfter).toBe(futureTime);
+  });
+
   it("fromState restores account correctly", () => {
     const account = makeAccount();
     account.executeBuy({

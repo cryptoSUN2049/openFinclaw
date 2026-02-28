@@ -1,7 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, afterEach } from "vitest";
+import { afterAll, describe, expect, it, afterEach, vi } from "vitest";
+import { calculateCommission } from "./fill-simulation/commission-model.js";
 import { PaperEngine } from "./paper-engine.js";
 import { PaperStore } from "./paper-store.js";
 
@@ -109,8 +110,12 @@ describe("PaperEngine", () => {
     expect(order.status).toBe("rejected");
   });
 
-  it("rejects equity market orders (market closed in Phase 1)", () => {
+  it("rejects us_equity orders when market is closed", () => {
     ({ engine, store, dir } = makeEngine());
+
+    // Freeze time to Saturday 15:00 UTC — US market is closed on weekends
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.UTC(2026, 2, 7, 15, 0))); // Saturday
 
     const acct = engine.createAccount("Test", 100_000);
     const order = engine.submitOrder(
@@ -121,6 +126,9 @@ describe("PaperEngine", () => {
 
     expect(order.status).toBe("rejected");
     expect(order.reason).toContain("closed");
+    expect(order.market).toBe("us_equity");
+
+    vi.useRealTimers();
   });
 
   it("returns pending for limit orders that are not yet triggered", () => {
@@ -219,5 +227,153 @@ describe("PaperEngine", () => {
     expect(loaded!.name).toBe("Persistent");
     expect(loaded!.positions).toHaveLength(1);
     expect(loaded!.positions[0]!.symbol).toBe("ETH/USDT");
+  });
+});
+
+// --- Multi-market integration tests ---
+
+describe("PaperEngine multi-market rules", () => {
+  let engine: PaperEngine;
+  let store: PaperStore;
+  let dir: string;
+
+  afterEach(() => {
+    if (store) {
+      try {
+        store.close();
+      } catch {
+        // Already closed
+      }
+    }
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    // Reset to avoid double-close
+    store = undefined as unknown as PaperStore;
+    dir = undefined as unknown as string;
+  });
+
+  it("A-share buy must be 100 lot multiple", () => {
+    ({ engine, store, dir } = makeEngine());
+
+    // Freeze time to a weekday during CN A-share trading hours (10:00 Shanghai = 02:00 UTC)
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.UTC(2026, 2, 2, 2, 0))); // Monday 10:00 Shanghai
+
+    const acct = engine.createAccount("Test CN", 1_000_000);
+    const order = engine.submitOrder(
+      acct.id,
+      { symbol: "600519.SH", side: "buy", type: "market", quantity: 150 },
+      1800,
+    );
+
+    expect(order.status).toBe("rejected");
+    expect(order.reason).toContain("multiple of 100");
+
+    vi.useRealTimers();
+  });
+
+  it("A-share price limit rejects excessive price", () => {
+    ({ engine, store, dir } = makeEngine());
+
+    // Freeze time to a weekday during CN A-share trading hours
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.UTC(2026, 2, 2, 2, 0))); // Monday 10:00 Shanghai
+
+    const acct = engine.createAccount("Test CN Limit", 1_000_000);
+    const order = engine.submitOrder(
+      acct.id,
+      {
+        symbol: "600519.SH",
+        side: "buy",
+        type: "market",
+        quantity: 100,
+        prevClose: 100,
+      },
+      112, // exceeds +10%
+    );
+
+    expect(order.status).toBe("rejected");
+    expect(order.reason).toContain("price limit");
+
+    vi.useRealTimers();
+  });
+
+  it("crypto order always fills (24/7 market)", () => {
+    ({ engine, store, dir } = makeEngine());
+    const acct = engine.createAccount("Crypto Always Open", 100_000);
+    const order = engine.submitOrder(
+      acct.id,
+      { symbol: "BTC/USDT", side: "buy", type: "market", quantity: 0.1 },
+      50_000,
+    );
+
+    expect(order.status).toBe("filled");
+    expect(order.market).toBe("crypto");
+  });
+
+  it("cn_a_share stamp duty applied on sell", () => {
+    const buyResult = calculateCommission(100_000, "cn_a_share", { side: "buy" });
+    const sellResult = calculateCommission(100_000, "cn_a_share", { side: "sell" });
+
+    // Buy: no stamp duty, just commission
+    expect(buyResult.commission).toBeCloseTo(100_000 * 0.0003, 2);
+    // Sell: commission + stamp duty (0.1%)
+    expect(sellResult.commission).toBeCloseTo(100_000 * 0.0003 + 100_000 * 0.001, 2);
+    expect(sellResult.commission).toBeGreaterThan(buyResult.commission);
+  });
+
+  it("hk_equity stamp duty on sell", () => {
+    const buyResult = calculateCommission(100_000, "hk_equity", { side: "buy" });
+    const sellResult = calculateCommission(100_000, "hk_equity", { side: "sell" });
+
+    // Buy: no stamp duty
+    expect(buyResult.commission).toBeCloseTo(100_000 * 0.0005, 2);
+    // Sell: commission + stamp duty
+    expect(sellResult.commission).toBeCloseTo(100_000 * 0.0005 + 100_000 * 0.001, 2);
+  });
+
+  it("T+1 settlement: A-share bought today cannot be sold today", () => {
+    ({ engine, store, dir } = makeEngine());
+
+    // Freeze time to a weekday during CN A-share trading hours
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.UTC(2026, 2, 2, 2, 0))); // Monday 10:00 Shanghai
+
+    const acct = engine.createAccount("T+1 Test", 1_000_000);
+
+    const buyOrder = engine.submitOrder(
+      acct.id,
+      { symbol: "600519.SH", side: "buy", type: "market", quantity: 100 },
+      1800,
+    );
+
+    expect(buyOrder.status).toBe("filled");
+
+    // Immediately try to sell — should be rejected due to T+1
+    const sellOrder = engine.submitOrder(
+      acct.id,
+      { symbol: "600519.SH", side: "sell", type: "market", quantity: 100 },
+      1800,
+    );
+
+    expect(sellOrder.status).toBe("rejected");
+    expect(sellOrder.reason).toContain("T+1");
+
+    vi.useRealTimers();
+  });
+
+  it("market field is persisted in order", () => {
+    ({ engine, store, dir } = makeEngine());
+    const acct = engine.createAccount("Market Field Test", 100_000);
+    const order = engine.submitOrder(
+      acct.id,
+      { symbol: "BTC/USDT", side: "buy", type: "market", quantity: 0.01 },
+      50_000,
+    );
+
+    expect(order.market).toBe("crypto");
+
+    // Verify persistence
+    const orders = engine.getOrders(acct.id);
+    expect(orders[0]!.market).toBe("crypto");
   });
 });

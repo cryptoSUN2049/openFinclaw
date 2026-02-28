@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { PaperAccountState, PaperOrder, PaperPosition } from "./types.js";
+import type { PaperAccountState, PaperOrder, PaperPosition, PositionLot } from "./types.js";
 
 export class PaperAccount {
   private id: string;
@@ -42,6 +42,7 @@ export class PaperAccount {
     slippage: number;
     reason?: string;
     strategyId?: string;
+    settlableAfter?: number;
   }): PaperOrder {
     const cost = params.fillPrice * params.quantity + params.commission;
 
@@ -89,6 +90,17 @@ export class PaperAccount {
       });
     }
 
+    // Append settlement lot for T+N tracking
+    if (params.settlableAfter != null) {
+      const pos = this.positions.get(params.symbol)!;
+      if (!pos.lots) pos.lots = [];
+      pos.lots.push({
+        quantity: params.quantity,
+        entryPrice: params.fillPrice,
+        settlableAfter: params.settlableAfter,
+      });
+    }
+
     this.updatedAt = Date.now();
 
     const order: PaperOrder = {
@@ -109,6 +121,17 @@ export class PaperAccount {
     };
     this.orders.push(order);
     return order;
+  }
+
+  /** Get the quantity that can be sold now (T+1 aware). */
+  getSellableQuantity(symbol: string, now?: number): number {
+    const pos = this.positions.get(symbol);
+    if (!pos) return 0;
+    if (!pos.lots || pos.lots.length === 0) return pos.quantity;
+    const ts = now ?? Date.now();
+    return pos.lots
+      .filter((lot) => ts >= lot.settlableAfter)
+      .reduce((sum, lot) => sum + lot.quantity, 0);
   }
 
   executeSell(params: {
@@ -150,6 +173,20 @@ export class PaperAccount {
       this.positions.delete(params.symbol);
     } else {
       position.unrealizedPnl = (position.currentPrice - position.entryPrice) * position.quantity;
+      // Consume lots FIFO
+      if (position.lots && position.lots.length > 0) {
+        let remaining = params.quantity;
+        while (remaining > 0 && position.lots.length > 0) {
+          const lot = position.lots[0]!;
+          if (lot.quantity <= remaining) {
+            remaining -= lot.quantity;
+            position.lots.shift();
+          } else {
+            lot.quantity -= remaining;
+            remaining = 0;
+          }
+        }
+      }
     }
 
     this.updatedAt = Date.now();
@@ -213,7 +250,10 @@ export class PaperAccount {
     account.updatedAt = state.updatedAt;
     account.orders = [...state.orders];
     for (const pos of state.positions) {
-      account.positions.set(pos.symbol, { ...pos });
+      account.positions.set(pos.symbol, {
+        ...pos,
+        lots: pos.lots ? pos.lots.map((l) => ({ ...l })) : undefined,
+      });
     }
     return account;
   }

@@ -31,18 +31,49 @@ describe("calculateCommission", () => {
     expect(result.effectiveRate).toBeGreaterThan(0);
   });
 
-  it("large order → proportional commission", () => {
+  it("large order -> proportional commission", () => {
     const small = calculateCommission(1000, "crypto");
     const large = calculateCommission(100000, "crypto");
-    // Commission should scale linearly with notional
     expect(large.commission / small.commission).toBeCloseTo(100, 1);
-    // Effective rate stays the same
     expect(large.effectiveRate).toBeCloseTo(small.effectiveRate, 6);
   });
 
-  it("zero notional → zero commission", () => {
+  it("zero notional -> zero commission", () => {
     const result = calculateCommission(0, "crypto");
     expect(result.commission).toBe(0);
     expect(result.effectiveRate).toBe(0);
+  });
+
+  // Extended market types
+  it("us_equity commission rate", () => {
+    const result = calculateCommission(100000, "us_equity");
+    expect(result.commission).toBeCloseTo(50, 2); // 0.05%
+  });
+
+  it("hk_equity buy: no stamp duty", () => {
+    const result = calculateCommission(100000, "hk_equity", { side: "buy" });
+    expect(result.commission).toBeCloseTo(50, 2); // 0.05% commission only
+  });
+
+  it("hk_equity sell: includes stamp duty", () => {
+    const result = calculateCommission(100000, "hk_equity", { side: "sell" });
+    // 0.05% commission + 0.1% stamp duty = 0.15%
+    expect(result.commission).toBeCloseTo(150, 2);
+  });
+
+  it("cn_a_share buy: no stamp duty", () => {
+    const result = calculateCommission(100000, "cn_a_share", { side: "buy" });
+    expect(result.commission).toBeCloseTo(30, 2); // 0.03%
+  });
+
+  it("cn_a_share sell: includes stamp duty", () => {
+    const result = calculateCommission(100000, "cn_a_share", { side: "sell" });
+    // 0.03% commission + 0.1% stamp duty = 0.13%
+    expect(result.commission).toBeCloseTo(130, 2);
+  });
+
+  it("unknown market falls back to equity rates", () => {
+    const result = calculateCommission(100000, "unknown_market");
+    expect(result.commission).toBeCloseTo(50, 2); // equity rate
   });
 });

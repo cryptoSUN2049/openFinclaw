@@ -46,6 +46,13 @@ export class PaperStore {
       )
     `);
 
+    // Migration: add market column to orders table
+    try {
+      this.db.exec("ALTER TABLE orders ADD COLUMN market TEXT");
+    } catch {
+      // Column already exists
+    }
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS equity_snapshots (
         account_id TEXT NOT NULL,
@@ -125,8 +132,8 @@ export class PaperStore {
   saveOrder(order: PaperOrder): void {
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO orders
-        (id, account_id, symbol, side, type, quantity, limit_price, fill_price, commission, slippage, status, reason, strategy_id, created_at, filled_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, account_id, symbol, side, type, quantity, limit_price, fill_price, commission, slippage, status, reason, strategy_id, created_at, filled_at, market)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       order.id,
@@ -144,6 +151,7 @@ export class PaperStore {
       order.strategyId ?? null,
       order.createdAt,
       order.filledAt ?? null,
+      order.market ?? null,
     );
   }
 
@@ -173,6 +181,7 @@ export class PaperStore {
       strategyId: row.strategy_id as string | undefined,
       createdAt: row.created_at as number,
       filledAt: row.filled_at as number | undefined,
+      market: (row.market as string | undefined) ?? undefined,
     }));
   }
 

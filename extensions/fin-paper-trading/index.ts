@@ -25,10 +25,7 @@ const plugin = {
       // Backward compatibility for pre-schema key naming.
       (typeof config.slippageBps === "number" ? config.slippageBps : undefined) ??
       5;
-    const market =
-      config.market === "crypto" || config.market === "equity" || config.market === "commodity"
-        ? config.market
-        : "crypto";
+    const market = typeof config.market === "string" ? config.market : "crypto";
 
     const engine = new PaperEngine({ store, slippageBps, market });
 
@@ -105,6 +102,12 @@ const plugin = {
           strategy_id: Type.Optional(
             Type.String({ description: "Strategy identifier for tracking" }),
           ),
+          prev_close: Type.Optional(
+            Type.Number({ description: "Previous close price for price limit check" }),
+          ),
+          is_st_stock: Type.Optional(
+            Type.Boolean({ description: "Whether the stock is ST (Special Treatment)" }),
+          ),
         }),
         async execute(_id: string, params: Record<string, unknown>) {
           try {
@@ -120,6 +123,8 @@ const plugin = {
                 takeProfit: params.take_profit as number | undefined,
                 reason: params.reason as string | undefined,
                 strategyId: params.strategy_id as string | undefined,
+                prevClose: params.prev_close as number | undefined,
+                isSt: params.is_st_stock as boolean | undefined,
               },
               params.current_price as number,
             );
