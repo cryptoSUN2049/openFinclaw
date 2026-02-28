@@ -25,6 +25,11 @@ export default defineConfig({
     maxWorkers: e2eWorkers,
     silent: !verboseE2E,
     include: ["test/**/*.e2e.test.ts"],
-    exclude,
+    exclude: [
+      ...exclude,
+      // Integration tests require `forks` pool (jiti incompatible with vmForks VM context).
+      // Run separately via: pnpm vitest run --config vitest.integration.config.ts
+      "test/fin-dashboard-integration.e2e.test.ts",
+    ],
   },
 });

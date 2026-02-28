@@ -101,6 +101,7 @@
     "lint:all": "pnpm lint && pnpm lint:swift",
     "lint:docs": "pnpm dlx markdownlint-cli2",
     "lint:docs:fix": "pnpm dlx markdownlint-cli2 --fix",
+    "lint:extensions": "oxlint extensions/fin-*/src/",
     "lint:fix": "oxlint --type-aware --fix && pnpm format",
     "lint:swift": "swiftlint lint --config .swiftlint.yml && (cd apps/ios && swiftlint lint --config .swiftlint.yml)",
     "lint:tmp:no-random-messaging": "node scripts/check-no-random-messaging-tmp.mjs",
