@@ -1,0 +1,30 @@
+{
+  "id": "fin-data-hub",
+  "name": "openFinclaw-DataHub",
+  "description": "Financial data from 162 endpoints — A-shares, HK stocks, US equities, Crypto/DeFi, Macro indicators",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["stub", "live"],
+        "default": "stub",
+        "description": "stub = sample data; live = call real gateway endpoint"
+      },
+      "apiKey": { "type": "string", "description": "Gateway API key for authentication" },
+      "endpoint": {
+        "type": "string",
+        "description": "Gateway base URL, e.g. https://data.example.com"
+      },
+      "requestTimeoutMs": {
+        "type": "number",
+        "default": 30000,
+        "description": "HTTP request timeout in milliseconds"
+      }
+    }
+  },
+  "uiHints": {
+    "apiKey": { "label": "openFinclaw-DataHub API Key", "sensitive": true }
+  }
+}
