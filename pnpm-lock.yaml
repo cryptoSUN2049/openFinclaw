@@ -89,6 +89,9 @@ importers:
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
+      ccxt:
+        specifier: ^4.5.40
+        version: 4.5.40
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -104,9 +107,6 @@ importers:
       croner:
         specifier: ^10.0.1
         version: 10.0.1
-      ccxt:
-        specifier: ^4.5.40
-        version: 4.5.40
       discord-api-types:
         specifier: ^0.38.40
         version: 0.38.40
@@ -344,7 +344,19 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/fin-evolution-engine:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/fin-expert-sdk:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
+  extensions/fin-fund-manager:
     devDependencies:
       openfinclaw:
         specifier: workspace:*
@@ -363,6 +375,12 @@ importers:
         version: link:../..
 
   extensions/fin-monitoring:
+    devDependencies:
+      openfinclaw:
+        specifier: workspace:*
+        version: link:../..
+
+  extensions/fin-openbb-data:
     devDependencies:
       openfinclaw:
         specifier: workspace:*

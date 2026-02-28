@@ -52,3 +52,10 @@ pnpm test           # vitest tests
 pnpm check:docs     # docs format + lint + broken links
 pnpm release:check  # validate npm pack
 ```
+
+### Integration & E2E Tests
+
+The project has two separate E2E test suites:
+
+- **`pnpm test:e2e`** — rendering-layer E2E tests (uses `vmForks` pool).
+- **`pnpm test:e2e:integration`** — dashboard integration tests that run through a real Gateway instance (uses `forks` pool). These validate fin-\* extension dashboards end-to-end.

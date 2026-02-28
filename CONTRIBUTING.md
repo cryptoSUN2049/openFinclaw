@@ -1,15 +1,18 @@
-# Contributing to OpenClaw
+# Contributing to OpenFinClaw
 
-Welcome to the lobster tank! 🦞
+> **Note:** OpenFinClaw is a specialized financial fork of [OpenClaw](https://github.com/openclaw/openclaw).
+> Financial capabilities are delivered entirely via `extensions/fin-*` plugins with zero core modifications.
+> We gratefully acknowledge the OpenClaw project and its maintainers (listed below) as the upstream foundation.
 
 ## Quick Links
 
-- **GitHub:** https://github.com/openclaw/openclaw
+- **GitHub (this fork):** https://github.com/cryptoSUN2049/openFinclaw
+- **Upstream:** https://github.com/openclaw/openclaw
 - **Vision:** [`VISION.md`](VISION.md)
 - **Discord:** https://discord.gg/qkhbAGHRBT
 - **X/Twitter:** [@steipete](https://x.com/steipete) / [@openclaw](https://x.com/openclaw)
 
-## Maintainers
+## Upstream Maintainers
 
 - **Peter Steinberger** - Benevolent Dictator
   - GitHub: [@steipete](https://github.com/steipete) · X: [@steipete](https://x.com/steipete)

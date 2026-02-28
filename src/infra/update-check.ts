@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { FORK_NPM_REGISTRY_BASE } from "../config/fork-identity.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import { fetchWithTimeout } from "../utils/fetch-timeout.js";
 import { detectPackageManager as detectPackageManagerImpl } from "./detect-package-manager.js";
@@ -301,7 +302,7 @@ export async function fetchNpmTagVersion(params: {
   const tag = params.tag;
   try {
     const res = await fetchWithTimeout(
-      `https://registry.npmjs.org/openclaw/${encodeURIComponent(tag)}`,
+      `${FORK_NPM_REGISTRY_BASE}/${encodeURIComponent(tag)}`,
       {},
       Math.max(250, timeoutMs),
     );

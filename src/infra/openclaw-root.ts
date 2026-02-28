@@ -2,8 +2,9 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { FORK_PACKAGE_NAME, LEGACY_PACKAGE_NAMES } from "../config/fork-identity.js";
 
-const CORE_PACKAGE_NAMES = new Set(["openclaw"]);
+const CORE_PACKAGE_NAMES = new Set([FORK_PACKAGE_NAME, ...LEGACY_PACKAGE_NAMES]);
 
 async function readPackageName(dir: string): Promise<string | null> {
   try {

@@ -2,6 +2,12 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import {
+  FORK_ENTRY_BINARY,
+  FORK_PACKAGE_NAME,
+  FORK_REPO_URL,
+  LEGACY_PACKAGE_NAMES,
+} from "../../config/fork-identity.js";
 import { resolveStateDir } from "../../config/paths.js";
 import { resolveOpenClawPackageRoot } from "../../infra/openclaw-root.js";
 import { readPackageName, readPackageVersion } from "../../infra/package-json.js";
@@ -51,11 +57,10 @@ export function parseTimeoutMsOrExit(timeout?: string): number | undefined | nul
   return timeoutMs;
 }
 
-const OPENCLAW_REPO_URL = "https://github.com/openclaw/openclaw.git";
 const MAX_LOG_CHARS = 8000;
 
-export const DEFAULT_PACKAGE_NAME = "openclaw";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME]);
+export const DEFAULT_PACKAGE_NAME = FORK_PACKAGE_NAME;
+const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, ...LEGACY_PACKAGE_NAMES]);
 
 export function normalizeTag(value?: string | null): string | null {
   if (!value) {
@@ -65,11 +70,15 @@ export function normalizeTag(value?: string | null): string | null {
   if (!trimmed) {
     return null;
   }
-  if (trimmed.startsWith("openclaw@")) {
-    return trimmed.slice("openclaw@".length);
+  // Check fork package name
+  if (trimmed.startsWith(`${FORK_PACKAGE_NAME}@`)) {
+    return trimmed.slice(`${FORK_PACKAGE_NAME}@`.length);
   }
-  if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
-    return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
+  // Check legacy package names
+  for (const legacy of LEGACY_PACKAGE_NAMES) {
+    if (trimmed.startsWith(`${legacy}@`)) {
+      return trimmed.slice(`${legacy}@`.length);
+    }
   }
   return trimmed;
 }
@@ -203,7 +212,7 @@ export async function ensureGitCheckout(params: {
   if (!dirExists) {
     return await runUpdateStep({
       name: "git clone",
-      argv: ["git", "clone", OPENCLAW_REPO_URL, params.dir],
+      argv: ["git", "clone", FORK_REPO_URL, params.dir],
       timeoutMs: params.timeoutMs,
       progress: params.progress,
     });
@@ -219,7 +228,7 @@ export async function ensureGitCheckout(params: {
 
     return await runUpdateStep({
       name: "git clone",
-      argv: ["git", "clone", OPENCLAW_REPO_URL, params.dir],
+      argv: ["git", "clone", FORK_REPO_URL, params.dir],
       cwd: params.dir,
       timeoutMs: params.timeoutMs,
       progress: params.progress,
@@ -256,7 +265,7 @@ export async function resolveGlobalManager(params: {
 }
 
 export async function tryWriteCompletionCache(root: string, jsonMode: boolean): Promise<void> {
-  const binPath = path.join(root, "openclaw.mjs");
+  const binPath = path.join(root, FORK_ENTRY_BINARY);
   if (!(await pathExists(binPath))) {
     return;
   }
