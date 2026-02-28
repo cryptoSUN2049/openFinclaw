@@ -1,14 +1,16 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 /**
  * E2E test for the FinClaw Fund Dashboard + REST API.
  *
  * Spins up a lightweight HTTP server serving the dashboard HTML
- * and REST API endpoints, then uses Playwright (via Edge) to verify rendering.
+ * and REST API endpoints, then uses Playwright to verify rendering.
+ * Auto-detects Playwright bundled Chromium or system browsers.
  *
  * Run: pnpm test:e2e (or directly with vitest --config vitest.e2e.config.ts)
  */
 import http from "node:http";
 import net from "node:net";
+import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -22,14 +24,88 @@ try {
   // Playwright not available — browser tests will be skipped
 }
 
+/**
+ * Detect a usable Chromium-family browser for Playwright.
+ * Vitest may override HOME to a temp dir, so we use the real homedir() and
+ * check known Playwright cache + system browser locations.
+ */
+function findBrowserPath(): string | undefined {
+  const home = homedir();
+
+  // 1. Playwright bundled Chromium (macOS cache location)
+  const pwCache = join(home, "Library/Caches/ms-playwright");
+  if (existsSync(pwCache)) {
+    try {
+      const dirs = readdirSync(pwCache)
+        .filter((d) => d.startsWith("chromium-"))
+        .toSorted()
+        .toReversed();
+      for (const dir of dirs) {
+        const candidates = [
+          join(
+            pwCache,
+            dir,
+            "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+          ),
+          join(
+            pwCache,
+            dir,
+            "chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+          ),
+          join(pwCache, dir, "chrome-linux/chrome"),
+        ];
+        for (const c of candidates) {
+          if (existsSync(c)) {
+            return c;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Playwright bundled Chromium (Linux/XDG cache location)
+  const xdgCache = join(home, ".cache/ms-playwright");
+  if (existsSync(xdgCache)) {
+    try {
+      const dirs = readdirSync(xdgCache)
+        .filter((d) => d.startsWith("chromium-"))
+        .toSorted()
+        .toReversed();
+      for (const dir of dirs) {
+        const c = join(xdgCache, dir, "chrome-linux/chrome");
+        if (existsSync(c)) {
+          return c;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 3. System browsers (macOS)
+  const systemBrowsers = [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  ];
+  for (const b of systemBrowsers) {
+    if (existsSync(b)) {
+      return b;
+    }
+  }
+
+  return undefined;
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DASHBOARD_DIR = join(__dirname, "../extensions/fin-fund-manager/dashboard");
 const CSS_PATH = join(DASHBOARD_DIR, "fund-dashboard.css");
 const HTML_PATH = join(DASHBOARD_DIR, "fund-dashboard.html");
 
-// Edge path on macOS
-const EDGE_PATH = "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge";
-const hasBrowser = existsSync(EDGE_PATH) && chromium !== undefined;
+const browserPath = findBrowserPath();
+const hasBrowser = chromium !== undefined && browserPath !== undefined;
 
 // ── Mock data (simulates a running fund) ──
 
@@ -315,7 +391,7 @@ describe("fin-fund E2E", () => {
         return;
       }
       browser = await chromium.launch({
-        executablePath: EDGE_PATH,
+        executablePath: browserPath,
         headless: true,
       });
     }, E2E_TIMEOUT);
@@ -611,7 +687,7 @@ describe.skipIf(!hasBrowser)("Dashboard edge cases (Playwright)", () => {
     if (!chromium) {
       return;
     }
-    browser = await chromium.launch({ executablePath: EDGE_PATH, headless: true });
+    browser = await chromium.launch({ executablePath: browserPath, headless: true });
   }, E2E_TIMEOUT);
 
   afterAll(async () => {

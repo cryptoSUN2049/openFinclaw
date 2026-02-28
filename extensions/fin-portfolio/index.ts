@@ -149,6 +149,9 @@ const finPortfolioPlugin = {
                 });
                 grandTotal += exchangeTotal;
               } catch (err) {
+                api.logger.warn(
+                  `fin-portfolio: failed to fetch balance from ${exchangeId}: ${err instanceof Error ? err.message : String(err)}`,
+                );
                 exchangeBalances.push({
                   exchangeId,
                   exchangeType,
@@ -218,8 +221,10 @@ const finPortfolioPlugin = {
                     }
                   }
                 }
-              } catch {
-                // Skip exchanges that fail
+              } catch (err) {
+                api.logger.warn(
+                  `fin-portfolio: failed to fetch balance for history from exchange: ${err instanceof Error ? err.message : String(err)}`,
+                );
               }
             }
 
@@ -370,8 +375,10 @@ const finPortfolioPlugin = {
                     percentage: Number(p.percentage ?? 0),
                   });
                 }
-              } catch {
-                // Skip exchanges that don't support positions
+              } catch (err) {
+                api.logger.warn(
+                  `fin-portfolio: failed to fetch positions from ${exchangeId}: ${err instanceof Error ? err.message : String(err)}`,
+                );
               }
             }
 
@@ -467,8 +474,10 @@ const finPortfolioPlugin = {
                     timestamp: (o.datetime as string) ?? new Date().toISOString(),
                   });
                 }
-              } catch {
-                // Skip exchanges that fail
+              } catch (err) {
+                api.logger.warn(
+                  `fin-portfolio: failed to fetch orders from ${exchangeId}: ${err instanceof Error ? err.message : String(err)}`,
+                );
               }
             }
 

@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { AlertEngine } from "./src/alert-engine.js";
 import type { AlertCondition } from "./src/alert-engine.js";
+import { AlertStore } from "./src/alert-store.js";
 
 type MarketDataTicker = {
   last?: number;
@@ -37,6 +38,15 @@ function parseBool(value: string | undefined, defaultValue: boolean): boolean {
   if (["1", "true", "yes", "on"].includes(normalized)) return true;
   if (["0", "false", "no", "off"].includes(normalized)) return false;
   return defaultValue;
+}
+
+/** Infer market type from symbol format. Crypto pairs contain '/', equities are bare tickers. */
+function inferMarket(symbol: string): "crypto" | "equity" | "commodity" {
+  if (symbol.includes("/")) return "crypto";
+  // Common commodity symbols
+  const commodities = ["XAUUSD", "XAGUSD", "WTIUSD", "BRENTUSD"];
+  if (commodities.includes(symbol.toUpperCase())) return "commodity";
+  return "equity";
 }
 
 function resolveMonitoringConfig(api: OpenClawPluginApi): MonitoringConfig {
@@ -79,7 +89,9 @@ const finMonitoringPlugin = {
   kind: "financial" as const,
 
   register(api: OpenClawPluginApi) {
-    const alertEngine = new AlertEngine();
+    const storePath = api.resolvePath("state/fin-alerts.sqlite");
+    const alertStore = new AlertStore(storePath);
+    const alertEngine = new AlertEngine(alertStore);
     const config = resolveMonitoringConfig(api);
     const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
     let checking = false;
@@ -112,7 +124,8 @@ const finMonitoringPlugin = {
       const symbols = [...new Set(active.map((a) => a.condition.symbol))];
       const triggered = [];
       for (const symbol of symbols) {
-        const ticker = await provider.getTicker(symbol, "crypto");
+        const market = inferMarket(symbol);
+        const ticker = await provider.getTicker(symbol, market);
         const price = extractTickerPrice(ticker);
         if (price == null) {
           continue;
@@ -168,11 +181,11 @@ const finMonitoringPlugin = {
         }, config.pollIntervalMs);
       },
       stop: () => {
-        if (!timer) {
-          return;
+        if (timer) {
+          clearInterval(timer);
+          timer = undefined;
         }
-        clearInterval(timer);
-        timer = undefined;
+        alertStore.close();
       },
       instance: {
         triggerNow: runScheduledEvaluation,

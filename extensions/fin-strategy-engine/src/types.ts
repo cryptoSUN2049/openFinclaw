@@ -1,6 +1,7 @@
 import type { OHLCV, MarketRegime, MarketType } from "../../fin-data-bus/src/types.js";
 
 export type StrategyLevel = "L0_INCUBATE" | "L1_BACKTEST" | "L2_PAPER" | "L3_LIVE" | "KILLED";
+export type StrategyStatus = "running" | "paused" | "stopped";
 
 export interface Signal {
   action: "buy" | "sell" | "close";
@@ -125,6 +126,7 @@ export interface StrategyRecord {
   name: string;
   version: string;
   level: StrategyLevel;
+  status?: StrategyStatus;
   definition: StrategyDefinition;
   createdAt: number;
   updatedAt: number;

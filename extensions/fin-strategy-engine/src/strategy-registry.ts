@@ -5,6 +5,7 @@ import type {
   StrategyDefinition,
   StrategyLevel,
   StrategyRecord,
+  StrategyStatus,
   WalkForwardResult,
 } from "./types.js";
 
@@ -73,6 +74,15 @@ export class StrategyRegistry {
     const record = this.records.get(id);
     if (!record) throw new Error(`Strategy ${id} not found`);
     record.lastWalkForward = result;
+    record.updatedAt = Date.now();
+    this.save();
+  }
+
+  /** Update the running status of a strategy. */
+  updateStatus(id: string, status: StrategyStatus): void {
+    const record = this.records.get(id);
+    if (!record) throw new Error(`Strategy ${id} not found`);
+    record.status = status;
     record.updatedAt = Date.now();
     this.save();
   }

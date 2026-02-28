@@ -69,7 +69,8 @@ function createFakeApi(options?: {
     registerCli() {},
     registerProvider() {},
     registerCommand() {},
-    resolvePath: (p: string) => p,
+    resolvePath: (p: string) =>
+      `/tmp/fin-monitoring-test-${Date.now()}-${Math.random().toString(36).slice(2)}/${p}`,
     on() {},
   } as unknown as OpenClawPluginApi;
 
