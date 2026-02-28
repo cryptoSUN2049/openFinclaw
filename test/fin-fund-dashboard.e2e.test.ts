@@ -1,111 +1,34 @@
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 /**
- * E2E test for the FinClaw Fund Dashboard + REST API.
+ * E2E test for the FinClaw Fund Dashboard + REST API — **rendering layer** (mock server).
  *
  * Spins up a lightweight HTTP server serving the dashboard HTML
  * and REST API endpoints, then uses Playwright to verify rendering.
  * Auto-detects Playwright bundled Chromium or system browsers.
  *
+ * This file validates the HTML/JS rendering behaviour in isolation.
+ * For integration tests that exercise the full Gateway → Plugin → Route pipeline,
+ * see: test/fin-dashboard-integration.e2e.test.ts
+ *
  * Run: pnpm test:e2e (or directly with vitest --config vitest.e2e.config.ts)
  */
 import http from "node:http";
-import net from "node:net";
-import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
-// Dynamically import playwright-core (may not be available in all environments)
-let chromium: typeof import("playwright-core").chromium | undefined;
-try {
-  const pw = await import("playwright-core");
-  chromium = pw.chromium;
-} catch {
-  // Playwright not available — browser tests will be skipped
-}
-
-/**
- * Detect a usable Chromium-family browser for Playwright.
- * Vitest may override HOME to a temp dir, so we use the real homedir() and
- * check known Playwright cache + system browser locations.
- */
-function findBrowserPath(): string | undefined {
-  const home = homedir();
-
-  // 1. Playwright bundled Chromium (macOS cache location)
-  const pwCache = join(home, "Library/Caches/ms-playwright");
-  if (existsSync(pwCache)) {
-    try {
-      const dirs = readdirSync(pwCache)
-        .filter((d) => d.startsWith("chromium-"))
-        .toSorted()
-        .toReversed();
-      for (const dir of dirs) {
-        const candidates = [
-          join(
-            pwCache,
-            dir,
-            "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
-          ),
-          join(
-            pwCache,
-            dir,
-            "chrome-mac/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
-          ),
-          join(pwCache, dir, "chrome-linux/chrome"),
-        ];
-        for (const c of candidates) {
-          if (existsSync(c)) {
-            return c;
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  // 2. Playwright bundled Chromium (Linux/XDG cache location)
-  const xdgCache = join(home, ".cache/ms-playwright");
-  if (existsSync(xdgCache)) {
-    try {
-      const dirs = readdirSync(xdgCache)
-        .filter((d) => d.startsWith("chromium-"))
-        .toSorted()
-        .toReversed();
-      for (const dir of dirs) {
-        const c = join(xdgCache, dir, "chrome-linux/chrome");
-        if (existsSync(c)) {
-          return c;
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  // 3. System browsers (macOS)
-  const systemBrowsers = [
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-    "/Applications/Chromium.app/Contents/MacOS/Chromium",
-  ];
-  for (const b of systemBrowsers) {
-    if (existsSync(b)) {
-      return b;
-    }
-  }
-
-  return undefined;
-}
+import {
+  chromium,
+  browserPath,
+  hasBrowser,
+  getFreePort,
+  fetchJson,
+  stripChartJsCdn,
+} from "./helpers/e2e-browser.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DASHBOARD_DIR = join(__dirname, "../extensions/fin-fund-manager/dashboard");
 const CSS_PATH = join(DASHBOARD_DIR, "fund-dashboard.css");
 const HTML_PATH = join(DASHBOARD_DIR, "fund-dashboard.html");
-
-const browserPath = findBrowserPath();
-const hasBrowser = chromium !== undefined && browserPath !== undefined;
 
 // ── Mock data (simulates a running fund) ──
 
@@ -180,56 +103,7 @@ const MOCK_FUND_DATA = {
   },
 };
 
-// ── Helpers ──
-
-async function getFreePort(): Promise<number> {
-  const srv = net.createServer();
-  await new Promise<void>((resolve) => srv.listen(0, "127.0.0.1", resolve));
-  const addr = srv.address();
-  if (!addr || typeof addr === "string") {
-    throw new Error("failed to bind port");
-  }
-  const port = addr.port;
-  await new Promise<void>((resolve) => srv.close(() => resolve()));
-  return port;
-}
-
-function fetchJson(url: string): Promise<{ status: number; body: unknown }> {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    const req = http.request(
-      {
-        hostname: parsed.hostname,
-        port: Number(parsed.port),
-        path: parsed.pathname,
-        method: "GET",
-      },
-      (res) => {
-        let data = "";
-        res.setEncoding("utf8");
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          let body: unknown = data;
-          try {
-            body = JSON.parse(data);
-          } catch {
-            /* raw text */
-          }
-          resolve({ status: res.statusCode ?? 0, body });
-        });
-      },
-    );
-    req.on("error", reject);
-    req.end();
-  });
-}
-
 // ── Test Server ──
-
-// Strip the synchronous Chart.js CDN script from head to prevent page blocking in tests
-function stripChartJsCdn(html: string): string {
-  return html.replace(/<script src="[^"]*chart\.js[^"]*"><\/script>/i, "");
-}
 
 function createTestServer(): http.Server {
   const template = stripChartJsCdn(readFileSync(HTML_PATH, "utf-8"));
@@ -995,4 +869,435 @@ describe.skipIf(!hasBrowser)("Dashboard edge cases (Playwright)", () => {
       );
     },
   );
+});
+
+// ═══════════════════════════════════════════
+// Fund Dashboard Settings Slide-over (config refactor verification)
+// ═══════════════════════════════════════════
+
+describe("fin-fund Settings Slide-over", () => {
+  let server: http.Server;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    const template = stripChartJsCdn(readFileSync(HTML_PATH, "utf-8"));
+    const css = readFileSync(CSS_PATH, "utf-8");
+    const port = await getFreePort();
+
+    server = http.createServer((req, res) => {
+      const path = req.url ?? "/";
+      if (path === "/api/v1/fund/status") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(MOCK_FUND_DATA.status));
+        return;
+      }
+      if (path === "/api/v1/fund/leaderboard") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ leaderboard: MOCK_FUND_DATA.leaderboard, total: 2 }));
+        return;
+      }
+      if (path === "/api/v1/fund/risk") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(MOCK_FUND_DATA.risk));
+        return;
+      }
+      if (path === "/api/v1/fund/allocations") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(MOCK_FUND_DATA.allocations));
+        return;
+      }
+      if (path === "/dashboard/fund") {
+        const safeJson = JSON.stringify(MOCK_FUND_DATA).replace(/<\//g, "<\\/");
+        const html = template
+          .replace("/*__FUND_CSS__*/", css)
+          .replace("/*__FUND_DATA__*/ {}", safeJson);
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(html);
+        return;
+      }
+      res.writeHead(404);
+      res.end("Not Found");
+    });
+
+    await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
+    baseUrl = `http://127.0.0.1:${port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+  });
+
+  // ── HTML structure tests (no browser needed) ──
+
+  it("HTML contains settings gear button in header", async () => {
+    const { body } = await fetchJson(`${baseUrl}/dashboard/fund`);
+    const html = body as string;
+    expect(html).toContain("settings-btn");
+    expect(html).toContain("FundUI.openSettings()");
+  });
+
+  it("HTML contains slide-over with Fund Settings title", async () => {
+    const rawHtml = readFileSync(HTML_PATH, "utf-8");
+    expect(rawHtml).toContain("Fund Settings");
+    expect(rawHtml).toContain("slideover-backdrop");
+    expect(rawHtml).toContain("fundSettingsForm");
+  });
+
+  it("HTML contains SettingsBridge and FundUI scripts", async () => {
+    const { body } = await fetchJson(`${baseUrl}/dashboard/fund`);
+    const html = body as string;
+    expect(html).toContain("SettingsBridge");
+    expect(html).toContain("FundUI");
+    expect(html).toContain("fin-config-get");
+    expect(html).toContain("fin-config-patch");
+  });
+
+  it("HTML contains all fund settings form field IDs", async () => {
+    const rawHtml = readFileSync(HTML_PATH, "utf-8");
+    // Capital Allocation
+    expect(rawHtml).toContain('id="fs_totalCapital"');
+    expect(rawHtml).toContain('id="fs_cashReservePct"');
+    expect(rawHtml).toContain('id="fs_maxSingleStrategyPct"');
+    expect(rawHtml).toContain('id="fs_maxExposurePct"');
+    expect(rawHtml).toContain('id="fs_rebalanceFrequency"');
+    // Backtest Engine
+    expect(rawHtml).toContain('id="fs_commissionRate"');
+    expect(rawHtml).toContain('id="fs_slippageRate"');
+    expect(rawHtml).toContain('id="fs_wfWindows"');
+    expect(rawHtml).toContain('id="fs_wfSampleRatio"');
+    // Strategy Evolution
+    expect(rawHtml).toContain('id="fs_evaluationInterval"');
+    expect(rawHtml).toContain('id="fs_cullRatio"');
+    expect(rawHtml).toContain('id="fs_mutationProbability"');
+    expect(rawHtml).toContain('id="fs_minStrategies"');
+  });
+
+  // ── Playwright browser interaction tests ──
+
+  describe.skipIf(!hasBrowser)("Browser interaction (Playwright)", () => {
+    let browser: Awaited<ReturnType<NonNullable<typeof chromium>["launch"]>> | null = null;
+
+    beforeAll(async () => {
+      if (!chromium) {
+        return;
+      }
+      browser = await chromium.launch({ executablePath: browserPath, headless: true });
+    }, E2E_TIMEOUT);
+
+    afterAll(async () => {
+      await browser?.close();
+    });
+
+    async function openDashboard() {
+      const page = await browser!.newPage();
+      await page.goto(`${baseUrl}/dashboard/fund`, { waitUntil: "load", timeout: 30000 });
+      await page.waitForFunction(
+        () => document.getElementById("hero-equity")?.textContent !== "$0",
+        { timeout: 15000 },
+      );
+      return page;
+    }
+
+    /** Inject a mock postMessage responder for SettingsBridge */
+    async function injectMockBridge(
+      page: Awaited<ReturnType<NonNullable<typeof chromium>["newPage"]>>,
+      mockConfig: Record<string, Record<string, unknown>> = {},
+    ) {
+      await page.evaluate((cfg) => {
+        const w = window as unknown as {
+          __mockBridgePatches: Array<{ section: string; values: Record<string, unknown> }>;
+        };
+        w.__mockBridgePatches = [];
+        window.addEventListener("message", (ev) => {
+          const d = ev.data;
+          if (!d || typeof d !== "object") {
+            return;
+          }
+          if (d.type === "fin-config-get") {
+            window.postMessage(
+              {
+                type: "fin-config-get-result",
+                _reqId: d._reqId,
+                ok: true,
+                values: (cfg as Record<string, Record<string, unknown>>)[d.section] ?? {},
+              },
+              "*",
+            );
+          } else if (d.type === "fin-config-patch") {
+            w.__mockBridgePatches.push({ section: d.section, values: d.values });
+            window.postMessage(
+              { type: "fin-config-patch-result", _reqId: d._reqId, ok: true },
+              "*",
+            );
+          }
+        });
+      }, mockConfig);
+    }
+
+    it(
+      "gear button opens slide-over with 'Fund Settings' title",
+      { timeout: E2E_TIMEOUT },
+      async () => {
+        if (!browser) {
+          return;
+        }
+        const page = await openDashboard();
+        await injectMockBridge(page);
+
+        await page.click(".settings-btn");
+        await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+        const title = await page.locator(".slideover__title").textContent();
+        expect(title).toBe("Fund Settings");
+
+        await page.close();
+      },
+    );
+
+    it("settings form renders capital allocation fields", { timeout: E2E_TIMEOUT }, async () => {
+      if (!browser) {
+        return;
+      }
+      const page = await openDashboard();
+      await injectMockBridge(page);
+      await page.click(".settings-btn");
+      await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+      // Capital Allocation section fields
+      expect(await page.locator("#fs_totalCapital").count()).toBe(1);
+      expect(await page.locator("#fs_cashReservePct").count()).toBe(1);
+      expect(await page.locator("#fs_maxSingleStrategyPct").count()).toBe(1);
+      expect(await page.locator("#fs_maxExposurePct").count()).toBe(1);
+      expect(await page.locator("#fs_rebalanceFrequency").count()).toBe(1);
+
+      // Save button
+      const saveText = await page.locator('#fundSettingsForm button[type="submit"]').textContent();
+      expect(saveText).toContain("Save");
+
+      await page.close();
+    });
+
+    it(
+      "Backtest and Evolution sections are collapsible <details>",
+      { timeout: E2E_TIMEOUT },
+      async () => {
+        if (!browser) {
+          return;
+        }
+        const page = await openDashboard();
+        await injectMockBridge(page);
+        await page.click(".settings-btn");
+        await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+        const detailsCount = await page
+          .locator("#fundSettingsForm details.settings-details")
+          .count();
+        expect(detailsCount).toBe(2);
+
+        // Backtest section initially closed
+        const btOpen = await page
+          .locator("#fundSettingsForm details.settings-details")
+          .first()
+          .evaluate((el) => (el as HTMLDetailsElement).open);
+        expect(btOpen).toBe(false);
+
+        // Expand Backtest
+        await page.locator("#fundSettingsForm details.settings-details summary").first().click();
+        const btOpenAfter = await page
+          .locator("#fundSettingsForm details.settings-details")
+          .first()
+          .evaluate((el) => (el as HTMLDetailsElement).open);
+        expect(btOpenAfter).toBe(true);
+
+        // Backtest fields should be visible
+        expect(await page.locator("#fs_commissionRate").isVisible()).toBe(true);
+
+        await page.close();
+      },
+    );
+
+    it(
+      "loadSettings() populates form from postMessage bridge",
+      { timeout: E2E_TIMEOUT },
+      async () => {
+        if (!browser) {
+          return;
+        }
+        const page = await openDashboard();
+
+        await injectMockBridge(page, {
+          fund: {
+            totalCapital: 500000,
+            cashReservePct: 30,
+            maxSingleStrategyPct: 25,
+            maxExposurePct: 70,
+            rebalanceFrequency: "weekly",
+          },
+          backtest: {
+            commissionRate: 0.001,
+            slippageRate: 0.0005,
+            wfWindows: 5,
+            wfSampleRatio: 0.7,
+          },
+          evolution: {
+            evaluationInterval: "monthly",
+            cullRatio: 20,
+            mutationProbability: 0.3,
+            minStrategies: 3,
+          },
+        });
+
+        await page.click(".settings-btn");
+        await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+        // Wait for bridge response to populate
+        await page.waitForFunction(
+          () => {
+            const el = document.getElementById("fs_totalCapital") as HTMLInputElement | null;
+            return el && el.value !== "";
+          },
+          { timeout: 10000 },
+        );
+
+        const totalCap = await page.locator("#fs_totalCapital").inputValue();
+        expect(totalCap).toBe("500000");
+
+        const cashRes = await page.locator("#fs_cashReservePct").inputValue();
+        expect(cashRes).toBe("30");
+
+        const maxSingle = await page.locator("#fs_maxSingleStrategyPct").inputValue();
+        expect(maxSingle).toBe("25");
+
+        const rebalance = await page.locator("#fs_rebalanceFrequency").inputValue();
+        expect(rebalance).toBe("weekly");
+
+        await page.close();
+      },
+    );
+
+    it(
+      "saveSettings() sends fin-config-patch for fund/backtest/evolution",
+      { timeout: E2E_TIMEOUT },
+      async () => {
+        if (!browser) {
+          return;
+        }
+        const page = await openDashboard();
+        await injectMockBridge(page, {
+          fund: { totalCapital: 100000 },
+          backtest: {},
+          evolution: {},
+        });
+
+        await page.click(".settings-btn");
+        await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+        // Wait for form population
+        await page.waitForFunction(
+          () => {
+            const el = document.getElementById("fs_totalCapital") as HTMLInputElement | null;
+            return el && el.value !== "";
+          },
+          { timeout: 10000 },
+        );
+
+        // Modify capital
+        await page.fill("#fs_totalCapital", "750000");
+        await page.fill("#fs_cashReservePct", "40");
+
+        // Submit
+        await page.click('#fundSettingsForm button[type="submit"]');
+
+        // Wait for 3 patches (fund + backtest + evolution)
+        await page.waitForFunction(
+          () =>
+            ((window as unknown as { __mockBridgePatches: unknown[] }).__mockBridgePatches || [])
+              .length >= 3,
+          { timeout: 10000 },
+        );
+
+        const patches = await page.evaluate(
+          () =>
+            (
+              window as unknown as {
+                __mockBridgePatches: Array<{ section: string; values: Record<string, unknown> }>;
+              }
+            ).__mockBridgePatches,
+        );
+
+        const fundPatch = patches.find((p) => p.section === "fund");
+        expect(fundPatch).toBeDefined();
+        expect(fundPatch!.values.totalCapital).toBe(750000);
+        expect(fundPatch!.values.cashReservePct).toBe(40);
+
+        const btPatch = patches.find((p) => p.section === "backtest");
+        expect(btPatch).toBeDefined();
+
+        const evoPatch = patches.find((p) => p.section === "evolution");
+        expect(evoPatch).toBeDefined();
+
+        await page.close();
+      },
+    );
+
+    it("slide-over closes and toast appears after save", { timeout: E2E_TIMEOUT }, async () => {
+      if (!browser) {
+        return;
+      }
+      const page = await openDashboard();
+      await injectMockBridge(page, { fund: {}, backtest: {}, evolution: {} });
+
+      await page.click(".settings-btn");
+      await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+      await page.click('#fundSettingsForm button[type="submit"]');
+
+      // Toast should appear
+      await page.waitForSelector(".toast.show", { timeout: 10000 });
+      const toastText = await page.locator(".toast").first().textContent();
+      expect(toastText).toContain("Settings saved");
+
+      // Slide-over should be closed
+      const isOpen = await page
+        .locator("#slideBackdrop")
+        .evaluate((el) => el.classList.contains("open"));
+      expect(isOpen).toBe(false);
+
+      await page.close();
+    });
+
+    it(
+      "close button (×) dismisses slide-over without saving",
+      { timeout: E2E_TIMEOUT },
+      async () => {
+        if (!browser) {
+          return;
+        }
+        const page = await openDashboard();
+        await injectMockBridge(page);
+
+        await page.click(".settings-btn");
+        await page.waitForSelector(".slideover-backdrop.open", { timeout: 5000 });
+
+        // Click close button
+        await page.click(".slideover__close");
+
+        // Slide-over should close
+        await page.waitForFunction(
+          () => !document.getElementById("slideBackdrop")?.classList.contains("open"),
+          { timeout: 5000 },
+        );
+
+        // No patches should have been sent
+        const patches = await page.evaluate(
+          () => (window as unknown as { __mockBridgePatches: unknown[] }).__mockBridgePatches || [],
+        );
+        expect(patches).toHaveLength(0);
+
+        await page.close();
+      },
+    );
+  });
 });
