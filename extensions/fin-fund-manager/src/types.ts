@@ -1,9 +1,9 @@
-import type { DecayState } from "../../fin-paper-trading/src/types.js";
 import type {
+  DecayState,
   StrategyLevel,
   BacktestResult,
   WalkForwardResult,
-} from "../../fin-strategy-engine/src/types.js";
+} from "../../fin-shared-types/src/types.js";
 
 /** Allocation entry: how much capital is assigned to a strategy. */
 export interface Allocation {

@@ -1,4 +1,4 @@
-import type { OHLCV } from "../../../fin-data-bus/src/types.js";
+import type { OHLCV } from "../../../fin-shared-types/src/types.js";
 import type { Signal, StrategyContext, StrategyDefinition } from "../types.js";
 
 /**

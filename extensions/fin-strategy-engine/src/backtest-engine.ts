@@ -1,5 +1,5 @@
-import type { OHLCV } from "../../fin-data-bus/src/types.js";
-import { applyConstantSlippage } from "../../fin-paper-trading/src/fill-simulation/constant-slippage.js";
+import { applyConstantSlippage } from "../../fin-shared-types/src/fill-simulation.js";
+import type { OHLCV } from "../../fin-shared-types/src/types.js";
 import { sma, ema, rsi, macd, bollingerBands, atr } from "./indicators.js";
 import {
   sharpeRatio,

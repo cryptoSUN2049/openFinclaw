@@ -1,0 +1,11 @@
+{
+  "id": "fin-shared-types",
+  "name": "Shared Types",
+  "description": "Shared types and pure functions for fin-* extension interop — not a runtime plugin",
+  "kind": "financial",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

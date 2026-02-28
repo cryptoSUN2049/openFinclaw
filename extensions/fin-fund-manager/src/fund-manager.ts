@@ -1,9 +1,12 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { DecayState } from "../../fin-paper-trading/src/types.js";
-import type { FitnessInput } from "../../fin-strategy-engine/src/fitness.js";
+import type {
+  DecayState,
+  FitnessInput,
+  StrategyRecord,
+  StrategyLevel,
+} from "../../fin-shared-types/src/types.js";
 import { calculateFitness } from "../../fin-strategy-engine/src/fitness.js";
-import type { StrategyRecord, StrategyLevel } from "../../fin-strategy-engine/src/types.js";
 import { CapitalAllocator } from "./capital-allocator.js";
 import { CorrelationMonitor, pearsonCorrelation } from "./correlation-monitor.js";
 import { FundRiskManager } from "./fund-risk-manager.js";

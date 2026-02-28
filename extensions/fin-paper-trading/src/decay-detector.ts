@@ -1,4 +1,4 @@
-import { sharpeRatio } from "../../fin-strategy-engine/src/stats.js";
+import { sharpeRatio } from "../../fin-shared-types/src/stats.js";
 import type { DecayState, EquitySnapshot } from "./types.js";
 
 const MIN_DAYS = 7;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { OHLCV } from "../../fin-data-bus/src/types.js";
-import { applyConstantSlippage } from "../../fin-paper-trading/src/fill-simulation/constant-slippage.js";
+import { applyConstantSlippage } from "../../fin-shared-types/src/fill-simulation.js";
+import type { OHLCV } from "../../fin-shared-types/src/types.js";
 import { BacktestEngine } from "./backtest-engine.js";
 import { sma } from "./indicators.js";
 import type { BacktestConfig, Signal, StrategyContext, StrategyDefinition } from "./types.js";

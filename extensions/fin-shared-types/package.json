@@ -1,0 +1,13 @@
+{
+  "name": "@openfinclaw/fin-shared-types",
+  "version": "2026.2.23",
+  "private": true,
+  "description": "Shared types, interfaces, and pure functions used across fin-* extensions",
+  "type": "module",
+  "devDependencies": {
+    "openfinclaw": "workspace:*"
+  },
+  "peerDependencies": {
+    "openfinclaw": ">=2026.2.23"
+  }
+}

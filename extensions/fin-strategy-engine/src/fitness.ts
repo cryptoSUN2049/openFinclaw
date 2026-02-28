@@ -4,13 +4,11 @@
  * with decay, overfit, correlation, and half-life penalties.
  */
 
-export interface FitnessInput {
-  longTerm: { sharpe: number; maxDD: number; trades: number };
-  recent: { sharpe: number; maxDD: number; trades: number };
-  paper?: { sharpe: number; maxDD: number; trades: number };
-  correlationWithPortfolio?: number; // 0-1
-  daysSinceLaunch?: number;
-}
+// Canonical definition lives in @openfinclaw/fin-shared-types.
+// Re-exported here for backward compatibility within fin-strategy-engine.
+export type { FitnessInput } from "../../fin-shared-types/src/types.js";
+
+import type { FitnessInput } from "../../fin-shared-types/src/types.js";
 
 /** Score a single window: sharpe adjusted for drawdown depth. */
 function windowScore(window: { sharpe: number; maxDD: number; trades: number }): number {

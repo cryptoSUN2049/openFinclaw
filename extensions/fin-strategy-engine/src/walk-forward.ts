@@ -1,4 +1,4 @@
-import type { OHLCV } from "../../fin-data-bus/src/types.js";
+import type { OHLCV } from "../../fin-shared-types/src/types.js";
 import type { BacktestEngine } from "./backtest-engine.js";
 import type { BacktestConfig, StrategyDefinition, WalkForwardResult } from "./types.js";
 

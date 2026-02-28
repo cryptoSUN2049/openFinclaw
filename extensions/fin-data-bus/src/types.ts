@@ -1,15 +1,8 @@
-export interface OHLCV {
-  timestamp: number; // Unix ms
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
+// Canonical definitions live in @openfinclaw/fin-shared-types.
+// Re-exported here for backward compatibility within fin-data-bus.
+import type { MarketType } from "../../fin-shared-types/src/types.js";
 
-export type MarketType = "crypto" | "equity" | "commodity";
-
-export type MarketRegime = "bull" | "bear" | "sideways" | "volatile" | "crisis";
+export type { OHLCV, MarketType, MarketRegime } from "../../fin-shared-types/src/types.js";
 
 export interface Ticker {
   symbol: string;

@@ -19,7 +19,7 @@ import { join } from "node:path";
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ExchangeRegistry } from "../../fin-core/src/exchange-registry.js";
-import type { OHLCV } from "../../fin-data-bus/src/types.js";
+import type { OHLCV } from "../../fin-shared-types/src/types.js";
 import { BacktestEngine } from "./backtest-engine.js";
 import { createRsiMeanReversion } from "./builtin-strategies/rsi-mean-reversion.js";
 import { createSmaCrossover } from "./builtin-strategies/sma-crossover.js";

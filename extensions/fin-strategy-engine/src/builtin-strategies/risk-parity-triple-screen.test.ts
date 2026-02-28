@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { OHLCV } from "../../../fin-data-bus/src/types.js";
+import type { OHLCV } from "../../../fin-shared-types/src/types.js";
 import { BacktestEngine } from "../backtest-engine.js";
 import type { BacktestConfig } from "../types.js";
 import { createRiskParityTripleScreen } from "./risk-parity-triple-screen.js";

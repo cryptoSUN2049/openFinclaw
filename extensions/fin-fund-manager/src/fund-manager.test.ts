@@ -2,12 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import type { DecayState } from "../../fin-paper-trading/src/types.js";
 import type {
+  DecayState,
   StrategyRecord,
   BacktestResult,
   WalkForwardResult,
-} from "../../fin-strategy-engine/src/types.js";
+} from "../../fin-shared-types/src/types.js";
 import { FundManager } from "./fund-manager.js";
 import type { FundConfig } from "./types.js";
 

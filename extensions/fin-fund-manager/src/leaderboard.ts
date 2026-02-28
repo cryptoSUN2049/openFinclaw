@@ -1,4 +1,4 @@
-import type { StrategyLevel } from "../../fin-strategy-engine/src/types.js";
+import type { StrategyLevel } from "../../fin-shared-types/src/types.js";
 import type { StrategyProfile, LeaderboardEntry } from "./types.js";
 
 /**

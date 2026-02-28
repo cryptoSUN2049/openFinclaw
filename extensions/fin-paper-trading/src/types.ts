@@ -44,15 +44,9 @@ export interface PaperAccountState {
   updatedAt: number;
 }
 
-export interface DecayState {
-  rollingSharpe7d: number;
-  rollingSharpe30d: number;
-  sharpeMomentum: number;
-  consecutiveLossDays: number;
-  currentDrawdown: number;
-  peakEquity: number;
-  decayLevel: "healthy" | "warning" | "degrading" | "critical";
-}
+// Canonical definition lives in @openfinclaw/fin-shared-types.
+// Re-exported here for backward compatibility within fin-paper-trading.
+export type { DecayState } from "../../fin-shared-types/src/types.js";
 
 export interface PositionLot {
   quantity: number;

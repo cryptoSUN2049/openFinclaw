@@ -25,9 +25,9 @@ import {
   type CcxtExchange,
 } from "../../fin-data-bus/src/adapters/crypto-adapter.js";
 import { OHLCVCache } from "../../fin-data-bus/src/ohlcv-cache.js";
-import type { OHLCV } from "../../fin-data-bus/src/types.js";
 import { PaperEngine } from "../../fin-paper-trading/src/paper-engine.js";
 import { PaperStore } from "../../fin-paper-trading/src/paper-store.js";
+import type { OHLCV } from "../../fin-shared-types/src/types.js";
 import { BacktestEngine } from "./backtest-engine.js";
 import { createMultiTimeframeConfluence } from "./builtin-strategies/multi-timeframe-confluence.js";
 import { createRegimeAdaptive } from "./builtin-strategies/regime-adaptive.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BacktestResult, WalkForwardResult } from "../../fin-strategy-engine/src/types.js";
+import type { BacktestResult, WalkForwardResult } from "../../fin-shared-types/src/types.js";
 import { PromotionPipeline } from "./promotion-pipeline.js";
 import type { StrategyProfile } from "./types.js";
 
