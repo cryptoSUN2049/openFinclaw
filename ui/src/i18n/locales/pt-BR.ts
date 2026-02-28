@@ -31,6 +31,7 @@ export const pt_BR: TranslationMap = {
     sessions: "Sessões",
     usage: "Uso",
     cron: "Tarefas Cron",
+    missionControl: "Controle",
     trading: "Trading",
     financeDashboard: "Painel",
     skills: "Habilidades",
@@ -48,6 +49,8 @@ export const pt_BR: TranslationMap = {
     sessions: "Inspecionar sessões ativas e ajustar padrões por sessão.",
     usage: "Monitorar uso e custos da API.",
     cron: "Agendar despertares e execuções recorrentes de agentes.",
+    missionControl:
+      "Centro de controle unificado com patrimônio, estratégias e atividade de agentes.",
     trading: "Painel de trading em tempo real com dados de mercado e gestão de ordens.",
     financeDashboard: "Visão geral financeira com métricas de portfólio e análises.",
     skills: "Gerenciar disponibilidade de habilidades e injeção de chaves de API.",

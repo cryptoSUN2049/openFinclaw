@@ -153,7 +153,8 @@ export function renderApp(state: AppViewState) {
   const cronNext = state.cronStatus?.nextWakeAtMs ?? null;
   const chatDisabledReason = state.connected ? null : t("chat.disconnected");
   const isChat = state.tab === "chat";
-  const isIframeTab = state.tab === "trading" || state.tab === "financeDashboard";
+  const isIframeTab =
+    state.tab === "missionControl" || state.tab === "trading" || state.tab === "financeDashboard";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
@@ -1137,6 +1138,7 @@ export function renderApp(state: AppViewState) {
             : nothing
         }
 
+        ${state.tab === "missionControl" ? renderIframeDashboard("/dashboard/mission-control", "Mission Control") : nothing}
         ${state.tab === "trading" ? renderIframeDashboard("/dashboard/trading", "Trading Dashboard") : nothing}
         ${state.tab === "financeDashboard" ? renderIframeDashboard("/dashboard/finance", "Finance Dashboard") : nothing}
       </main>
