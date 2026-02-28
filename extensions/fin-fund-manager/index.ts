@@ -440,6 +440,40 @@ const plugin = {
       },
     });
 
+    // ── Helper: gather full fund data for dashboard + SSE ──
+
+    function gatherFullFundData() {
+      const data = gatherFundStatusData();
+      const lb = gatherLeaderboard();
+      const totalCapital = config.totalCapital ?? data.state.totalCapital;
+      const totalAllocated = data.state.allocations.reduce((sum, a) => sum + a.capitalUsd, 0);
+      const scaleFactor = manager.riskManager.getScaleFactor(data.risk.riskLevel);
+
+      return {
+        status: {
+          totalEquity: data.totalEquity,
+          todayPnl: data.todayPnl,
+          todayPnlPct: data.todayPnlPct,
+          riskLevel: data.riskLevel,
+          dailyDrawdown: data.dailyDrawdown,
+          byLevel: data.byLevel,
+          lastRebalanceAt: data.lastRebalanceAt,
+        },
+        leaderboard: lb,
+        allocations: {
+          items: data.state.allocations,
+          totalAllocated,
+          cashReserve: totalCapital - totalAllocated,
+          totalCapital,
+        },
+        risk: {
+          ...data.risk,
+          scaleFactor,
+          maxAllowedDrawdown: data.risk.maxAllowedDrawdown,
+        },
+      };
+    }
+
     // ── HTTP REST Routes ──
 
     api.registerHttpRoute({
@@ -530,6 +564,31 @@ const plugin = {
       },
     });
 
+    // ── SSE Stream ──
+
+    api.registerHttpRoute({
+      path: "/api/v1/fund/stream",
+      handler: async (
+        req: { on: (event: string, cb: () => void) => void },
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          write: (chunk: string) => boolean;
+          end: (body?: string) => void;
+        },
+      ) => {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        });
+        res.write(`data: ${JSON.stringify(gatherFullFundData())}\n\n`);
+        const interval = setInterval(() => {
+          res.write(`data: ${JSON.stringify(gatherFullFundData())}\n\n`);
+        }, 10000);
+        req.on("close", () => clearInterval(interval));
+      },
+    });
+
     // ── CLI Commands ──
 
     api.registerCli(({ program }) => {
@@ -614,35 +673,7 @@ const plugin = {
           end: (b: string) => void;
         },
       ) => {
-        const data = gatherFundStatusData();
-        const lb = gatherLeaderboard();
-        const totalCapital = config.totalCapital ?? data.state.totalCapital;
-        const totalAllocated = data.state.allocations.reduce((sum, a) => sum + a.capitalUsd, 0);
-        const scaleFactor = manager.riskManager.getScaleFactor(data.risk.riskLevel);
-
-        const fundData = {
-          status: {
-            totalEquity: data.totalEquity,
-            todayPnl: data.todayPnl,
-            todayPnlPct: data.todayPnlPct,
-            riskLevel: data.riskLevel,
-            dailyDrawdown: data.dailyDrawdown,
-            byLevel: data.byLevel,
-            lastRebalanceAt: data.lastRebalanceAt,
-          },
-          leaderboard: lb,
-          allocations: {
-            items: data.state.allocations,
-            totalAllocated,
-            cashReserve: totalCapital - totalAllocated,
-            totalCapital,
-          },
-          risk: {
-            ...data.risk,
-            scaleFactor,
-            maxAllowedDrawdown: data.risk.maxAllowedDrawdown,
-          },
-        };
+        const fundData = gatherFullFundData();
 
         let html: string;
         try {

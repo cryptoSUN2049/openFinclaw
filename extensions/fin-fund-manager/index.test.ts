@@ -81,6 +81,45 @@ function createStrategyRecord(id: string) {
   };
 }
 
+/** Create a streaming response recorder (for SSE endpoints). */
+function createStreamRecorder() {
+  let statusCode = 0;
+  let headers: Record<string, string> = {};
+  const chunks: string[] = [];
+  return {
+    res: {
+      writeHead(status: number, nextHeaders: Record<string, string>) {
+        statusCode = status;
+        headers = nextHeaders;
+      },
+      write(chunk: string) {
+        chunks.push(chunk);
+        return true;
+      },
+      end() {},
+    },
+    read() {
+      return { statusCode, headers, chunks };
+    },
+  };
+}
+
+/** Create a mock request with `on("close", cb)` for SSE disconnect simulation. */
+function createMockReq() {
+  const listeners: Record<string, Array<() => void>> = {};
+  return {
+    req: {
+      on(event: string, cb: () => void) {
+        listeners[event] = listeners[event] ?? [];
+        listeners[event].push(cb);
+      },
+    },
+    disconnect() {
+      for (const cb of listeners["close"] ?? []) cb();
+    },
+  };
+}
+
 describe("fin-fund-manager plugin routes", () => {
   let tempDir: string;
 
@@ -212,5 +251,157 @@ describe("fin-fund-manager plugin routes", () => {
       const payload = JSON.parse(output.body) as Record<string, unknown>;
       expect(payload.status).toBeDefined();
     }
+  });
+
+  it("registers SSE endpoint at /api/v1/fund/stream", () => {
+    const routes = new Map<string, RouteHandler>();
+    const api = {
+      id: "fin-fund-manager",
+      name: "Fund Manager",
+      source: "test",
+      config: {},
+      pluginConfig: {},
+      runtime: { version: "test", services: new Map<string, unknown>() },
+      logger: { info() {}, warn() {}, error() {}, debug() {} },
+      registerTool() {},
+      registerHook() {},
+      registerHttpHandler() {},
+      registerHttpRoute(entry: { path: string; handler: RouteHandler }) {
+        routes.set(entry.path, entry.handler);
+      },
+      registerChannel() {},
+      registerGatewayMethod() {},
+      registerCli() {},
+      registerService() {},
+      registerProvider() {},
+      registerCommand() {},
+      resolvePath: (input: string) => join(tempDir, input),
+      on() {},
+    } as unknown as OpenClawPluginApi;
+
+    plugin.register(api);
+    expect(routes.has("/api/v1/fund/stream")).toBe(true);
+  });
+});
+
+describe("fin-fund-manager SSE", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "fin-fund-sse-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  function createApi() {
+    const routes = new Map<
+      string,
+      // biome-ignore lint: SSE handlers need broader typing
+      RouteHandler | ((...args: any[]) => any)
+    >();
+    const services = new Map<string, unknown>();
+    const strategies = [createStrategyRecord("s1"), createStrategyRecord("s2")];
+
+    const api = {
+      id: "fin-fund-manager",
+      name: "Fund Manager",
+      source: "test",
+      config: {
+        financial: {
+          fund: { totalCapital: 120000 },
+        },
+      },
+      pluginConfig: {},
+      runtime: {
+        version: "test",
+        services: new Map<string, unknown>([
+          [
+            "fin-strategy-registry",
+            {
+              list: vi.fn(() => strategies),
+              get: vi.fn((id: string) => strategies.find((entry) => entry.id === id)),
+              updateLevel: vi.fn(),
+            },
+          ],
+        ]),
+      },
+      logger: { info() {}, warn() {}, error() {}, debug() {} },
+      registerTool() {},
+      registerHook() {},
+      registerHttpHandler() {},
+      // biome-ignore lint: SSE handlers need broader typing
+      registerHttpRoute(entry: { path: string; handler: (...args: any[]) => any }) {
+        routes.set(entry.path, entry.handler);
+      },
+      registerChannel() {},
+      registerGatewayMethod() {},
+      registerCli() {},
+      registerService(svc: { id: string; instance: unknown }) {
+        services.set(svc.id, svc.instance);
+      },
+      registerProvider() {},
+      registerCommand() {},
+      resolvePath: (input: string) => join(tempDir, input),
+      on() {},
+    } as unknown as OpenClawPluginApi;
+
+    plugin.register(api);
+    return { api, routes, services };
+  }
+
+  it("SSE sets correct headers", async () => {
+    const { routes } = createApi();
+    const stream = createStreamRecorder();
+    const { req } = createMockReq();
+    // biome-ignore lint: SSE handler type
+    await (routes.get("/api/v1/fund/stream") as any)?.(req, stream.res);
+    const output = stream.read();
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toBe("text/event-stream");
+    expect(output.headers["Cache-Control"]).toBe("no-cache");
+    expect(output.headers["Connection"]).toBe("keep-alive");
+  });
+
+  it("SSE sends initial fund data immediately", async () => {
+    const { routes } = createApi();
+    const stream = createStreamRecorder();
+    const { req } = createMockReq();
+    // biome-ignore lint: SSE handler type
+    await (routes.get("/api/v1/fund/stream") as any)?.(req, stream.res);
+    expect(stream.read().chunks.length).toBe(1);
+    const payload = JSON.parse(stream.read().chunks[0]!.replace("data: ", "").trim());
+    expect(payload).toHaveProperty("status");
+    expect(payload).toHaveProperty("leaderboard");
+    expect(payload).toHaveProperty("allocations");
+    expect(payload).toHaveProperty("risk");
+  });
+
+  it("SSE pushes at 10s interval", async () => {
+    vi.useFakeTimers();
+    const { routes } = createApi();
+    const stream = createStreamRecorder();
+    const { req } = createMockReq();
+    // biome-ignore lint: SSE handler type
+    await (routes.get("/api/v1/fund/stream") as any)?.(req, stream.res);
+    expect(stream.read().chunks.length).toBe(1);
+    vi.advanceTimersByTime(10_000);
+    expect(stream.read().chunks.length).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it("SSE cleans up on disconnect", async () => {
+    vi.useFakeTimers();
+    const { routes } = createApi();
+    const stream = createStreamRecorder();
+    const { req, disconnect } = createMockReq();
+    // biome-ignore lint: SSE handler type
+    await (routes.get("/api/v1/fund/stream") as any)?.(req, stream.res);
+    disconnect();
+    vi.advanceTimersByTime(30_000);
+    expect(stream.read().chunks.length).toBe(1);
+    vi.useRealTimers();
   });
 });

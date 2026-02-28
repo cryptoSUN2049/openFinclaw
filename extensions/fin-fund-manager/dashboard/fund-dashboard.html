@@ -14,6 +14,7 @@
       <header class="dashboard-header">
         <h1><span>FinClaw</span> Fund Dashboard</h1>
         <div class="timestamp" id="timestamp"></div>
+        <div class="live-badge" id="live-badge" style="display:none">LIVE</div>
       </header>
 
       <div class="panels">
@@ -151,147 +152,14 @@
 
     <script>
       (function () {
-        const DATA = /*__FUND_DATA__*/ {};
+        var DATA = /*__FUND_DATA__*/ {};
+        var allocChart = null;
 
-        // Timestamp
-        document.getElementById("timestamp").textContent = new Date().toLocaleString();
-
-        // ── Panel 1: Hero ──
-        const s = DATA.status || {};
-        const fmt = (n) => (n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
-        const signed = (n) => (n >= 0 ? "+" : "") + fmt(n);
-
-        document.getElementById("hero-equity").textContent = "$" + fmt(s.totalEquity || 0);
-
-        const pnlEl = document.getElementById("hero-pnl");
-        const pnl = s.todayPnl || 0;
-        const pnlPct = s.todayPnlPct || 0;
-        pnlEl.textContent = signed(pnl) + " (" + signed(pnlPct) + "%)";
-        pnlEl.className = "pnl " + (pnl >= 0 ? "pnl-positive" : "pnl-negative");
-
-        const riskEl = document.getElementById("hero-risk");
-        riskEl.textContent = (s.riskLevel || "normal").toUpperCase();
-        riskEl.className = "risk-badge risk-" + (s.riskLevel || "normal");
-
-        const byLevel = s.byLevel || {};
-        const active =
-          (byLevel.L3_LIVE || 0) + (byLevel.L2_PAPER || 0) + (byLevel.L1_BACKTEST || 0);
-        document.getElementById("hero-active").textContent = active;
-        document.getElementById("hero-l3").textContent = byLevel.L3_LIVE || 0;
-
-        // Cash reserve from allocations
-        const alloc = DATA.allocations || {};
-        const cashPct =
-          alloc.totalCapital > 0
-            ? (((alloc.cashReserve || 0) / alloc.totalCapital) * 100).toFixed(1)
-            : "0";
-        document.getElementById("hero-cash").textContent = cashPct + "%";
-
-        // ── Panel 2: Allocation Doughnut ──
-        const items = alloc.items || [];
-        const allocCtx = document.getElementById("alloc-chart");
-
-        // Allocation table (always populated, independent of Chart.js)
-        if (items.length > 0) {
-          const tbody = document.querySelector("#alloc-table tbody");
-          for (const a of items) {
-            const tr = document.createElement("tr");
-            const td1 = document.createElement("td");
-            td1.textContent = a.strategyId;
-            const td2 = document.createElement("td");
-            td2.textContent = "$" + fmt(a.capitalUsd);
-            const td3 = document.createElement("td");
-            td3.textContent = a.weightPct.toFixed(1) + "%";
-            tr.append(td1, td2, td3);
-            tbody.appendChild(tr);
-          }
+        function fmt(n) {
+          return (n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
         }
-
-        // Doughnut chart (graceful fallback if Chart.js CDN fails)
-        if (allocCtx && items.length > 0 && typeof Chart !== "undefined") {
-          try {
-            const colors = [
-              "#FF5A2D",
-              "#4A9EFF",
-              "#2FBF71",
-              "#FFB020",
-              "#E23D2D",
-              "#8B7F77",
-              "#FF7A50",
-            ];
-            const labels = items.map((a) => a.strategyId);
-            const values = items.map((a) => a.capitalUsd);
-            if (alloc.cashReserve > 0) {
-              labels.push("Cash Reserve");
-              values.push(alloc.cashReserve);
-              colors.push("#30363d");
-            }
-
-            new Chart(allocCtx, {
-              type: "doughnut",
-              data: {
-                labels: labels,
-                datasets: [
-                  {
-                    data: values,
-                    backgroundColor: colors.slice(0, labels.length),
-                    borderColor: "#161b22",
-                    borderWidth: 2,
-                  },
-                ],
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: "right",
-                    labels: { color: "#8b949e", font: { size: 11 } },
-                  },
-                },
-              },
-            });
-          } catch (e) {
-            // Chart.js not available — table still works
-            console.warn("Chart.js unavailable:", e);
-          }
-        }
-
-        // ── Panel 3: Risk Gauge ──
-        const risk = DATA.risk || {};
-        const dd = risk.dailyDrawdown || 0;
-        const maxDD = risk.maxAllowedDrawdown || 10;
-
-        // Gauge arc: total arc length ~188.5 (half circle r=60)
-        const arcLen = 188.5;
-        const ratio = Math.min(dd / maxDD, 1);
-        const gaugeArc = document.getElementById("gauge-arc");
-        gaugeArc.setAttribute("stroke-dasharray", ratio * arcLen + " " + arcLen);
-
-        // Color based on risk level
-        const riskColors = {
-          normal: "#2FBF71",
-          caution: "#FFB020",
-          warning: "#FF5A2D",
-          critical: "#E23D2D",
-        };
-        gaugeArc.setAttribute("stroke", riskColors[risk.riskLevel] || "#2FBF71");
-
-        document.getElementById("gauge-text").textContent = dd.toFixed(1) + "%";
-        document.getElementById("risk-dd").textContent = "-" + dd.toFixed(1) + "%";
-        document.getElementById("risk-max").textContent = maxDD + "%";
-        document.getElementById("risk-exposure").textContent =
-          (risk.exposurePct || 0).toFixed(1) + "%";
-        document.getElementById("risk-scale").textContent =
-          ((risk.scaleFactor || 1) * 100).toFixed(0) + "%";
-
-        // Action recommendations
-        const actions = risk.actions || getDefaultActions(risk.riskLevel);
-        const actionList = document.getElementById("risk-actions");
-        for (const a of actions) {
-          const li = document.createElement("li");
-          li.textContent = a;
-          actionList.appendChild(li);
+        function signed(n) {
+          return (n >= 0 ? "+" : "") + fmt(n);
         }
 
         function getDefaultActions(level) {
@@ -307,45 +175,238 @@
           }
         }
 
-        // ── Panel 4: Leaderboard ──
-        const lb = DATA.leaderboard || [];
-        const lbTable = document.querySelector("#lb-table tbody");
-        const lbEmpty = document.getElementById("lb-empty");
+        function updateDashboard(data) {
+          DATA = data;
+          document.getElementById("timestamp").textContent = new Date().toLocaleString();
 
-        if (lb.length === 0) {
-          lbEmpty.style.display = "block";
-          document.getElementById("lb-table").style.display = "none";
-        } else {
-          for (const e of lb) {
-            const tr = document.createElement("tr");
-            const lvlShort = e.level.replace("_", "").slice(0, 3);
-            const lvlClass = "level-" + e.level.split("_")[0];
-            const sharpeClass =
-              e.sharpe >= 1 ? "sharpe-good" : e.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad";
+          // ── Panel 1: Hero ──
+          var s = data.status || {};
+          document.getElementById("hero-equity").textContent = "$" + fmt(s.totalEquity || 0);
 
-            const tdRank = document.createElement("td");
-            tdRank.textContent = String(e.rank);
-            const tdName = document.createElement("td");
-            tdName.textContent = e.strategyName;
-            const tdLevel = document.createElement("td");
-            const lvlSpan = document.createElement("span");
-            lvlSpan.className = "level-badge " + lvlClass;
-            lvlSpan.textContent = lvlShort;
-            tdLevel.appendChild(lvlSpan);
-            const tdScore = document.createElement("td");
-            tdScore.textContent = e.leaderboardScore.toFixed(3);
-            const tdFit = document.createElement("td");
-            tdFit.textContent = e.fitness.toFixed(3);
-            const tdSharpe = document.createElement("td");
-            tdSharpe.className = sharpeClass;
-            tdSharpe.textContent = e.sharpe.toFixed(2);
-            const tdDD = document.createElement("td");
-            tdDD.textContent = e.maxDrawdown.toFixed(1) + "%";
-            const tdTrades = document.createElement("td");
-            tdTrades.textContent = String(e.totalTrades);
-            tr.append(tdRank, tdName, tdLevel, tdScore, tdFit, tdSharpe, tdDD, tdTrades);
-            lbTable.appendChild(tr);
+          var pnlEl = document.getElementById("hero-pnl");
+          var pnl = s.todayPnl || 0;
+          var pnlPct = s.todayPnlPct || 0;
+          pnlEl.textContent = signed(pnl) + " (" + signed(pnlPct) + "%)";
+          pnlEl.className = "pnl " + (pnl >= 0 ? "pnl-positive" : "pnl-negative");
+
+          var riskEl = document.getElementById("hero-risk");
+          riskEl.textContent = (s.riskLevel || "normal").toUpperCase();
+          riskEl.className = "risk-badge risk-" + (s.riskLevel || "normal");
+
+          var byLevel = s.byLevel || {};
+          var active =
+            (byLevel.L3_LIVE || 0) + (byLevel.L2_PAPER || 0) + (byLevel.L1_BACKTEST || 0);
+          document.getElementById("hero-active").textContent = active;
+          document.getElementById("hero-l3").textContent = byLevel.L3_LIVE || 0;
+
+          var alloc = data.allocations || {};
+          var cashPct =
+            alloc.totalCapital > 0
+              ? (((alloc.cashReserve || 0) / alloc.totalCapital) * 100).toFixed(1)
+              : "0";
+          document.getElementById("hero-cash").textContent = cashPct + "%";
+
+          // ── Panel 2: Allocation Table + Doughnut ──
+          var items = alloc.items || [];
+          var tbody = document.querySelector("#alloc-table tbody");
+          tbody.innerHTML = "";
+          for (var i = 0; i < items.length; i++) {
+            var a = items[i];
+            var tr = document.createElement("tr");
+            var td1 = document.createElement("td");
+            td1.textContent = a.strategyId;
+            var td2 = document.createElement("td");
+            td2.textContent = "$" + fmt(a.capitalUsd);
+            var td3 = document.createElement("td");
+            td3.textContent = a.weightPct.toFixed(1) + "%";
+            tr.append(td1, td2, td3);
+            tbody.appendChild(tr);
           }
+
+          // Doughnut chart
+          if (typeof Chart !== "undefined") {
+            var colors = [
+              "#FF5A2D",
+              "#4A9EFF",
+              "#2FBF71",
+              "#FFB020",
+              "#E23D2D",
+              "#8B7F77",
+              "#FF7A50",
+            ];
+            var labels = items.map(function (a) {
+              return a.strategyId;
+            });
+            var values = items.map(function (a) {
+              return a.capitalUsd;
+            });
+            if (alloc.cashReserve > 0) {
+              labels.push("Cash Reserve");
+              values.push(alloc.cashReserve);
+              colors.push("#30363d");
+            }
+
+            if (allocChart) {
+              allocChart.data.labels = labels;
+              allocChart.data.datasets[0].data = values;
+              allocChart.data.datasets[0].backgroundColor = colors.slice(0, labels.length);
+              allocChart.update("none");
+            } else {
+              try {
+                var ctx = document.getElementById("alloc-chart");
+                allocChart = new Chart(ctx, {
+                  type: "doughnut",
+                  data: {
+                    labels: labels,
+                    datasets: [
+                      {
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderColor: "#161b22",
+                        borderWidth: 2,
+                      },
+                    ],
+                  },
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: "right",
+                        labels: { color: "#8b949e", font: { size: 11 } },
+                      },
+                    },
+                  },
+                });
+              } catch (e) {
+                console.warn("Chart.js unavailable:", e);
+              }
+            }
+          }
+
+          // ── Panel 3: Risk Gauge ──
+          var risk = data.risk || {};
+          var dd = risk.dailyDrawdown || 0;
+          var maxDD = risk.maxAllowedDrawdown || 10;
+          var arcLen = 188.5;
+          var ratio = Math.min(dd / maxDD, 1);
+          var gaugeArc = document.getElementById("gauge-arc");
+          gaugeArc.setAttribute("stroke-dasharray", ratio * arcLen + " " + arcLen);
+          var riskColors = {
+            normal: "#2FBF71",
+            caution: "#FFB020",
+            warning: "#FF5A2D",
+            critical: "#E23D2D",
+          };
+          gaugeArc.setAttribute("stroke", riskColors[risk.riskLevel] || "#2FBF71");
+          document.getElementById("gauge-text").textContent = dd.toFixed(1) + "%";
+          document.getElementById("risk-dd").textContent = "-" + dd.toFixed(1) + "%";
+          document.getElementById("risk-max").textContent = maxDD + "%";
+          document.getElementById("risk-exposure").textContent =
+            (risk.exposurePct || 0).toFixed(1) + "%";
+          document.getElementById("risk-scale").textContent =
+            ((risk.scaleFactor || 1) * 100).toFixed(0) + "%";
+
+          var actions = risk.actions || getDefaultActions(risk.riskLevel);
+          var actionList = document.getElementById("risk-actions");
+          actionList.innerHTML = "";
+          for (var j = 0; j < actions.length; j++) {
+            var li = document.createElement("li");
+            li.textContent = actions[j];
+            actionList.appendChild(li);
+          }
+
+          // ── Panel 4: Leaderboard ──
+          var lb = data.leaderboard || [];
+          var lbTbody = document.querySelector("#lb-table tbody");
+          var lbEmpty = document.getElementById("lb-empty");
+          lbTbody.innerHTML = "";
+
+          if (lb.length === 0) {
+            lbEmpty.style.display = "block";
+            document.getElementById("lb-table").style.display = "none";
+          } else {
+            lbEmpty.style.display = "none";
+            document.getElementById("lb-table").style.display = "";
+            for (var k = 0; k < lb.length; k++) {
+              var e = lb[k];
+              var tr2 = document.createElement("tr");
+              var lvlShort = e.level.replace("_", "").slice(0, 3);
+              var lvlClass = "level-" + e.level.split("_")[0];
+              var sharpeClass =
+                e.sharpe >= 1 ? "sharpe-good" : e.sharpe >= 0 ? "sharpe-ok" : "sharpe-bad";
+
+              var tdRank = document.createElement("td");
+              tdRank.textContent = String(e.rank);
+              var tdName = document.createElement("td");
+              tdName.textContent = e.strategyName;
+              var tdLevel = document.createElement("td");
+              var lvlSpan = document.createElement("span");
+              lvlSpan.className = "level-badge " + lvlClass;
+              lvlSpan.textContent = lvlShort;
+              tdLevel.appendChild(lvlSpan);
+              var tdScore = document.createElement("td");
+              tdScore.textContent = e.leaderboardScore.toFixed(3);
+              var tdFit = document.createElement("td");
+              tdFit.textContent = e.fitness.toFixed(3);
+              var tdSharpe = document.createElement("td");
+              tdSharpe.className = sharpeClass;
+              tdSharpe.textContent = e.sharpe.toFixed(2);
+              var tdDD2 = document.createElement("td");
+              tdDD2.textContent = e.maxDrawdown.toFixed(1) + "%";
+              var tdTrades = document.createElement("td");
+              tdTrades.textContent = String(e.totalTrades);
+              tr2.append(tdRank, tdName, tdLevel, tdScore, tdFit, tdSharpe, tdDD2, tdTrades);
+              lbTbody.appendChild(tr2);
+            }
+          }
+        }
+
+        function startSSE() {
+          var badge = document.getElementById("live-badge");
+          var es = new EventSource("/api/v1/fund/stream");
+          es.onmessage = function (ev) {
+            try {
+              var parsed = JSON.parse(ev.data);
+              updateDashboard(parsed);
+              if (badge) badge.style.display = "";
+            } catch (err) {
+              console.warn("SSE parse error:", err);
+            }
+          };
+          es.onerror = function () {
+            if (badge) badge.style.display = "none";
+            es.close();
+            startPolling();
+          };
+        }
+
+        function startPolling() {
+          setInterval(function () {
+            fetch("/api/v1/fund/status")
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (statusData) {
+                updateDashboard({
+                  status: statusData,
+                  leaderboard: DATA.leaderboard,
+                  allocations: DATA.allocations,
+                  risk: DATA.risk,
+                });
+              })
+              .catch(function () {});
+          }, 30000);
+        }
+
+        // Initial render
+        updateDashboard(DATA);
+
+        // Start SSE
+        if (typeof EventSource !== "undefined") {
+          startSSE();
+        } else {
+          startPolling();
         }
       })();
     </script>

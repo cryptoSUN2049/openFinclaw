@@ -587,6 +587,86 @@ describe("fin-core plugin", () => {
     expect(html).not.toContain("location.reload");
   });
 
+  // ── Config SSE Endpoint Tests ──
+
+  it("Config SSE endpoint registers correctly", () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+    expect(routes.has("/api/v1/finance/config/stream")).toBe(true);
+  });
+
+  it("Config SSE endpoint sets correct response headers", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/config/stream");
+    const stream = createStreamRecorder();
+    const { req } = createMockReq();
+    await route?.(req, stream.res);
+
+    const output = stream.read();
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toBe("text/event-stream");
+    expect(output.headers["Cache-Control"]).toBe("no-cache");
+    expect(output.headers["Connection"]).toBe("keep-alive");
+  });
+
+  it("Config SSE sends initial data immediately", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/config/stream");
+    const stream = createStreamRecorder();
+    const { req } = createMockReq();
+    await route?.(req, stream.res);
+
+    const output = stream.read();
+    expect(output.chunks.length).toBeGreaterThanOrEqual(1);
+    const first = output.chunks[0]!;
+    expect(first).toMatch(/^data: \{.*\}\n\n$/);
+    const payload = JSON.parse(first.replace("data: ", "").trim());
+    expect(payload).toHaveProperty("exchanges");
+    expect(payload).toHaveProperty("trading");
+    expect(payload).toHaveProperty("plugins");
+  });
+
+  it("Config SSE pushes at 30s interval", async () => {
+    vi.useFakeTimers();
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/config/stream");
+    const stream = createStreamRecorder();
+    const { req } = createMockReq();
+    await route?.(req, stream.res);
+
+    expect(stream.read().chunks.length).toBe(1);
+    vi.advanceTimersByTime(30_000);
+    expect(stream.read().chunks.length).toBe(2);
+    vi.advanceTimersByTime(30_000);
+    expect(stream.read().chunks.length).toBe(3);
+
+    vi.useRealTimers();
+  });
+
+  it("Config SSE cleans up on disconnect", async () => {
+    vi.useFakeTimers();
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/config/stream");
+    const stream = createStreamRecorder();
+    const { req, disconnect } = createMockReq();
+    await route?.(req, stream.res);
+
+    expect(stream.read().chunks.length).toBe(1);
+    disconnect();
+    vi.advanceTimersByTime(60_000);
+    expect(stream.read().chunks.length).toBe(1);
+
+    vi.useRealTimers();
+  });
+
   // ── Finance Dashboard HTML Validation ──
 
   it("finance dashboard has CSS injection placeholder and renders config data", async () => {
@@ -601,8 +681,8 @@ describe("fin-core plugin", () => {
     // CSS injected (placeholder replaced)
     expect(html).not.toContain("/*__FINANCE_CSS__*/");
 
-    // Data injected
-    expect(html).not.toContain("/*__FINANCE_DATA__*/{}");
+    // Data injected (template token replaced with actual JSON)
+    expect(html).not.toMatch(/\/\*__FINANCE_DATA__\*\/\s*\{\}/);
 
     // Key sections present
     expect(html).toContain("renderSummary");
@@ -618,15 +698,775 @@ describe("fin-core plugin", () => {
     plugin.register(api);
 
     const expectedRoutes = [
+      // Existing read routes
       "/api/v1/finance/config",
+      "/api/v1/finance/config/stream",
       "/api/v1/finance/trading",
       "/api/v1/finance/trading/stream",
       "/dashboard/finance",
       "/dashboard/trading",
+      // P0-1: Write endpoints
+      "/api/v1/finance/orders",
+      "/api/v1/finance/orders/cancel",
+      "/api/v1/finance/positions/close",
+      "/api/v1/finance/alerts",
+      "/api/v1/finance/alerts/create",
+      "/api/v1/finance/alerts/remove",
+      // P0-2: Agent events
+      "/api/v1/finance/events",
+      "/api/v1/finance/events/stream",
+      // P0-3: Emergency stop
+      "/api/v1/finance/emergency-stop",
+      // P0-4: Strategy management
+      "/api/v1/finance/strategies",
+      "/api/v1/finance/strategies/pause",
+      "/api/v1/finance/strategies/resume",
+      "/api/v1/finance/strategies/kill",
+      "/api/v1/finance/strategies/promote",
+      // P0-5: Approval flow
+      "/api/v1/finance/events/approve",
+      // Risk evaluation
+      "/api/v1/finance/risk/evaluate",
     ];
 
     for (const path of expectedRoutes) {
       expect(routes.has(path), `route ${path} should be registered`).toBe(true);
     }
+  });
+
+  // ── P0 Write Endpoint Tests ──
+
+  /** Create a mock POST request with JSON body and close event support. */
+  function createPostReq(body: Record<string, unknown>) {
+    const json = JSON.stringify(body);
+    const buf = Buffer.from(json, "utf-8");
+    const listeners: Record<string, Array<(data?: Buffer) => void>> = {};
+    return {
+      req: {
+        method: "POST",
+        on(event: string, cb: (data?: Buffer) => void) {
+          listeners[event] = listeners[event] ?? [];
+          listeners[event].push(cb);
+          // Auto-emit data + end for body parsing
+          if (event === "data") {
+            queueMicrotask(() => cb(buf));
+          }
+          if (event === "end") {
+            queueMicrotask(() => cb());
+          }
+        },
+      },
+      disconnect() {
+        for (const cb of (listeners["close"] ?? []) as Array<() => void>) cb();
+      },
+    };
+  }
+
+  /** Helper: inject full mock trading services with submitOrder support. */
+  function injectFullMockServices(services: Map<string, unknown>) {
+    injectMockTradingServices(services);
+
+    // Extend paper engine with submitOrder
+    const existing = services.get("fin-paper-engine") as Record<string, unknown>;
+    services.set("fin-paper-engine", {
+      ...existing,
+      submitOrder: (_accountId: string, order: Record<string, unknown>, _price: number) => ({
+        id: "order-test-1",
+        symbol: order.symbol,
+        side: order.side,
+        type: order.type ?? "market",
+        quantity: order.quantity,
+        status: "filled",
+        fillPrice: _price || 45000,
+        createdAt: Date.now(),
+      }),
+    });
+
+    // Add alert engine
+    const alerts = new Map<
+      string,
+      { id: string; condition: Record<string, unknown>; createdAt: string; message?: string }
+    >();
+    let alertCounter = 0;
+    services.set("fin-alert-engine", {
+      addAlert: (condition: Record<string, unknown>, message?: string) => {
+        const id = `alert-${++alertCounter}`;
+        alerts.set(id, { id, condition, createdAt: new Date().toISOString(), message });
+        return id;
+      },
+      removeAlert: (id: string) => {
+        return alerts.delete(id);
+      },
+      listAlerts: () => [...alerts.values()],
+    });
+
+    // Extend strategy registry with get/updateLevel/updateStatus
+    services.set("fin-strategy-registry", {
+      list: () => [
+        {
+          id: "sma-1",
+          name: "SMA Crossover",
+          level: "L2_PAPER",
+          status: "running",
+          lastBacktest: {
+            totalReturn: 15.5,
+            sharpe: 1.23,
+            sortino: 1.8,
+            maxDrawdown: 8.2,
+            winRate: 55,
+            profitFactor: 1.45,
+            totalTrades: 42,
+            finalEquity: 11550,
+            initialCapital: 10000,
+            strategyId: "sma-1",
+          },
+        },
+      ],
+      get: (id: string) =>
+        id === "sma-1"
+          ? { id: "sma-1", name: "SMA Crossover", level: "L2_PAPER", status: "running" }
+          : undefined,
+      updateLevel: vi.fn(),
+      updateStatus: vi.fn(),
+    });
+  }
+
+  // ── Orders ──
+
+  it("POST /orders places an order via paper engine", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/orders");
+    expect(route).toBeDefined();
+
+    // Use small amount to stay within auto tier: 0.001 * 1000 = $1 < maxAutoTradeUsd ($220)
+    const { req } = createPostReq({
+      symbol: "BTC/USDT",
+      side: "buy",
+      type: "market",
+      quantity: 0.001,
+      currentPrice: 1000,
+    });
+
+    const recorder = createResponseRecorder();
+    // Add write method for compatibility
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+    const output = recorder.read();
+
+    expect(output.statusCode).toBe(201);
+    const data = JSON.parse(output.body);
+    expect(data.symbol).toBe("BTC/USDT");
+    expect(data.status).toBe("filled");
+  });
+
+  it("POST /orders returns 400 on missing fields", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/orders");
+    const { req } = createPostReq({ symbol: "BTC/USDT" }); // missing side, quantity
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(400);
+  });
+
+  it("POST /orders returns 503 when paper engine unavailable", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+    // Don't inject services
+
+    const route = routes.get("/api/v1/finance/orders");
+    const { req } = createPostReq({
+      symbol: "BTC/USDT",
+      side: "buy",
+      quantity: 0.1,
+      currentPrice: 100,
+    });
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(503);
+  });
+
+  it("POST /orders returns 202 when risk tier is confirm", async () => {
+    // maxAutoTradeUsd=220, confirmThresholdUsd=900
+    // Order value between $220 and $900 → confirm tier → 202
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/orders");
+    const { req } = createPostReq({
+      symbol: "ETH/USDT",
+      side: "buy",
+      type: "market",
+      quantity: 0.1,
+      currentPrice: 5000, // 0.1 * 5000 = $500, above auto ($220) but below confirm ($900)
+    });
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(202);
+    const data = JSON.parse(output.body);
+    expect(data.status).toBe("pending_approval");
+    expect(data.eventId).toBeDefined();
+  });
+
+  // ── Orders Cancel ──
+
+  it("POST /orders/cancel records cancellation event", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/orders/cancel");
+    const { req } = createPostReq({ orderId: "o-123" });
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    expect(JSON.parse(output.body).status).toBe("cancelled");
+  });
+
+  it("POST /orders/cancel returns 400 on missing orderId", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/orders/cancel");
+    const { req } = createPostReq({});
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(400);
+  });
+
+  // ── Positions Close ──
+
+  it("POST /positions/close closes an open position", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/positions/close");
+    const { req } = createPostReq({ symbol: "BTC/USDT" });
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    const data = JSON.parse(output.body);
+    expect(data.status).toBe("closed");
+    expect(data.order.side).toBe("sell"); // close long → sell
+  });
+
+  it("POST /positions/close returns 404 for missing position", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/positions/close");
+    const { req } = createPostReq({ symbol: "NONEXIST/USDT" });
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(404);
+  });
+
+  // ── Alerts CRUD ──
+
+  it("GET /alerts returns empty list when alert engine unavailable", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/alerts");
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.({}, recorder.res);
+
+    const data = JSON.parse(recorder.read().body);
+    expect(data.alerts).toEqual([]);
+  });
+
+  it("POST /alerts/create creates an alert and POST /alerts/remove removes it", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    // Create alert
+    const createRoute = routes.get("/api/v1/finance/alerts/create");
+    const { req: createReq } = createPostReq({
+      kind: "price_above",
+      symbol: "BTC/USDT",
+      price: 70000,
+      message: "BTC breakout",
+    });
+    const createRec = createResponseRecorder();
+    (createRec.res as Record<string, unknown>).write = () => true;
+    await createRoute?.(createReq, createRec.res);
+
+    expect(createRec.read().statusCode).toBe(201);
+    const created = JSON.parse(createRec.read().body);
+    expect(created.id).toBeDefined();
+
+    // List alerts
+    const listRoute = routes.get("/api/v1/finance/alerts");
+    const listRec = createResponseRecorder();
+    (listRec.res as Record<string, unknown>).write = () => true;
+    await listRoute?.({}, listRec.res);
+    const listed = JSON.parse(listRec.read().body);
+    expect(listed.alerts).toHaveLength(1);
+
+    // Remove alert
+    const removeRoute = routes.get("/api/v1/finance/alerts/remove");
+    const { req: removeReq } = createPostReq({ id: created.id });
+    const removeRec = createResponseRecorder();
+    (removeRec.res as Record<string, unknown>).write = () => true;
+    await removeRoute?.(removeReq, removeRec.res);
+
+    expect(removeRec.read().statusCode).toBe(200);
+    expect(JSON.parse(removeRec.read().body).status).toBe("removed");
+  });
+
+  it("POST /alerts/create returns 400 on missing kind", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/alerts/create");
+    const { req } = createPostReq({ symbol: "BTC/USDT" });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(400);
+  });
+
+  // ── Strategies ──
+
+  it("GET /strategies returns strategy list", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/strategies");
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.({}, recorder.res);
+
+    const data = JSON.parse(recorder.read().body);
+    expect(data.strategies).toHaveLength(1);
+    expect(data.strategies[0].name).toBe("SMA Crossover");
+  });
+
+  it("POST /strategies/pause pauses a strategy", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/strategies/pause");
+    const { req } = createPostReq({ id: "sma-1" });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    expect(JSON.parse(output.body).status).toBe("paused");
+
+    const registry = services.get("fin-strategy-registry") as {
+      updateStatus: ReturnType<typeof vi.fn>;
+    };
+    expect(registry.updateStatus).toHaveBeenCalledWith("sma-1", "paused");
+  });
+
+  it("POST /strategies/pause returns 404 for unknown strategy", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/strategies/pause");
+    const { req } = createPostReq({ id: "nonexist" });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(404);
+  });
+
+  it("POST /strategies/kill kills a strategy", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/strategies/kill");
+    const { req } = createPostReq({ id: "sma-1" });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    expect(JSON.parse(output.body).status).toBe("killed");
+
+    const registry = services.get("fin-strategy-registry") as {
+      updateLevel: ReturnType<typeof vi.fn>;
+    };
+    expect(registry.updateLevel).toHaveBeenCalledWith("sma-1", "KILLED");
+  });
+
+  it("POST /strategies/promote promotes a strategy to next level", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/strategies/promote");
+    const { req } = createPostReq({ id: "sma-1" });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    const data = JSON.parse(output.body);
+    expect(data.status).toBe("promoted");
+    expect(data.from).toBe("L2_PAPER");
+    expect(data.to).toBe("L3_LIVE");
+  });
+
+  // ── Emergency Stop ──
+
+  it("POST /emergency-stop disables trading and pauses strategies", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    const route = routes.get("/api/v1/finance/emergency-stop");
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.({}, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    const data = JSON.parse(output.body);
+    expect(data.status).toBe("stopped");
+    expect(data.tradingDisabled).toBe(true);
+    expect(data.strategiesPaused).toContain("sma-1");
+  });
+
+  // ── Agent Events ──
+
+  it("GET /events returns event list with pending count", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/events");
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.({}, recorder.res);
+
+    const data = JSON.parse(recorder.read().body);
+    expect(data).toHaveProperty("events");
+    expect(data).toHaveProperty("pendingCount");
+    expect(Array.isArray(data.events)).toBe(true);
+  });
+
+  it("GET /events/stream sends initial events and notifies on new events", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/events/stream");
+    expect(route).toBeDefined();
+
+    const stream = createStreamRecorder();
+    const { req, disconnect } = createMockReq();
+    await route?.(req, stream.res);
+
+    // Should have initial payload
+    const output = stream.read();
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toBe("text/event-stream");
+    expect(output.chunks.length).toBeGreaterThanOrEqual(1);
+
+    // Parse initial payload
+    const initial = JSON.parse(output.chunks[0]!.replace("data: ", "").trim());
+    expect(initial).toHaveProperty("events");
+    expect(initial).toHaveProperty("pendingCount");
+
+    // Trigger a new event (via emergency stop) to check subscriber notification
+    const stopRoute = routes.get("/api/v1/finance/emergency-stop");
+    const stopRec = createResponseRecorder();
+    (stopRec.res as Record<string, unknown>).write = () => true;
+    await stopRoute?.({}, stopRec.res);
+
+    // Should have received the new event via SSE
+    expect(stream.read().chunks.length).toBeGreaterThan(1);
+    const newEventChunk = stream.read().chunks[stream.read().chunks.length - 1]!;
+    const newPayload = JSON.parse(newEventChunk.replace("data: ", "").trim());
+    expect(newPayload.type).toBe("new_event");
+    expect(newPayload.event.type).toBe("emergency_stop");
+
+    // Disconnect should clean up
+    disconnect();
+  });
+
+  // ── Approval Flow ──
+
+  it("POST /events/approve approves a pending event", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    // First, create a pending event by placing a large order
+    // The risk config has maxAutoTradeUsd=220, confirmThresholdUsd=900
+    // So an order of $500 (between 220 and 900) should trigger confirm
+    const orderRoute = routes.get("/api/v1/finance/orders");
+    const { req: orderReq } = createPostReq({
+      symbol: "ETH/USDT",
+      side: "buy",
+      type: "market",
+      quantity: 0.2,
+      currentPrice: 2500, // 0.2 * 2500 = $500
+    });
+    const orderRec = createResponseRecorder();
+    (orderRec.res as Record<string, unknown>).write = () => true;
+    await orderRoute?.(orderReq, orderRec.res);
+
+    expect(orderRec.read().statusCode).toBe(202);
+    const orderData = JSON.parse(orderRec.read().body);
+    expect(orderData.status).toBe("pending_approval");
+    const eventId = orderData.eventId;
+
+    // Approve the event
+    const approveRoute = routes.get("/api/v1/finance/events/approve");
+    const { req: approveReq } = createPostReq({ id: eventId, action: "approve" });
+    const approveRec = createResponseRecorder();
+    (approveRec.res as Record<string, unknown>).write = () => true;
+    await approveRoute?.(approveReq, approveRec.res);
+
+    expect(approveRec.read().statusCode).toBe(200);
+    const approveData = JSON.parse(approveRec.read().body);
+    expect(approveData.status).toBe("approved");
+    expect(approveData.event.actionParams).toBeDefined();
+    expect(approveData.event.actionParams.symbol).toBe("ETH/USDT");
+  });
+
+  it("POST /events/approve rejects a pending event", async () => {
+    const { api, services, routes } = createFakeApi();
+    plugin.register(api);
+    injectFullMockServices(services);
+
+    // Create a pending event
+    const orderRoute = routes.get("/api/v1/finance/orders");
+    const { req: orderReq } = createPostReq({
+      symbol: "ETH/USDT",
+      side: "buy",
+      type: "market",
+      quantity: 0.2,
+      currentPrice: 2500,
+    });
+    const orderRec = createResponseRecorder();
+    (orderRec.res as Record<string, unknown>).write = () => true;
+    await orderRoute?.(orderReq, orderRec.res);
+
+    const eventId = JSON.parse(orderRec.read().body).eventId;
+
+    // Reject
+    const approveRoute = routes.get("/api/v1/finance/events/approve");
+    const { req: rejectReq } = createPostReq({
+      id: eventId,
+      action: "reject",
+      reason: "Too risky",
+    });
+    const rejectRec = createResponseRecorder();
+    (rejectRec.res as Record<string, unknown>).write = () => true;
+    await approveRoute?.(rejectReq, rejectRec.res);
+
+    expect(rejectRec.read().statusCode).toBe(200);
+    expect(JSON.parse(rejectRec.read().body).status).toBe("rejected");
+  });
+
+  it("POST /events/approve returns 404 for non-existent event", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/events/approve");
+    const { req } = createPostReq({ id: "nonexistent" });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    expect(recorder.read().statusCode).toBe(404);
+  });
+
+  // ── Risk Evaluate ──
+
+  it("POST /risk/evaluate returns risk tier", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/risk/evaluate");
+    const { req } = createPostReq({
+      symbol: "BTC/USDT",
+      side: "buy",
+      amount: 0.01,
+      estimatedValueUsd: 50, // Below maxAutoTradeUsd (220)
+    });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const output = recorder.read();
+    expect(output.statusCode).toBe(200);
+    const data = JSON.parse(output.body);
+    expect(data.tier).toBe("auto");
+  });
+
+  it("POST /risk/evaluate returns confirm tier for medium value", async () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    const route = routes.get("/api/v1/finance/risk/evaluate");
+    const { req } = createPostReq({
+      symbol: "BTC/USDT",
+      side: "buy",
+      amount: 1,
+      estimatedValueUsd: 500, // Between maxAutoTradeUsd (220) and confirmThresholdUsd (900)
+    });
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.(req, recorder.res);
+
+    const data = JSON.parse(recorder.read().body);
+    expect(data.tier).toBe("confirm");
+  });
+
+  // ── Command Center Dashboard Tests ──
+
+  it("registers /dashboard/command-center route", () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    expect(routes.has("/dashboard/command-center")).toBe(true);
+    expect(routes.has("/api/v1/finance/command-center")).toBe(true);
+  });
+
+  it("GET /api/v1/finance/command-center returns aggregated data", async () => {
+    const { api, routes, services } = createFakeApi();
+    plugin.register(api);
+    injectMockTradingServices(services);
+
+    const route = routes.get("/api/v1/finance/command-center");
+    expect(route).toBeDefined();
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.({}, recorder.res);
+    const output = recorder.read();
+
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toBe("application/json");
+
+    const payload = JSON.parse(output.body);
+    // Must have trading, events, alerts, and risk sections
+    expect(payload).toHaveProperty("trading");
+    expect(payload).toHaveProperty("events");
+    expect(payload).toHaveProperty("alerts");
+    expect(payload).toHaveProperty("risk");
+
+    // Trading section has the standard structure
+    expect(payload.trading).toHaveProperty("summary");
+    expect(payload.trading).toHaveProperty("positions");
+    expect(payload.trading).toHaveProperty("strategies");
+
+    // Events section has events array and pendingCount
+    expect(payload.events).toHaveProperty("events");
+    expect(payload.events).toHaveProperty("pendingCount");
+    expect(typeof payload.events.pendingCount).toBe("number");
+
+    // Risk section has config fields
+    expect(payload.risk).toMatchObject({
+      enabled: true,
+      maxAutoTradeUsd: 220,
+      confirmThresholdUsd: 900,
+      maxDailyLossUsd: 1800,
+    });
+  });
+
+  it("/dashboard/command-center renders HTML with injected CSS and data", async () => {
+    const { api, routes, services } = createFakeApi();
+    plugin.register(api);
+    injectMockTradingServices(services);
+
+    const route = routes.get("/dashboard/command-center");
+    expect(route).toBeDefined();
+
+    const recorder = createResponseRecorder();
+    await route?.({}, recorder.res);
+    const output = recorder.read();
+
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toContain("text/html");
+
+    // HTML should contain key Command Center elements
+    expect(output.body).toContain("Command Center");
+    expect(output.body).toContain("riskHalo");
+    expect(output.body).toContain("eventFeed");
+    expect(output.body).toContain("estopBtn");
+    expect(output.body).toContain("positionsList");
+    // CSS should be injected
+    expect(output.body).toContain("--bg:");
+    expect(output.body).toContain(".risk-halo");
+  });
+
+  it("GET /api/v1/finance/command-center returns events with pendingCount", async () => {
+    const { api, routes, services } = createFakeApi();
+    plugin.register(api);
+    injectMockTradingServices(services);
+
+    // Add a pending event via orders endpoint (triggers confirm tier)
+    const orderRoute = routes.get("/api/v1/finance/orders");
+    const { req: orderReq } = createPostReq({
+      symbol: "BTC/USDT",
+      side: "buy",
+      type: "market",
+      quantity: 5,
+      currentPrice: 100, // 5 * 100 = 500 > maxAutoTradeUsd(220), < confirmThresholdUsd(900)
+    });
+    const orderRecorder = createResponseRecorder();
+    (orderRecorder.res as Record<string, unknown>).write = () => true;
+    await orderRoute?.(orderReq, orderRecorder.res);
+    expect(orderRecorder.read().statusCode).toBe(202);
+
+    // Now check command center data includes the pending event
+    const ccRoute = routes.get("/api/v1/finance/command-center");
+    const ccRecorder = createResponseRecorder();
+    (ccRecorder.res as Record<string, unknown>).write = () => true;
+    await ccRoute?.({}, ccRecorder.res);
+    const ccData = JSON.parse(ccRecorder.read().body);
+
+    expect(ccData.events.pendingCount).toBeGreaterThanOrEqual(1);
+    expect(ccData.events.events.length).toBeGreaterThanOrEqual(1);
+    expect(
+      ccData.events.events.some((e: Record<string, unknown>) => e.type === "trade_pending"),
+    ).toBe(true);
   });
 });
