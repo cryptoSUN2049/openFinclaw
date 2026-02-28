@@ -272,6 +272,10 @@ export const SECTION_META: Record<string, { label: string; description: string }
   canvasHost: { label: "Canvas Host", description: "Canvas rendering and display" },
   talk: { label: "Talk", description: "Voice and speech settings" },
   plugins: { label: "Plugins", description: "Plugin management and extensions" },
+  financial: {
+    label: "Finance",
+    description: "Exchange accounts, data source credentials, and API keys",
+  },
 };
 
 function getSectionIcon(key: string) {

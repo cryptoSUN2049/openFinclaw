@@ -121,6 +121,133 @@ function uniquePreserveOrder(values: string[]): string[] {
   return output;
 }
 
+// ── Financial config postMessage bridge (iframe ↔ host) ──
+
+const FIN_SECTIONS = new Set([
+  "trading",
+  "paperTrading",
+  "fund",
+  "backtest",
+  "evolution",
+  "exchanges",
+  "expertSdk",
+  "infoFeedSdk",
+  "equity",
+  "commodity",
+  "monitoring",
+]);
+
+let _finBridgeHost: AppViewState | null = null;
+
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    const sv = source[key];
+    const tv = target[key];
+    if (
+      sv &&
+      typeof sv === "object" &&
+      !Array.isArray(sv) &&
+      tv &&
+      typeof tv === "object" &&
+      !Array.isArray(tv)
+    ) {
+      result[key] = deepMerge(tv as Record<string, unknown>, sv as Record<string, unknown>);
+    } else {
+      result[key] = sv;
+    }
+  }
+  return result;
+}
+
+function setupFinConfigBridge(state: AppViewState) {
+  if (_finBridgeHost) {
+    return;
+  }
+  _finBridgeHost = state;
+
+  window.addEventListener("message", async (ev: MessageEvent) => {
+    const d = ev.data;
+    if (!d || typeof d !== "object") {
+      return;
+    }
+    const src = ev.source as Window | null;
+    if (!src) {
+      return;
+    }
+
+    if (d.type === "fin-config-get") {
+      const section = d.section as string;
+      const config =
+        _finBridgeHost!.configForm ??
+        (_finBridgeHost!.configSnapshot?.config as Record<string, unknown> | null) ??
+        {};
+      const fin = (config.financial ?? {}) as Record<string, unknown>;
+
+      let values: Record<string, unknown>;
+      if (section === "all") {
+        values = {};
+        for (const k of FIN_SECTIONS) {
+          if (fin[k] !== undefined) {
+            values[k] = fin[k];
+          }
+        }
+      } else if (FIN_SECTIONS.has(section)) {
+        values = (fin[section] ?? {}) as Record<string, unknown>;
+      } else {
+        src.postMessage(
+          {
+            type: "fin-config-get-result",
+            _reqId: d._reqId,
+            ok: false,
+            error: "Unknown section: " + section,
+          },
+          "*",
+        );
+        return;
+      }
+      src.postMessage({ type: "fin-config-get-result", _reqId: d._reqId, ok: true, values }, "*");
+    }
+
+    if (d.type === "fin-config-patch") {
+      const section = d.section as string;
+      const values = d.values as Record<string, unknown>;
+      if (!FIN_SECTIONS.has(section) || !values) {
+        src.postMessage(
+          {
+            type: "fin-config-patch-result",
+            _reqId: d._reqId,
+            ok: false,
+            error: "Invalid section or values",
+          },
+          "*",
+        );
+        return;
+      }
+      try {
+        const config =
+          _finBridgeHost!.configForm ??
+          (_finBridgeHost!.configSnapshot?.config as Record<string, unknown> | null) ??
+          {};
+        const fin = (config.financial ?? {}) as Record<string, unknown>;
+        const current = (fin[section] ?? {}) as Record<string, unknown>;
+        const merged = deepMerge(current, values);
+        updateConfigFormValue(_finBridgeHost!, ["financial", section], merged);
+        await saveConfig(_finBridgeHost!);
+        src.postMessage({ type: "fin-config-patch-result", _reqId: d._reqId, ok: true }, "*");
+      } catch (err) {
+        src.postMessage(
+          { type: "fin-config-patch-result", _reqId: d._reqId, ok: false, error: String(err) },
+          "*",
+        );
+      }
+    }
+  });
+}
+
 function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
   const list = state.agentsList?.agents ?? [];
   const parsed = parseAgentSessionKey(state.sessionKey);
@@ -138,6 +265,8 @@ function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
 }
 
 export function renderApp(state: AppViewState) {
+  setupFinConfigBridge(state);
+
   const openClawVersion =
     (typeof state.hello?.server?.version === "string" && state.hello.server.version.trim()) ||
     state.updateAvailable?.currentVersion ||
@@ -154,7 +283,10 @@ export function renderApp(state: AppViewState) {
   const chatDisabledReason = state.connected ? null : t("chat.disconnected");
   const isChat = state.tab === "chat";
   const isIframeTab =
-    state.tab === "missionControl" || state.tab === "trading" || state.tab === "financeDashboard";
+    state.tab === "missionControl" ||
+    state.tab === "trading" ||
+    state.tab === "fund" ||
+    state.tab === "financeDashboard";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
   const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
@@ -1140,6 +1272,7 @@ export function renderApp(state: AppViewState) {
 
         ${state.tab === "missionControl" ? renderIframeDashboard("/dashboard/mission-control", "Mission Control") : nothing}
         ${state.tab === "trading" ? renderIframeDashboard("/dashboard/trading", "Trading Dashboard") : nothing}
+        ${state.tab === "fund" ? renderIframeDashboard("/dashboard/fund", "Fund Dashboard") : nothing}
         ${state.tab === "financeDashboard" ? renderIframeDashboard("/dashboard/finance", "Finance Dashboard") : nothing}
       </main>
       ${renderExecApprovalPrompt(state)}

@@ -426,13 +426,26 @@ export function renderConfig(props: ConfigProps) {
   const activeSectionMeta = props.activeSection
     ? resolveSectionMeta(props.activeSection, activeSectionSchema)
     : null;
-  const subsections = props.activeSection
+  const rawSubsections = props.activeSection
     ? resolveSubsections({
         key: props.activeSection,
         schema: activeSectionSchema,
         uiHints: props.uiHints,
       })
     : [];
+  // Financial section: only show credential-related tabs; operational settings
+  // are managed via inline slide-overs in Command Center and Fund dashboards.
+  const FINANCIAL_CONFIG_TABS = new Set([
+    "exchanges",
+    "expertSdk",
+    "infoFeedSdk",
+    "equity",
+    "commodity",
+  ]);
+  const subsections =
+    props.activeSection === "financial"
+      ? rawSubsections.filter((s) => FINANCIAL_CONFIG_TABS.has(s.key))
+      : rawSubsections;
   const allowSubnav =
     props.formMode === "form" && Boolean(props.activeSection) && subsections.length > 0;
   const isAllSubsection = props.activeSubsection === ALL_SUBSECTION;
@@ -754,6 +767,30 @@ export function renderConfig(props: ConfigProps) {
                 )}
               </div>
             `
+            : nothing
+        }
+
+        ${
+          props.activeSection === "financial" && effectiveSubsection === null
+            ? html`
+                <div
+                  class="config-migration-hint"
+                  style="
+                    margin: 8px 0 12px;
+                    padding: 10px 14px;
+                    border-radius: 6px;
+                    border: 1px solid rgba(74, 158, 255, 0.2);
+                    background: rgba(74, 158, 255, 0.06);
+                    font-size: 12px;
+                    color: #8b949e;
+                    line-height: 1.5;
+                  "
+                >
+                  <strong style="color: #4a9eff">&#9432; Settings moved</strong><br />
+                  Trading &amp; Paper Trading settings → <strong>Mission Control</strong> (⚙ button)<br />
+                  Fund, Backtest &amp; Evolution settings → <strong>Fund Dashboard</strong> (⚙ button)
+                </div>
+              `
             : nothing
         }
 
