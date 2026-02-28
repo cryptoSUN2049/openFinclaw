@@ -127,3 +127,9 @@ dev/
 
 # Generated dashboard site
 commons/site/
+
+# Runtime state (SQLite databases, WAL/SHM files)
+state/
+
+# Claude Code local artifacts
+.claude/review-loop*
