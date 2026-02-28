@@ -370,7 +370,7 @@
     events: mcData.events || {},
     alerts: mcData.alerts || [],
     risk: mcData.risk || {},
-    fund: {},
+    fund: mcData.fund || {},
     config: {},
     feedFilter: 'all',
   };
@@ -769,6 +769,8 @@
     var dotEl = $('sse' + name.charAt(0).toUpperCase() + name.slice(1));
     var retryDelay = 2000;
     var maxRetry = 30000;
+    var failures = 0;
+    var maxFailures = 3;
 
     function connect(){
       if(typeof EventSource === 'undefined'){
@@ -780,6 +782,7 @@
 
       es.onopen = function(){
         retryDelay = 2000;
+        failures = 0;
         if(dotEl) dotEl.className = 'sse-dot connected';
       };
       es.onmessage = function(ev){
@@ -790,7 +793,13 @@
       };
       es.onerror = function(){
         es.close();
+        failures++;
         if(dotEl) dotEl.className = 'sse-dot error';
+        if(failures >= maxFailures){
+          console.warn('SSE '+name+' failed '+failures+' times, falling back to polling');
+          startPolling();
+          return;
+        }
         setTimeout(connect, retryDelay);
         retryDelay = Math.min(retryDelay * 2, maxRetry);
       };
@@ -799,6 +808,11 @@
     function startPolling(){
       var pollUrl = url.replace('/stream', '');
       if(dotEl) dotEl.className = 'sse-dot';
+      // Initial poll immediately
+      fetch(pollUrl).then(function(r){ return r.json(); }).then(function(d){
+        onMessage(d);
+        if(dotEl) dotEl.className = 'sse-dot connected';
+      }).catch(function(){ if(dotEl) dotEl.className = 'sse-dot error'; });
       setInterval(function(){
         fetch(pollUrl).then(function(r){ return r.json(); }).then(function(d){
           onMessage(d);
