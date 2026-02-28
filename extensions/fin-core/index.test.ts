@@ -1469,4 +1469,75 @@ describe("fin-core plugin", () => {
       ccData.events.events.some((e: Record<string, unknown>) => e.type === "trade_pending"),
     ).toBe(true);
   });
+
+  // ── Mission Control Dashboard ──
+
+  it("registers /dashboard/mission-control route", () => {
+    const { api, routes } = createFakeApi();
+    plugin.register(api);
+
+    expect(routes.has("/dashboard/mission-control")).toBe(true);
+    expect(routes.has("/api/v1/finance/mission-control")).toBe(true);
+  });
+
+  it("GET /api/v1/finance/mission-control returns aggregated data with fund section", async () => {
+    const { api, routes, services } = createFakeApi();
+    plugin.register(api);
+    injectMockTradingServices(services);
+
+    const route = routes.get("/api/v1/finance/mission-control");
+    expect(route).toBeDefined();
+
+    const recorder = createResponseRecorder();
+    (recorder.res as Record<string, unknown>).write = () => true;
+    await route?.({}, recorder.res);
+    const output = recorder.read();
+
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toBe("application/json");
+
+    const payload = JSON.parse(output.body);
+    // Must have trading, events, alerts, risk, and fund sections
+    expect(payload).toHaveProperty("trading");
+    expect(payload).toHaveProperty("events");
+    expect(payload).toHaveProperty("alerts");
+    expect(payload).toHaveProperty("risk");
+    expect(payload).toHaveProperty("fund");
+
+    // Trading section has the standard structure
+    expect(payload.trading).toHaveProperty("summary");
+    expect(payload.trading).toHaveProperty("positions");
+    expect(payload.trading).toHaveProperty("strategies");
+
+    // Fund section has allocations and totalCapital
+    expect(payload.fund).toHaveProperty("allocations");
+    expect(payload.fund).toHaveProperty("totalCapital");
+  });
+
+  it("/dashboard/mission-control renders HTML with injected CSS and data", async () => {
+    const { api, routes, services } = createFakeApi();
+    plugin.register(api);
+    injectMockTradingServices(services);
+
+    const route = routes.get("/dashboard/mission-control");
+    expect(route).toBeDefined();
+
+    const recorder = createResponseRecorder();
+    await route?.({}, recorder.res);
+    const output = recorder.read();
+
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["Content-Type"]).toContain("text/html");
+
+    // HTML should contain key Mission Control elements
+    expect(output.body).toContain("Mission Control");
+    expect(output.body).toContain("riskHalo");
+    expect(output.body).toContain("equityChart");
+    expect(output.body).toContain("raceBody");
+    expect(output.body).toContain("feedList");
+    expect(output.body).toContain("estopBtn");
+    // CSS should be injected
+    expect(output.body).toContain("--bg:");
+    expect(output.body).toContain(".risk-halo");
+  });
 });

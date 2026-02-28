@@ -92,6 +92,8 @@ const finCorePlugin = {
     let tradingDashboardCss = "";
     let commandCenterTemplate = "";
     let commandCenterCss = "";
+    let missionControlTemplate = "";
+    let missionControlCss = "";
     try {
       dashboardTemplate = readFileSync(join(dashboardDir, "finance-dashboard.html"), "utf-8");
       dashboardCss = readFileSync(join(dashboardDir, "finance-dashboard.css"), "utf-8");
@@ -112,6 +114,12 @@ const finCorePlugin = {
       commandCenterCss = readFileSync(join(dashboardDir, "command-center.css"), "utf-8");
     } catch {
       // Command center assets optional.
+    }
+    try {
+      missionControlTemplate = readFileSync(join(dashboardDir, "mission-control.html"), "utf-8");
+      missionControlCss = readFileSync(join(dashboardDir, "mission-control.css"), "utf-8");
+    } catch {
+      // Mission control assets optional.
     }
 
     const gatherFinanceConfigData = () => {
@@ -1417,6 +1425,77 @@ const finCorePlugin = {
         const html = commandCenterTemplate
           .replace("/*__CC_CSS__*/", commandCenterCss)
           .replace(/\/\*__CC_DATA__\*\/\s*\{\}/, safeJson);
+
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(html);
+      },
+    });
+
+    // ── Mission Control Dashboard ──
+
+    function gatherMissionControlData() {
+      const trading = gatherTradingData();
+      const events = {
+        events: eventStore.listEvents(),
+        pendingCount: eventStore.pendingCount(),
+      };
+
+      const alertEngine = runtime.services?.get?.("fin-alert-engine") as
+        | AlertEngineLike
+        | undefined;
+      const alerts = alertEngine?.listAlerts() ?? [];
+
+      const fundManager = runtime.services?.get?.("fin-fund-manager") as
+        | FundManagerLike
+        | undefined;
+      const fundState = fundManager?.getState?.() ?? {
+        allocations: [],
+        totalCapital: 0,
+      };
+
+      return {
+        trading,
+        events,
+        alerts,
+        risk: {
+          enabled: riskConfig.enabled,
+          maxAutoTradeUsd: riskConfig.maxAutoTradeUsd,
+          confirmThresholdUsd: riskConfig.confirmThresholdUsd,
+          maxDailyLossUsd: riskConfig.maxDailyLossUsd,
+        },
+        fund: fundState,
+      };
+    }
+
+    // JSON endpoint for mission control data
+    api.registerHttpRoute({
+      path: "/api/v1/finance/mission-control",
+      handler: async (_req: unknown, res: HttpRes) => {
+        jsonResponse(res, 200, gatherMissionControlData());
+      },
+    });
+
+    // HTML dashboard
+    api.registerHttpRoute({
+      path: "/dashboard/mission-control",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (statusCode: number, headers: Record<string, string>) => void;
+          end: (body: string) => void;
+        },
+      ) => {
+        const mcData = gatherMissionControlData();
+        if (!missionControlTemplate || !missionControlCss) {
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(mcData));
+          return;
+        }
+
+        const safeJson = JSON.stringify(mcData).replace(/<\//g, "<\\/");
+        const html = missionControlTemplate
+          .replace("/*__MC_CSS__*/", missionControlCss)
+          .replace(/\/\*__MC_DATA__\*\/\s*\{\}/, safeJson);
 
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(html);
