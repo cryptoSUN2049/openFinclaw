@@ -3,8 +3,13 @@ import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { BacktestEngine } from "./src/backtest-engine.js";
 import { createBollingerBands } from "./src/builtin-strategies/bollinger-bands.js";
 import { createMacdDivergence } from "./src/builtin-strategies/macd-divergence.js";
+import { createMultiTimeframeConfluence } from "./src/builtin-strategies/multi-timeframe-confluence.js";
+import { createRegimeAdaptive } from "./src/builtin-strategies/regime-adaptive.js";
+import { createRiskParityTripleScreen } from "./src/builtin-strategies/risk-parity-triple-screen.js";
 import { createRsiMeanReversion } from "./src/builtin-strategies/rsi-mean-reversion.js";
 import { createSmaCrossover } from "./src/builtin-strategies/sma-crossover.js";
+import { createTrendFollowingMomentum } from "./src/builtin-strategies/trend-following-momentum.js";
+import { createVolatilityMeanReversion } from "./src/builtin-strategies/volatility-mean-reversion.js";
 import { StrategyRegistry } from "./src/strategy-registry.js";
 import type { BacktestConfig, StrategyDefinition } from "./src/types.js";
 
@@ -58,6 +63,11 @@ const plugin = {
             | "rsi-mean-reversion"
             | "bollinger-bands"
             | "macd-divergence"
+            | "trend-following-momentum"
+            | "volatility-mean-reversion"
+            | "regime-adaptive"
+            | "multi-timeframe-confluence"
+            | "risk-parity-triple-screen"
             | "custom"
           >({
             type: "string",
@@ -66,6 +76,11 @@ const plugin = {
               "rsi-mean-reversion",
               "bollinger-bands",
               "macd-divergence",
+              "trend-following-momentum",
+              "volatility-mean-reversion",
+              "regime-adaptive",
+              "multi-timeframe-confluence",
+              "risk-parity-triple-screen",
               "custom",
             ],
             description: "Strategy template type",
@@ -104,6 +119,16 @@ const plugin = {
               definition = createBollingerBands(stratParams);
             } else if (type === "macd-divergence") {
               definition = createMacdDivergence(stratParams);
+            } else if (type === "trend-following-momentum") {
+              definition = createTrendFollowingMomentum(stratParams);
+            } else if (type === "volatility-mean-reversion") {
+              definition = createVolatilityMeanReversion(stratParams);
+            } else if (type === "regime-adaptive") {
+              definition = createRegimeAdaptive(stratParams);
+            } else if (type === "multi-timeframe-confluence") {
+              definition = createMultiTimeframeConfluence(stratParams);
+            } else if (type === "risk-parity-triple-screen") {
+              definition = createRiskParityTripleScreen(stratParams);
             } else {
               return json({ error: "Custom strategies are not yet supported via this tool" });
             }
