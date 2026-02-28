@@ -3,6 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
+import { CapitalFlowStore } from "./src/capital-flow-store.js";
 import {
   formatFundStatus,
   formatRiskStatus,
@@ -11,6 +12,10 @@ import {
   formatPromoteCheck,
 } from "./src/formatters.js";
 import { FundManager } from "./src/fund-manager.js";
+import {
+  PerformanceSnapshotStore,
+  type PerformanceSnapshot,
+} from "./src/performance-snapshot-store.js";
 import type { FundConfig, LeaderboardEntry, PromotionCheck } from "./src/types.js";
 
 const json = (payload: unknown) => ({
@@ -41,6 +46,48 @@ const plugin = {
 
     const statePath = api.resolvePath("state/fin-fund-state.json");
     const manager = new FundManager(statePath, config);
+    const perfStore = new PerformanceSnapshotStore(
+      api.resolvePath("state/fin-performance-snapshots.sqlite"),
+    );
+    const flowStore = new CapitalFlowStore(api.resolvePath("state/fin-capital-flows.sqlite"));
+
+    // Track the previous equity to compute PnL across rebalances
+    let lastRecordedEquity: number | null = null;
+
+    /** Record a daily performance snapshot after rebalance. */
+    function recordDailySnapshot(): void {
+      // Gather current equity from paper accounts, fall back to configured capital
+      const paper = getPaper();
+      let currentEquity = config.totalCapital ?? manager.getState().totalCapital;
+      if (paper) {
+        const accounts = paper.listAccounts();
+        if (accounts.length > 0) {
+          currentEquity = accounts.reduce((sum, a) => sum + a.equity, 0);
+        }
+      }
+
+      const baseEquity = lastRecordedEquity ?? currentEquity;
+      const totalPnl = currentEquity - baseEquity;
+      const totalReturn = baseEquity > 0 ? (totalPnl / baseEquity) * 100 : 0;
+      lastRecordedEquity = currentEquity;
+
+      const now = new Date();
+      const snapshot: PerformanceSnapshot = {
+        id: `perf-${now.toISOString().slice(0, 10)}-${Date.now()}`,
+        period: now.toISOString().slice(0, 10),
+        periodType: "daily",
+        totalPnl,
+        totalReturn,
+        sharpe: null, // computed later by analytics
+        maxDrawdown: null, // computed later by analytics
+        byStrategyJson: null,
+        byMarketJson: null,
+        bySymbolJson: null,
+        createdAt: Date.now(),
+      };
+
+      perfStore.addSnapshot(snapshot);
+    }
 
     // Register service
     api.registerService({
@@ -235,6 +282,22 @@ const plugin = {
               }
             }
           }
+
+          // Record capital flows for the rebalance
+          for (const alloc of result.allocations) {
+            flowStore.record({
+              id: `rebalance-${Date.now()}-${alloc.strategyId}`,
+              type: "transfer",
+              amount: alloc.capitalUsd,
+              currency: "USD",
+              status: "completed",
+              description: `Rebalance allocation to ${alloc.strategyId} (${alloc.weightPct.toFixed(1)}%)`,
+              createdAt: Date.now(),
+            });
+          }
+
+          // Record daily performance snapshot after rebalance
+          recordDailySnapshot();
 
           return json({
             allocations: result.allocations,
@@ -471,6 +534,8 @@ const plugin = {
           scaleFactor,
           maxAllowedDrawdown: data.risk.maxAllowedDrawdown,
         },
+        latestPerformance: perfStore.getLatest("daily", 7),
+        recentFlows: flowStore.list(10),
       };
     }
 
@@ -561,6 +626,40 @@ const plugin = {
             totalCapital,
           }),
         );
+      },
+    });
+
+    // ── Performance Snapshots API ──
+
+    api.registerHttpRoute({
+      path: "/api/v1/fund/performance",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (s: number, h: Record<string, string>) => void;
+          end: (b: string) => void;
+        },
+      ) => {
+        const snapshots = perfStore.getLatest("daily", 30);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ snapshots, total: snapshots.length }));
+      },
+    });
+
+    // ── Capital Flows API ──
+
+    api.registerHttpRoute({
+      path: "/api/v1/fund/capital-flows",
+      handler: async (
+        _req: unknown,
+        res: {
+          writeHead: (s: number, h: Record<string, string>) => void;
+          end: (b: string) => void;
+        },
+      ) => {
+        const flows = flowStore.list(50);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ flows, total: flows.length }));
       },
     });
 

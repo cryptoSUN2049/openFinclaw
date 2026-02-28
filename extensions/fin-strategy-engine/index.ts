@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { BacktestEngine } from "./src/backtest-engine.js";
 import { createBollingerBands } from "./src/builtin-strategies/bollinger-bands.js";
+import { buildCustomStrategy } from "./src/builtin-strategies/custom-rule-engine.js";
 import { createMacdDivergence } from "./src/builtin-strategies/macd-divergence.js";
 import { createMultiTimeframeConfluence } from "./src/builtin-strategies/multi-timeframe-confluence.js";
 import { createRegimeAdaptive } from "./src/builtin-strategies/regime-adaptive.js";
@@ -100,6 +101,28 @@ const plugin = {
           timeframes: Type.Optional(
             Type.Array(Type.String(), { description: "Timeframes (e.g. 1d, 4h)" }),
           ),
+          rules: Type.Optional(
+            Type.Object(
+              {
+                buy: Type.String({
+                  description: "Buy rule expression (e.g. 'rsi < 30 AND close > sma')",
+                }),
+                sell: Type.String({
+                  description: "Sell rule expression (e.g. 'rsi > 70 OR close < sma')",
+                }),
+              },
+              { description: "Custom strategy rules (required when type=custom)" },
+            ),
+          ),
+          customParams: Type.Optional(
+            Type.Object(
+              {},
+              {
+                additionalProperties: true,
+                description: "Custom strategy parameters (e.g. rsiPeriod, smaPeriod)",
+              },
+            ),
+          ),
         }),
         async execute(_id: string, params: Record<string, unknown>) {
           try {
@@ -129,8 +152,28 @@ const plugin = {
               definition = createMultiTimeframeConfluence(stratParams);
             } else if (type === "risk-parity-triple-screen") {
               definition = createRiskParityTripleScreen(stratParams);
+            } else if (type === "custom") {
+              const rules = params.rules as { buy: string; sell: string } | undefined;
+              if (!rules?.buy || !rules?.sell) {
+                return json({
+                  error: "Custom strategies require 'rules' with 'buy' and 'sell' expressions",
+                });
+              }
+              const rawParams = (params.customParams ?? stratParams) as Record<string, unknown>;
+              // Validate all custom params are numeric
+              const customParams: Record<string, number> = {};
+              for (const [k, v] of Object.entries(rawParams)) {
+                const num = Number(v);
+                if (Number.isNaN(num)) {
+                  return json({
+                    error: `Custom parameter "${k}" must be numeric, got: ${typeof v}`,
+                  });
+                }
+                customParams[k] = num;
+              }
+              definition = buildCustomStrategy(name, rules, customParams, symbols, timeframes);
             } else {
-              return json({ error: "Custom strategies are not yet supported via this tool" });
+              return json({ error: `Unknown strategy type: ${type}` });
             }
 
             // Override metadata
