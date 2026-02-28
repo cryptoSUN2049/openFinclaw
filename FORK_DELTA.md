@@ -20,26 +20,30 @@ This document catalogs every OpenFinClaw-specific customization that diverges fr
 | `openfinclaw.mjs`                | Custom CLI entry point                  | N/A (ours only)                |
 | `README.md`                      | OpenFinClaw brand, features, roadmap    | OpenClaw docs                  |
 
-## 2. Financial Extensions (14)
+## 2. Financial Extensions (15)
 
 All in `extensions/fin-*/`, each with `devDependencies: { "openfinclaw": "workspace:*" }`.
 
-| Extension              | Purpose                                                            |
-| ---------------------- | ------------------------------------------------------------------ |
-| `fin-core`             | Exchange registry, risk controller, CCXT bridge, shared types      |
-| `fin-trading`          | Order execution with risk gates (Binance, OKX, Bybit, Hyperliquid) |
-| `fin-portfolio`        | Balance aggregation, performance metrics, rebalancing              |
-| `fin-market-data`      | Price feeds, OHLCV, market depth                                   |
-| `fin-expert-sdk`       | Professional analysis API bridge                                   |
-| `fin-info-feed`        | Market intelligence, sentiment, earnings data                      |
-| `fin-monitoring`       | Price alerts, portfolio health checks, anomaly detection           |
-| `fin-data-bus`         | Unified data provider, OHLCV cache, regime detection               |
-| `fin-evolution-engine` | GEP gene evolution, LLM mutation, RDAVD fitness                    |
-| `fin-fund-manager`     | Capital flow tracking, performance snapshots                       |
-| `fin-openbb-data`      | OpenBB data bridge (162+ fetchers, 38+ providers)                  |
-| `fin-paper-trading`    | Multi-market paper trading (US/HK/A-shares/Crypto)                 |
-| `fin-strategy-engine`  | Strategy registry, backtesting engine, custom rule engine          |
-| `fin-strategy-memory`  | Strategy persistence, time-decayed fitness scoring                 |
+| Extension              | Purpose                                                            | AI Tools |
+| ---------------------- | ------------------------------------------------------------------ | -------- |
+| `fin-core`             | Exchange registry, risk controller, CCXT bridge, SSE, events       | 0        |
+| `fin-trading`          | Order execution with risk gates (Binance, OKX, Bybit, Hyperliquid) | 5        |
+| `fin-portfolio`        | Balance aggregation, performance metrics, rebalancing              | 5        |
+| `fin-market-data`      | Price feeds, OHLCV, market depth                                   | 4        |
+| `fin-expert-sdk`       | Professional analysis API bridge                                   | 3        |
+| `fin-info-feed`        | Market intelligence, sentiment, earnings data                      | 3        |
+| `fin-monitoring`       | Price alerts, portfolio health checks, anomaly detection           | 4        |
+| `fin-data-bus`         | Unified data provider, OHLCV cache, regime detection               | 3        |
+| `fin-data-hub`         | External data source proxy (stock/crypto/macro/FX/derivatives)     | 7        |
+| `fin-evolution-engine` | GEP gene evolution, LLM mutation, RDAVD fitness                    | 2        |
+| `fin-fund-manager`     | Capital flow tracking, performance snapshots                       | 6        |
+| `fin-openbb-data`      | OpenBB data bridge (162+ fetchers, 38+ providers)                  | 0        |
+| `fin-paper-trading`    | Multi-market paper trading (US/HK/A-shares/Crypto)                 | 6        |
+| `fin-strategy-engine`  | Strategy registry, backtesting engine, custom rule engine          | 4        |
+| `fin-strategy-memory`  | Strategy persistence, time-decayed fitness scoring                 | 4        |
+| `fin-shared-types`     | Cross-extension shared types (OHLCV, StrategyDefinition, etc.)     | 0        |
+
+**Total AI tools**: 56
 
 ## 3. Financial Skills (9)
 
@@ -142,4 +146,4 @@ When merging upstream, restore these after conflict resolution:
 
 ---
 
-**File count**: ~200+ OpenFinClaw-specific files across 14 extensions, 9 skills, config, UI, commons, and deploy.
+**File count**: ~200+ OpenFinClaw-specific files across 15 extensions (56 AI tools), 9 skills, config, UI, commons, and deploy.

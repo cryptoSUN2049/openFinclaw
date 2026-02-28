@@ -9,6 +9,8 @@ status: in-progress
 
 # FinClaw Commons Hub — 开发技能全景
 
+> **适用范围**：本文档描述的是 **FinClaw Commons Hub Web 项目**（Next.js/Supabase/React 技术栈），**非** OpenFinClaw 金融扩展。OpenFinClaw 的实际技术栈为 Node.js 22+ / Express / TypeScript / SQLite，开发指引请参考项目根目录的 `CLAUDE.md` 和 `FORK_DELTA.md`。
+
 > 本文档以全栈专家视角，系统梳理本项目的技术栈、架构模式、代码范式与开发规约。
 > 目标：新成员 30 分钟内建立项目全局认知。
 
