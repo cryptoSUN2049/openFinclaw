@@ -178,6 +178,12 @@ function setupFinConfigBridge(state: AppViewState) {
     if (!src) {
       return;
     }
+    // Only accept messages from same-origin iframes (gateway-served dashboards)
+    if (ev.origin !== window.location.origin) {
+      return;
+    }
+
+    const replyOrigin = ev.origin;
 
     if (d.type === "fin-config-get") {
       const section = d.section as string;
@@ -205,11 +211,14 @@ function setupFinConfigBridge(state: AppViewState) {
             ok: false,
             error: "Unknown section: " + section,
           },
-          "*",
+          replyOrigin,
         );
         return;
       }
-      src.postMessage({ type: "fin-config-get-result", _reqId: d._reqId, ok: true, values }, "*");
+      src.postMessage(
+        { type: "fin-config-get-result", _reqId: d._reqId, ok: true, values },
+        replyOrigin,
+      );
     }
 
     if (d.type === "fin-config-patch") {
@@ -223,7 +232,7 @@ function setupFinConfigBridge(state: AppViewState) {
             ok: false,
             error: "Invalid section or values",
           },
-          "*",
+          replyOrigin,
         );
         return;
       }
@@ -237,11 +246,14 @@ function setupFinConfigBridge(state: AppViewState) {
         const merged = deepMerge(current, values);
         updateConfigFormValue(_finBridgeHost!, ["financial", section], merged);
         await saveConfig(_finBridgeHost!);
-        src.postMessage({ type: "fin-config-patch-result", _reqId: d._reqId, ok: true }, "*");
+        src.postMessage(
+          { type: "fin-config-patch-result", _reqId: d._reqId, ok: true },
+          replyOrigin,
+        );
       } catch (err) {
         src.postMessage(
           { type: "fin-config-patch-result", _reqId: d._reqId, ok: false, error: String(err) },
-          "*",
+          replyOrigin,
         );
       }
     }
@@ -284,8 +296,10 @@ export function renderApp(state: AppViewState) {
   const isChat = state.tab === "chat";
   const isIframeTab =
     state.tab === "missionControl" ||
+    state.tab === "commandCenter" ||
     state.tab === "trading" ||
     state.tab === "fund" ||
+    state.tab === "evolution" ||
     state.tab === "financeDashboard";
   const chatFocus = isChat && (state.settings.chatFocusMode || state.onboarding);
   const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
@@ -1273,6 +1287,8 @@ export function renderApp(state: AppViewState) {
         ${state.tab === "missionControl" ? renderIframeDashboard("/dashboard/mission-control", "Mission Control") : nothing}
         ${state.tab === "trading" ? renderIframeDashboard("/dashboard/trading", "Trading Dashboard") : nothing}
         ${state.tab === "fund" ? renderIframeDashboard("/dashboard/fund", "Fund Dashboard") : nothing}
+        ${state.tab === "commandCenter" ? renderIframeDashboard("/dashboard/command-center", "Command Center") : nothing}
+        ${state.tab === "evolution" ? renderIframeDashboard("/dashboard/evolution", "Evolution Engine") : nothing}
         ${state.tab === "financeDashboard" ? renderIframeDashboard("/dashboard/finance", "Finance Dashboard") : nothing}
       </main>
       ${renderExecApprovalPrompt(state)}

@@ -175,12 +175,7 @@
 /* ── Risk Halo ── */
 .fin-risk-halo {
   height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--fin-risk-accent) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, var(--fin-risk-accent) 50%, transparent 100%);
   opacity: 0.6;
   animation: fin-risk-pulse var(--fin-risk-pulse) ease-in-out infinite;
   margin-bottom: 16px;
