@@ -13,13 +13,13 @@
   ],
   "homepage": "https://github.com/cryptoSUN2049/openFinclaw#readme",
   "bugs": {
-    "url": "https://github.com/AICoinvestor/openfinclaw/issues"
+    "url": "https://github.com/cryptoSUN2049/openFinclaw/issues"
   },
   "license": "MIT",
   "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AICoinvestor/openfinclaw.git"
+    "url": "git+https://github.com/cryptoSUN2049/openFinclaw.git"
   },
   "bin": {
     "openfinclaw": "openfinclaw.mjs"
@@ -120,7 +120,7 @@
     "release:check": "node --import tsx scripts/release-check.ts",
     "start": "node scripts/run-node.mjs",
     "test": "node scripts/test-parallel.mjs",
-    "test:all": "pnpm lint && pnpm build && pnpm test && pnpm test:e2e && pnpm test:live && pnpm test:docker:all",
+    "test:all": "pnpm lint && pnpm build && pnpm test && pnpm test:e2e && pnpm test:e2e:integration && pnpm test:live && pnpm test:docker:all",
     "test:coverage": "vitest run --config vitest.unit.config.ts --coverage",
     "test:docker:all": "pnpm test:docker:live-models && pnpm test:docker:live-gateway && pnpm test:docker:onboard && pnpm test:docker:gateway-network && pnpm test:docker:qr && pnpm test:docker:doctor-switch && pnpm test:docker:plugins && pnpm test:docker:cleanup",
     "test:docker:cleanup": "bash scripts/test-cleanup-docker.sh",
@@ -132,6 +132,7 @@
     "test:docker:plugins": "bash scripts/e2e/plugins-docker.sh",
     "test:docker:qr": "bash scripts/e2e/qr-import-docker.sh",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:e2e:integration": "vitest run --config vitest.integration.config.ts",
     "test:fast": "vitest run --config vitest.unit.config.ts",
     "test:force": "node --import tsx scripts/test-force.ts",
     "test:install:e2e": "bash scripts/test-install-sh-e2e-docker.sh",

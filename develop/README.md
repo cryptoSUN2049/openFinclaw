@@ -11,6 +11,8 @@ status: in-progress
 
 本目录 (`develop/`) 是 FinClaw Commons Hub 项目的**核心开发文档库**，涵盖开发流程、编码规范、模块规划与进度跟踪。所有开发相关的文档统一收录于此，确保团队成员能快速定位所需信息。
 
+> **适用范围**：本目录下的文档主要适用于 **FinClaw Commons Hub Web 项目**（Next.js/Supabase 技术栈）。OpenFinClaw 金融扩展（`extensions/fin-*`）的开发请参考项目根目录的 `CLAUDE.md` 和 `FORK_DELTA.md`。
+
 ## 快速导航
 
 | 文档                                 | 说明                                                                                     | 状态        |
@@ -24,13 +26,10 @@ status: in-progress
 
 ## 关联文档
 
-| 目录                                    | 说明                                                                 |
-| --------------------------------------- | -------------------------------------------------------------------- |
-| [design/架构设计/](../design/架构设计/) | 架构设计文档 — 产品概述、模块架构、业务流程、技术设计、数据库 Schema |
-| [design/模版/](../design/模版/)         | 设计模版 — Supabase Email 模版、参考模版                             |
-| [sql/](../sql/)                         | 数据库 Schema & 迁移脚本（init / migration）                         |
-| [docs/](../docs/)                       | 产品设计、战略规划、技术文档、竞品分析                               |
-| [data/](../data/)                       | 运行时数据 — Registry 索引、技能定义、FCS 分数、Arena 数据           |
+| 目录                              | 说明                                   |
+| --------------------------------- | -------------------------------------- |
+| [docs/](../docs/)                 | 产品设计、战略规划、技术文档、竞品分析 |
+| [FORK_DELTA.md](../FORK_DELTA.md) | OpenFinClaw 与上游 OpenClaw 的差异清单 |
 
 ## 文档维护约定
 

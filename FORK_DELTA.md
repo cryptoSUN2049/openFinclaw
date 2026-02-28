@@ -1,6 +1,6 @@
 # FORK_DELTA.md — OpenFinClaw vs Upstream OpenClaw
 
-**Last updated**: 2026-02-26
+**Last updated**: 2026-02-28
 **Upstream merged**: 2026.2.25 (395 commits)
 
 This document catalogs every OpenFinClaw-specific customization that diverges from upstream. Use it as a checklist when merging upstream changes.
@@ -16,25 +16,32 @@ This document catalogs every OpenFinClaw-specific customization that diverges fr
 | `package.json` → homepage        | `github.com/cryptoSUN2049/openFinclaw`  | `github.com/openclaw/openclaw` |
 | `package.json` → keywords        | ai, ccxt, crypto, finance, gateway…     | `[]`                           |
 | `package.json` → bin             | `openfinclaw: openfinclaw.mjs`          | `openclaw: openclaw.mjs`       |
-| `package.json` → bugs/repository | AICoinvestor/openfinclaw                | openclaw/openclaw              |
+| `package.json` → bugs/repository | cryptoSUN2049/openFinclaw               | openclaw/openclaw              |
 | `openfinclaw.mjs`                | Custom CLI entry point                  | N/A (ours only)                |
 | `README.md`                      | OpenFinClaw brand, features, roadmap    | OpenClaw docs                  |
 
-## 2. Financial Extensions (7)
+## 2. Financial Extensions (14)
 
 All in `extensions/fin-*/`, each with `devDependencies: { "openfinclaw": "workspace:*" }`.
 
-| Extension         | Purpose                                                            |
-| ----------------- | ------------------------------------------------------------------ |
-| `fin-core`        | Exchange registry, risk controller, CCXT bridge, shared types      |
-| `fin-trading`     | Order execution with risk gates (Binance, OKX, Bybit, Hyperliquid) |
-| `fin-portfolio`   | Balance aggregation, performance metrics, rebalancing              |
-| `fin-market-data` | Price feeds, OHLCV, market depth                                   |
-| `fin-expert-sdk`  | Professional analysis API bridge                                   |
-| `fin-info-feed`   | Market intelligence, sentiment, earnings data                      |
-| `fin-monitoring`  | Price alerts, portfolio health checks, anomaly detection           |
+| Extension              | Purpose                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| `fin-core`             | Exchange registry, risk controller, CCXT bridge, shared types      |
+| `fin-trading`          | Order execution with risk gates (Binance, OKX, Bybit, Hyperliquid) |
+| `fin-portfolio`        | Balance aggregation, performance metrics, rebalancing              |
+| `fin-market-data`      | Price feeds, OHLCV, market depth                                   |
+| `fin-expert-sdk`       | Professional analysis API bridge                                   |
+| `fin-info-feed`        | Market intelligence, sentiment, earnings data                      |
+| `fin-monitoring`       | Price alerts, portfolio health checks, anomaly detection           |
+| `fin-data-bus`         | Unified data provider, OHLCV cache, regime detection               |
+| `fin-evolution-engine` | GEP gene evolution, LLM mutation, RDAVD fitness                    |
+| `fin-fund-manager`     | Capital flow tracking, performance snapshots                       |
+| `fin-openbb-data`      | OpenBB data bridge (162+ fetchers, 38+ providers)                  |
+| `fin-paper-trading`    | Multi-market paper trading (US/HK/A-shares/Crypto)                 |
+| `fin-strategy-engine`  | Strategy registry, backtesting engine, custom rule engine          |
+| `fin-strategy-memory`  | Strategy persistence, time-decayed fitness scoring                 |
 
-## 3. Financial Skills (8)
+## 3. Financial Skills (9)
 
 All in `skills/fin-*/SKILL.md` — runtime-discoverable skill definitions.
 
@@ -47,6 +54,7 @@ All in `skills/fin-*/SKILL.md` — runtime-discoverable skill definitions.
 | `fin-portfolio`   | Portfolio analysis, rebalancing          |
 | `fin-report`      | Automated daily/weekly/monthly reports   |
 | `fin-screener`    | Security screening, quantitative ranking |
+| `fin-trading`     | Trade execution, order management        |
 | `fin-watchlist`   | Custom watchlist management              |
 
 ## 4. Financial Configuration
@@ -134,4 +142,4 @@ When merging upstream, restore these after conflict resolution:
 
 ---
 
-**File count**: ~120 OpenFinClaw-specific files across 7 extensions, 8 skills, config, UI, commons, and deploy.
+**File count**: ~200+ OpenFinClaw-specific files across 14 extensions, 9 skills, config, UI, commons, and deploy.
