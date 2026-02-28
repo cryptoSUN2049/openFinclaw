@@ -1,0 +1,49 @@
+/**
+ * Dashboard template loading and HTML rendering.
+ * Reads HTML/CSS template files from the dashboard/ directory and injects
+ * data + styles at render time.
+ */
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+export type DashboardTemplates = {
+  finance: { html: string; css: string };
+  trading: { html: string; css: string };
+  commandCenter: { html: string; css: string };
+  missionControl: { html: string; css: string };
+};
+
+/** Load all dashboard templates from the given directory. Missing files are empty strings. */
+export function loadDashboardTemplates(dashboardDir: string): DashboardTemplates {
+  const load = (htmlFile: string, cssFile: string) => {
+    try {
+      return {
+        html: readFileSync(join(dashboardDir, htmlFile), "utf-8"),
+        css: readFileSync(join(dashboardDir, cssFile), "utf-8"),
+      };
+    } catch {
+      return { html: "", css: "" };
+    }
+  };
+
+  return {
+    finance: load("finance-dashboard.html", "finance-dashboard.css"),
+    trading: load("trading-dashboard.html", "trading-dashboard.css"),
+    commandCenter: load("command-center.html", "command-center.css"),
+    missionControl: load("mission-control.html", "mission-control.css"),
+  };
+}
+
+/** Render a dashboard HTML page by injecting CSS and JSON data into the template. */
+export function renderDashboard(
+  template: { html: string; css: string },
+  data: unknown,
+  cssPlaceholder: string,
+  dataPlaceholder: RegExp | string,
+): string | null {
+  if (!template.html || !template.css) return null;
+
+  const safeJson = JSON.stringify(data).replace(/<\//g, "<\\/");
+  return template.html.replace(cssPlaceholder, template.css).replace(dataPlaceholder, safeJson);
+}

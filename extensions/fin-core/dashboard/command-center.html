@@ -408,9 +408,9 @@
                 (p.unrealizedPnl >= 0 ? "+" : "") +
                 fmtUsd(p.unrealizedPnl) +
                 "</span>" +
-                '<button class="pos-row__close" onclick="CC.closePosition(\'' +
+                '<button class="pos-row__close" data-close-position="' +
                 esc(p.symbol) +
-                '\')" title="Close">&times;</button>' +
+                '" title="Close">&times;</button>' +
                 "</div>";
             }
             posEl.innerHTML = html;
@@ -539,24 +539,24 @@
               "</span></td>" +
               '<td><div class="race-actions">' +
               (canPromote
-                ? '<button class="race-act race-act--promote" title="Promote" onclick="CC.promoteStrategy(\'' +
+                ? '<button class="race-act race-act--promote" title="Promote" data-strat-id="' +
                   esc(s.id) +
-                  "')\">&#x2B06;</button>"
+                  '" data-strat-action="promote">&#x2B06;</button>'
                 : "") +
               (canPause
-                ? '<button class="race-act race-act--pause" title="Pause" onclick="CC.pauseStrategy(\'' +
+                ? '<button class="race-act race-act--pause" title="Pause" data-strat-id="' +
                   esc(s.id) +
-                  "')\">&#x23F8;</button>"
+                  '" data-strat-action="pause">&#x23F8;</button>'
                 : "") +
               (canResume
-                ? '<button class="race-act race-act--play" title="Resume" onclick="CC.resumeStrategy(\'' +
+                ? '<button class="race-act race-act--play" title="Resume" data-strat-id="' +
                   esc(s.id) +
-                  "')\">&#x25B6;</button>"
+                  '" data-strat-action="resume">&#x25B6;</button>'
                 : "") +
               (canKill
-                ? '<button class="race-act race-act--kill" title="Kill" onclick="CC.killStrategy(\'' +
+                ? '<button class="race-act race-act--kill" title="Kill" data-strat-id="' +
                   esc(s.id) +
-                  "')\">&#x2715;</button>"
+                  '" data-strat-action="kill">&#x2715;</button>'
                 : "") +
               "</div></td>" +
               "</tr>";
@@ -657,12 +657,12 @@
             if (e.status === "pending" && e.type === "trade_pending") {
               html +=
                 '<div class="fcard__actions">' +
-                '<button class="fcard__btn fcard__btn--approve" onclick="CC.approveEvent(\'' +
+                '<button class="fcard__btn fcard__btn--approve" data-event-id="' +
                 esc(e.id) +
-                "')\">Approve</button>" +
-                '<button class="fcard__btn fcard__btn--reject" onclick="CC.rejectEvent(\'' +
+                '" data-event-action="approve">Approve</button>' +
+                '<button class="fcard__btn fcard__btn--reject" data-event-id="' +
                 esc(e.id) +
-                "')\">Reject</button>" +
+                '" data-event-action="reject">Reject</button>' +
                 "</div>";
             }
 
@@ -708,9 +708,9 @@
               '<span class="num">' +
               esc(label) +
               "</span>" +
-              '<button class="alert-row__rm" onclick="CC.removeAlert(\'' +
+              '<button class="alert-row__rm" data-remove-alert="' +
               esc(a.id) +
-              '\')" title="Remove">&times;</button>' +
+              '" title="Remove">&times;</button>' +
               "</div>";
           }
           el.innerHTML = html;
@@ -937,26 +937,26 @@
                 };
                 if (el("s_enabled")) el("s_enabled").checked = trading.enabled !== false;
                 if (el("s_maxAutoTradeUsd"))
-                  el("s_maxAutoTradeUsd").value = trading.maxAutoTradeUsd || "";
+                  el("s_maxAutoTradeUsd").value = trading.maxAutoTradeUsd ?? "";
                 if (el("s_confirmationThresholdUsd"))
-                  el("s_confirmationThresholdUsd").value = trading.confirmationThresholdUsd || "";
+                  el("s_confirmationThresholdUsd").value = trading.confirmationThresholdUsd ?? "";
                 if (el("s_dailyLossLimitUsd"))
-                  el("s_dailyLossLimitUsd").value = trading.dailyLossLimitUsd || "";
+                  el("s_dailyLossLimitUsd").value = trading.dailyLossLimitUsd ?? "";
                 if (el("s_maxPositionPct"))
-                  el("s_maxPositionPct").value = trading.maxPositionPct || "";
-                if (el("s_maxLeverage")) el("s_maxLeverage").value = trading.maxLeverage || "";
+                  el("s_maxPositionPct").value = trading.maxPositionPct ?? "";
+                if (el("s_maxLeverage")) el("s_maxLeverage").value = trading.maxLeverage ?? "";
                 if (el("s_allowPairs"))
                   el("s_allowPairs").value = (trading.allowPairs || []).join(", ");
                 if (el("s_blockPairs"))
                   el("s_blockPairs").value = (trading.blockPairs || []).join(", ");
                 if (el("s_defaultCapital"))
-                  el("s_defaultCapital").value = paper.defaultCapital || "";
+                  el("s_defaultCapital").value = paper.defaultCapital ?? "";
                 if (el("s_slippageModel"))
                   el("s_slippageModel").value = paper.slippageModel || "constant";
                 if (el("s_constantSlippageBps"))
-                  el("s_constantSlippageBps").value = paper.constantSlippageBps || "";
+                  el("s_constantSlippageBps").value = paper.constantSlippageBps ?? "";
                 if (el("s_signalCheckIntervalSec"))
-                  el("s_signalCheckIntervalSec").value = paper.signalCheckIntervalSec || "";
+                  el("s_signalCheckIntervalSec").value = paper.signalCheckIntervalSec ?? "";
                 var us = paper.us || {};
                 var hk = paper.hk || {};
                 var cn = paper.cn || {};
@@ -973,6 +973,12 @@
             var el = function (id) {
               return document.getElementById(id);
             };
+            // parseNum: preserves 0 as valid; returns undefined only for empty/NaN
+            var parseNum = function (v) {
+              if (v === "" || v == null) return undefined;
+              var n = parseFloat(v);
+              return Number.isFinite(n) ? n : undefined;
+            };
             var parsePairs = function (s) {
               return (s || "")
                 .split(",")
@@ -983,20 +989,19 @@
             };
             var tradingPatch = {
               enabled: el("s_enabled") ? el("s_enabled").checked : true,
-              maxAutoTradeUsd: parseFloat(el("s_maxAutoTradeUsd").value) || undefined,
-              confirmationThresholdUsd:
-                parseFloat(el("s_confirmationThresholdUsd").value) || undefined,
-              dailyLossLimitUsd: parseFloat(el("s_dailyLossLimitUsd").value) || undefined,
-              maxPositionPct: parseFloat(el("s_maxPositionPct").value) || undefined,
-              maxLeverage: parseFloat(el("s_maxLeverage").value) || undefined,
+              maxAutoTradeUsd: parseNum(el("s_maxAutoTradeUsd").value),
+              confirmationThresholdUsd: parseNum(el("s_confirmationThresholdUsd").value),
+              dailyLossLimitUsd: parseNum(el("s_dailyLossLimitUsd").value),
+              maxPositionPct: parseNum(el("s_maxPositionPct").value),
+              maxLeverage: parseNum(el("s_maxLeverage").value),
               allowPairs: parsePairs(el("s_allowPairs").value),
               blockPairs: parsePairs(el("s_blockPairs").value),
             };
             var paperPatch = {
-              defaultCapital: parseFloat(el("s_defaultCapital").value) || undefined,
+              defaultCapital: parseNum(el("s_defaultCapital").value),
               slippageModel: el("s_slippageModel").value || undefined,
-              constantSlippageBps: parseFloat(el("s_constantSlippageBps").value) || undefined,
-              signalCheckIntervalSec: parseFloat(el("s_signalCheckIntervalSec").value) || undefined,
+              constantSlippageBps: parseNum(el("s_constantSlippageBps").value),
+              signalCheckIntervalSec: parseNum(el("s_signalCheckIntervalSec").value),
               us: { adapter: el("s_usAdapter").value },
               hk: { adapter: el("s_hkAdapter").value },
               cn: { adapter: el("s_cnAdapter").value },
@@ -1019,9 +1024,12 @@
             if (!form) return;
             var kind = form.querySelector("[name=alertKind]").value;
             var symbol = form.querySelector("[name=alertSymbol]").value.trim();
-            var price = parseFloat(form.querySelector("[name=alertPrice]").value) || undefined;
-            var threshold =
-              parseFloat(form.querySelector("[name=alertThreshold]").value) || undefined;
+            var priceVal = form.querySelector("[name=alertPrice]").value;
+            var price = priceVal !== "" ? parseFloat(priceVal) : undefined;
+            price = Number.isFinite(price) ? price : undefined;
+            var threshVal = form.querySelector("[name=alertThreshold]").value;
+            var threshold = threshVal !== "" ? parseFloat(threshVal) : undefined;
+            threshold = Number.isFinite(threshold) ? threshold : undefined;
             var direction = form.querySelector("[name=alertDirection]")
               ? form.querySelector("[name=alertDirection]").value
               : undefined;
@@ -1147,6 +1155,39 @@
         };
 
         // ════════════════════════════════════════════════════
+        // ════════════════════════════════════════════════════
+        // Delegated click handlers for data-* attributes (XSS-safe)
+        // ════════════════════════════════════════════════════
+
+        document.addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-strat-action]");
+          if (btn) {
+            var action = btn.dataset.stratAction;
+            var id = btn.dataset.stratId;
+            if (action === "promote") CC.promoteStrategy(id);
+            else if (action === "pause") CC.pauseStrategy(id);
+            else if (action === "resume") CC.resumeStrategy(id);
+            else if (action === "kill") CC.killStrategy(id);
+            return;
+          }
+          var closeBtn = e.target.closest("[data-close-position]");
+          if (closeBtn) {
+            CC.closePosition(closeBtn.dataset.closePosition);
+            return;
+          }
+          var evtBtn = e.target.closest("[data-event-action]");
+          if (evtBtn) {
+            if (evtBtn.dataset.eventAction === "approve") CC.approveEvent(evtBtn.dataset.eventId);
+            else CC.rejectEvent(evtBtn.dataset.eventId);
+            return;
+          }
+          var rmBtn = e.target.closest("[data-remove-alert]");
+          if (rmBtn) {
+            CC.removeAlert(rmBtn.dataset.removeAlert);
+            return;
+          }
+        });
+
         // MODAL — Emergency Stop
         // ════════════════════════════════════════════════════
 
