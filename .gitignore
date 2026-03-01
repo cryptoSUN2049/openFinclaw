@@ -122,8 +122,8 @@ dist/protocol.schema.json
 # Synthing
 **/.stfolder/
 
-# Local development workspace
-dev/
+# Local development workspace (root-only, not scripts/dev/)
+/dev/
 
 # Generated dashboard site
 commons/site/
