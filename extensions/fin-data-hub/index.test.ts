@@ -82,7 +82,7 @@ describe("fin-data-hub plugin", () => {
     expect(details.mode).toBe("stub");
   });
 
-  it("returns config error in live mode when endpoint is missing", async () => {
+  it("returns config error in live mode when API key is missing", async () => {
     const { api, tools } = createFakeApi({ mode: "live" });
     plugin.register(api);
 
@@ -92,7 +92,7 @@ describe("fin-data-hub plugin", () => {
         query_type: "historical",
       }),
     );
-    expect(String(result.error)).toContain("endpoint not configured");
+    expect(String(result.error)).toContain("API key not configured");
   });
 
   it("validates required params", async () => {
@@ -208,6 +208,7 @@ describe("fin-data-hub plugin", () => {
 
     const { api, tools } = createFakeApi({
       mode: "live",
+      apiKey: "test-key",
       endpoint: "https://data.example.com",
     });
     plugin.register(api);
