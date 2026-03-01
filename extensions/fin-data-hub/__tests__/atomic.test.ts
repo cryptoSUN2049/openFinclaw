@@ -4,7 +4,7 @@
  * Each tool/query_type combination is tested in two modes:
  *   1. Stub mode: no API key -> returns {_stub: true} nested in result.data[]
  *   2. Live mock: mocks global fetch, verifies POST to /api/tushare with X-Api-Key
- *   3. fin_crypto: always stub regardless of mode (no fetch call)
+ *   3. fin_crypto: CoinGecko/DefiLlama in live mode, redirect for CEX data
  *
  * Run: npx vitest run extensions/fin-data-hub/__tests__/atomic.test.ts
  */
@@ -81,11 +81,16 @@ const LIVE_CONFIG = {
 
 interface ToolSpec {
   toolName: string;
-  queryTypes: { qt: string; expectedApi: string }[];
+  queryTypes: {
+    qt: string;
+    expectedApi: string;
+    /** Live-mode behavior: default "tushare", crypto uses redirect/coingecko/defillama */
+    behavior?: "redirect" | "coingecko" | "defillama";
+  }[];
   buildParams: (qt: string) => Record<string, unknown>;
   requiredFields: string[];
-  /** If true, tool is always a stub (no fetch even in live mode) */
-  alwaysStub?: boolean;
+  /** Stub format: "crypto" = flat result with _stub, default = nested data[] with _stub */
+  stubFormat?: "crypto";
 }
 
 const TOOL_SPECS: ToolSpec[] = [
@@ -178,14 +183,14 @@ const TOOL_SPECS: ToolSpec[] = [
   {
     toolName: "fin_crypto",
     queryTypes: [
-      { qt: "ohlcv", expectedApi: "" },
-      { qt: "ticker", expectedApi: "" },
-      { qt: "coin_market", expectedApi: "" },
-      { qt: "defi_protocols", expectedApi: "" },
+      { qt: "ohlcv", expectedApi: "", behavior: "redirect" },
+      { qt: "ticker", expectedApi: "", behavior: "redirect" },
+      { qt: "coin_market", expectedApi: "", behavior: "coingecko" },
+      { qt: "defi_protocols", expectedApi: "", behavior: "defillama" },
     ],
     buildParams: (qt) => ({ query_type: qt, symbol: "BTC/USDT" }),
     requiredFields: ["query_type"],
-    alwaysStub: true,
+    stubFormat: "crypto",
   },
   {
     toolName: "fin_market",
@@ -246,7 +251,7 @@ describe("atomic call matrix (Tushare proxy)", () => {
 
             expect(result.success).toBe(true);
 
-            if (spec.alwaysStub) {
+            if (spec.stubFormat === "crypto") {
               // fin_crypto: stub at result level
               const inner = result.result as Record<string, unknown>;
               expect(inner._stub).toBe(true);
@@ -269,8 +274,16 @@ describe("atomic call matrix (Tushare proxy)", () => {
 
       /* ---- Live mock ---- */
       describe("live mode (mocked fetch)", () => {
-        for (const { qt, expectedApi } of spec.queryTypes) {
-          it(`${qt} -> ${spec.alwaysStub ? "stub (no fetch)" : `POST ${expectedApi}`}`, async () => {
+        for (const { qt, expectedApi, behavior } of spec.queryTypes) {
+          const label =
+            behavior === "redirect"
+              ? "redirect (no fetch)"
+              : behavior === "coingecko"
+                ? "GET CoinGecko"
+                : behavior === "defillama"
+                  ? "GET DefiLlama"
+                  : `POST ${expectedApi}`;
+          it(`${qt} -> ${label}`, async () => {
             const { fake, calls } = mockFetch();
             globalThis.fetch = fake as unknown as typeof globalThis.fetch;
 
@@ -283,12 +296,18 @@ describe("atomic call matrix (Tushare proxy)", () => {
 
             expect(result.success).toBe(true);
 
-            if (spec.alwaysStub) {
-              // fin_crypto never calls fetch
+            if (behavior === "redirect") {
+              // CEX data → redirect to fin-data-bus, no fetch
               expect(calls).toHaveLength(0);
-              const inner = result.result as Record<string, unknown>;
-              expect(inner._stub).toBe(true);
+              expect(result.source).toBe("redirect");
+            } else if (behavior === "coingecko") {
+              expect(calls).toHaveLength(1);
+              expect(calls[0].url).toContain("api.coingecko.com");
+            } else if (behavior === "defillama") {
+              expect(calls).toHaveLength(1);
+              expect(calls[0].url).toContain("api.llama.fi");
             } else {
+              // Tushare proxy
               expect(calls).toHaveLength(1);
               const { url, init } = calls[0];
 

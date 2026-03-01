@@ -92,12 +92,7 @@ export interface RegimeDetectorLike {
 }
 
 export interface DataProviderLike {
-  getOHLCV(params: {
-    symbol: string;
-    market: string;
-    timeframe: string;
-    limit?: number;
-  }): Promise<
+  getOHLCV(params: { symbol: string; market: string; timeframe: string; limit?: number }): Promise<
     Array<{
       timestamp: number;
       open: number;
@@ -140,11 +135,11 @@ function nextNodeId(strategyId: string, generation: number): string {
 }
 
 function nextMutationId(): string {
-  return `mut-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  return `mut-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 4)}`;
 }
 
 function nextAuditId(): string {
-  return `audit-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  return `audit-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 4)}`;
 }
 
 /**

@@ -416,7 +416,7 @@ describe("fin-data-hub plugin", () => {
     expect(gateway.config).toBeDefined();
   });
 
-  it("fin_crypto returns stub with redirect message", async () => {
+  it("fin_crypto redirects CEX data to fin-data-bus in live mode", async () => {
     const { api, tools } = createFakeApi({ mode: "live", tushareApiKey: "key" });
     plugin.register(api);
 
@@ -427,9 +427,10 @@ describe("fin-data-hub plugin", () => {
       }),
     );
     expect(result.success).toBe(true);
-    const inner = result.result as { _stub: boolean; message: string };
-    expect(inner._stub).toBe(true);
+    expect(result.source).toBe("redirect");
+    const inner = result.result as { message: string; suggestedTool: string };
     expect(inner.message).toContain("fin-data-bus");
+    expect(inner.suggestedTool).toBe("fin_data_ohlcv");
   });
 
   it("derivatives routes to correct Tushare API", async () => {

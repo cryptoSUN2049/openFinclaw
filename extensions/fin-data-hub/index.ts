@@ -14,6 +14,8 @@ type DataHubConfig = {
   mode: "stub" | "live";
   tushareProxyUrl: string;
   tushareApiKey?: string;
+  coingeckoApiKey?: string;
+  coinglassApiKey?: string;
   requestTimeoutMs: number;
 };
 
@@ -48,12 +50,22 @@ function resolveConfig(api: OpenClawPluginApi): DataHubConfig {
     readEnv(["TUSHARE_PROXY_URL", "FIN_DATA_HUB_ENDPOINT"]) ??
     DEFAULT_PROXY_URL;
 
+  const coingeckoApiKey =
+    (typeof raw?.coingeckoApiKey === "string" ? raw.coingeckoApiKey : undefined) ??
+    readEnv(["COINGECKO_API_KEY"]);
+
+  const coinglassApiKey =
+    (typeof raw?.coinglassApiKey === "string" ? raw.coinglassApiKey : undefined) ??
+    readEnv(["COINGLASS_API_KEY"]);
+
   const mode =
     modeRaw === "stub" ? "stub" : modeRaw === "live" ? "live" : tushareApiKey ? "live" : "stub";
 
   return {
     mode,
     tushareApiKey,
+    coingeckoApiKey,
+    coinglassApiKey,
     tushareProxyUrl: tushareProxyUrl.replace(/\/+$/, ""),
     requestTimeoutMs: Number.isFinite(timeout) && timeout >= 1000 ? Math.floor(timeout) : 30_000,
   };
@@ -252,6 +264,154 @@ function buildTushareParams(params: Record<string, unknown>): Record<string, unk
   if (params.limit) out.limit = params.limit;
   if (params.exchange) out.exchange = params.exchange;
   return out;
+}
+
+/* ---------- CoinGecko + DefiLlama helpers ---------- */
+
+const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
+const DEFILLAMA_BASE = "https://api.llama.fi";
+
+async function coingeckoGet(
+  config: DataHubConfig,
+  path: string,
+  params?: Record<string, string>,
+): Promise<unknown> {
+  const url = new URL(`${COINGECKO_BASE}${path}`);
+  if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+
+  const headers: Record<string, string> = {};
+  if (config.coingeckoApiKey) headers["x-cg-demo-api-key"] = config.coingeckoApiKey;
+
+  const resp = await fetch(url.toString(), {
+    headers,
+    signal: AbortSignal.timeout(config.requestTimeoutMs),
+  });
+  const text = await resp.text();
+  if (!resp.ok) throw new Error(`CoinGecko error (${resp.status}): ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+
+async function defillamaGet(config: DataHubConfig, path: string): Promise<unknown> {
+  const resp = await fetch(`${DEFILLAMA_BASE}${path}`, {
+    signal: AbortSignal.timeout(config.requestTimeoutMs),
+  });
+  const text = await resp.text();
+  if (!resp.ok) throw new Error(`DefiLlama error (${resp.status}): ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+
+/** Route crypto query_type to the right API */
+async function executeCryptoQuery(
+  config: DataHubConfig,
+  queryType: string,
+  params: Record<string, unknown>,
+): Promise<{ source: string; data: unknown }> {
+  const symbol = String(params.symbol ?? "").trim();
+  const limit = params.limit ? String(params.limit) : undefined;
+
+  switch (queryType) {
+    // --- CoinGecko market data ---
+    case "coin_global":
+      return { source: "coingecko", data: await coingeckoGet(config, "/global") };
+
+    case "coin_market":
+      return {
+        source: "coingecko",
+        data: await coingeckoGet(config, "/coins/markets", {
+          vs_currency: "usd",
+          order: "market_cap_desc",
+          per_page: limit ?? "50",
+          sparkline: "false",
+        }),
+      };
+
+    case "coin_trending":
+      return { source: "coingecko", data: await coingeckoGet(config, "/search/trending") };
+
+    case "coin_categories":
+      return { source: "coingecko", data: await coingeckoGet(config, "/coins/categories") };
+
+    case "coin_info": {
+      const coinId = symbol.toLowerCase() || "bitcoin";
+      return {
+        source: "coingecko",
+        data: await coingeckoGet(config, `/coins/${coinId}`, {
+          localization: "false",
+          tickers: "false",
+          community_data: "false",
+          developer_data: "false",
+        }),
+      };
+    }
+
+    case "coin_historical": {
+      const coinId = symbol.toLowerCase() || "bitcoin";
+      const days = limit ?? "30";
+      return {
+        source: "coingecko",
+        data: await coingeckoGet(config, `/coins/${coinId}/market_chart`, {
+          vs_currency: "usd",
+          days,
+        }),
+      };
+    }
+
+    case "search": {
+      const query = symbol || "bitcoin";
+      return { source: "coingecko", data: await coingeckoGet(config, "/search", { query }) };
+    }
+
+    // --- DefiLlama ---
+    case "defi_protocols":
+      return { source: "defillama", data: await defillamaGet(config, "/protocols") };
+
+    case "defi_tvl":
+      if (symbol) {
+        return { source: "defillama", data: await defillamaGet(config, `/tvl/${symbol}`) };
+      }
+      return { source: "defillama", data: await defillamaGet(config, "/protocols") };
+
+    case "defi_chains":
+      return { source: "defillama", data: await defillamaGet(config, "/v2/chains") };
+
+    case "defi_yields":
+      return { source: "defillama", data: await defillamaGet(config, "/pools") };
+
+    case "defi_stablecoins":
+      return { source: "defillama", data: await defillamaGet(config, "/stablecoins") };
+
+    case "defi_fees":
+      return { source: "defillama", data: await defillamaGet(config, "/overview/fees") };
+
+    case "defi_dex_volumes":
+      return { source: "defillama", data: await defillamaGet(config, "/overview/dexs") };
+
+    case "defi_coin_prices": {
+      const coins = symbol || "coingecko:bitcoin,coingecko:ethereum";
+      return {
+        source: "defillama",
+        data: await defillamaGet(config, `/prices/current/${coins}`),
+      };
+    }
+
+    // --- CEX data → redirect to fin-data-bus ---
+    case "ohlcv":
+    case "ticker":
+    case "tickers":
+    case "orderbook":
+    case "trades":
+    case "funding_rate":
+      return {
+        source: "redirect",
+        data: {
+          message: `CEX ${queryType} data is served by fin-data-bus. Use tools: fin_data_ohlcv, fin_data_ticker.`,
+          suggestedTool: queryType === "ohlcv" ? "fin_data_ohlcv" : "fin_data_ticker",
+        },
+      };
+
+    default:
+      throw new Error(`Unknown crypto query_type: ${queryType}`);
+  }
 }
 
 /* ---------- plugin ---------- */
@@ -497,17 +657,24 @@ const finDataHubPlugin = {
           try {
             const queryType = String(params.query_type ?? "").trim();
             if (!queryType) throw new Error("query_type is required");
-            // Crypto data is handled by fin-data-bus (CCXT) + external APIs
-            // This is a passthrough stub for now
+
+            if (config.mode === "stub") {
+              return json({
+                success: true,
+                result: {
+                  _stub: true,
+                  query_type: queryType,
+                  message: "Stub mode. Set COINGECKO_API_KEY for CoinGecko data.",
+                },
+              });
+            }
+
+            const result = await executeCryptoQuery(config, queryType, params);
             return json({
               success: true,
-              result: {
-                _stub: true,
-                query_type: queryType,
-                message:
-                  "CEX data → use fin-data-bus tools (fin_data_ohlcv, fin_data_ticker). " +
-                  "CoinGecko/DefiLlama → direct API integration pending.",
-              },
+              query_type: queryType,
+              source: result.source,
+              result: result.data,
             });
           } catch (err) {
             return json({ error: err instanceof Error ? err.message : String(err) });
