@@ -1,7 +1,7 @@
 ---
 name: fin-deriv
 description: "衍生品分析 -- 期货(持仓/结算/仓单/期限结构)、期权(Greeks/IV曲线)、可转债(转股价值/溢价率)"
-metadata: { "openclaw": { "emoji": "📉", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata: { "openclaw": { "emoji": "📉", "requires": { "mcp": ["datahub"] } } }
 ---
 
 # 衍生品分析 -- 期货/期权/可转债
@@ -34,38 +34,43 @@ metadata: { "openclaw": { "emoji": "📉", "requires": { "extensions": ["fin-dat
 - User wants broad market overview -- use fin-market
 - User asks about crypto or DeFi -- use fin-crypto
 
-## Tools
+## Tools (DataHub MCP)
 
-- `fin_deriv` -- derivatives data (futures, options, convertible bonds)
-- `fin_stock` -- supplement with underlying equity price when needed for basis calculation
+### Options (Standard OpenBB Routes)
 
-### Query Types for fin_deriv
+| MCP Tool                     | Description                               | Key Fields                                             |
+| ---------------------------- | ----------------------------------------- | ------------------------------------------------------ |
+| `derivatives_options_basic`  | Option contract info                      | ts_code, exercise_price, opt_type (C/P), maturity_date |
+| `derivatives_options_daily`  | Option daily data                         | close, vol, oi, pct_chg                                |
+| `derivatives_options_chains` | Full option chain with Greeks (US stocks) | strike_price, iv, delta, gamma, theta, vega            |
 
-#### Futures
+### Equity Price (for basis calculation)
 
-| query_type           | Description                 | Key Fields                                            |
-| -------------------- | --------------------------- | ----------------------------------------------------- |
-| `futures_historical` | Futures daily OHLCV         | open, high, low, close, vol, oi, settle               |
-| `futures_info`       | Futures contract basic info | symbol, name, exchange, multiplier                    |
-| `futures_mapping`    | Dominant contract mapping   | ts_code, mapping_ts_code                              |
-| `futures_holding`    | Position ranking (top 20)   | broker, vol, long_hld, short_hld, long_chg, short_chg |
-| `futures_settle`     | Daily settlement parameters | settle, pre_settle                                    |
-| `futures_warehouse`  | Warehouse receipt data      | warehouse, vol, vol_chg, unit                         |
+| MCP Tool                  | Description             | Key Fields                     |
+| ------------------------- | ----------------------- | ------------------------------ |
+| `equity_price_historical` | Underlying equity OHLCV | open, high, low, close, volume |
 
-#### Options
+### Futures (Tushare Proxy Only)
 
-| query_type     | Description                               | Key Fields                                             |
-| -------------- | ----------------------------------------- | ------------------------------------------------------ |
-| `option_basic` | Option contract info                      | ts_code, exercise_price, opt_type (C/P), maturity_date |
-| `option_daily` | Option daily data                         | close, vol, oi, pct_chg                                |
-| `option_chain` | Full option chain with Greeks (US stocks) | strike_price, iv, delta, gamma, theta, vega            |
+> **Note**: Futures data is currently only available through the Tushare proxy. There are no standard OpenBB routes for Chinese futures yet. Use `provider: "tushare"` in all futures calls.
 
-#### Convertible Bonds
+| Tushare Proxy API | Description                 | Key Fields                                            |
+| ----------------- | --------------------------- | ----------------------------------------------------- |
+| `fut_daily`       | Futures daily OHLCV         | open, high, low, close, vol, oi, settle               |
+| `fut_basic`       | Futures contract basic info | symbol, name, exchange, multiplier                    |
+| `fut_mapping`     | Dominant contract mapping   | ts_code, mapping_ts_code                              |
+| `fut_holding`     | Position ranking (top 20)   | broker, vol, long_hld, short_hld, long_chg, short_chg |
+| `fut_settle`      | Daily settlement parameters | settle, pre_settle                                    |
+| `fut_wsr`         | Warehouse receipt data      | warehouse, vol, vol_chg, unit                         |
 
-| query_type | Description                 | Key Fields                                               |
-| ---------- | --------------------------- | -------------------------------------------------------- |
-| `cb_basic` | Convertible bond info       | ts_code, stk_code, conv_price, maturity_date, issue_size |
-| `cb_daily` | Convertible bond daily data | close, vol, pct_chg                                      |
+### Convertible Bonds (Tushare Proxy Only)
+
+> **Note**: Convertible bond data is currently only available through the Tushare proxy. No standard OpenBB routes exist for Chinese CB data yet. Use `provider: "tushare"` in all CB calls.
+
+| Tushare Proxy API | Description                 | Key Fields                                               |
+| ----------------- | --------------------------- | -------------------------------------------------------- |
+| `cb_basic`        | Convertible bond info       | ts_code, stk_code, conv_price, maturity_date, issue_size |
+| `cb_daily`        | Convertible bond daily data | close, vol, pct_chg                                      |
 
 ## Futures Contract Code Rules
 
@@ -91,7 +96,8 @@ Example: IF2501.CFX   (CSI 300 index futures, Jan 2025, CFFEX)
 ### Dominant Contract Lookup
 
 ```
-fin_deriv({symbol: "IF.CFX", query_type: "futures_mapping"})
+# Tushare proxy call — no standard MCP route yet
+mcp_datahub.fut_mapping({symbol: "IF.CFX", provider: "tushare"})
 # Returns mapping_ts_code which is the current dominant contract
 ```
 
@@ -103,8 +109,8 @@ fin_deriv({symbol: "IF.CFX", query_type: "futures_mapping"})
 
 **Steps**:
 
-1. Get dominant contract code via `futures_mapping`
-2. Get futures price via `futures_historical`
+1. Get dominant contract code via `fut_mapping` (Tushare proxy)
+2. Get futures price via `fut_daily` (Tushare proxy)
 3. Get spot price (from underlying index or commodity)
 4. Calculate basis and basis rate
 
@@ -116,8 +122,9 @@ fin_deriv({symbol: "IF.CFX", query_type: "futures_mapping"})
 **Example Tool Calls**:
 
 ```
-fin_deriv({symbol: "RB.SHF", query_type: "futures_mapping"})
-fin_deriv({symbol: "RB2505.SHF", query_type: "futures_historical", start_date: "2025-01-01"})
+# Tushare proxy — futures data
+mcp_datahub.fut_mapping({symbol: "RB.SHF", provider: "tushare"})
+mcp_datahub.fut_daily({symbol: "RB2505.SHF", start_date: "2025-01-01", provider: "tushare"})
 ```
 
 ### Framework 2: Term Structure Analysis
@@ -139,9 +146,10 @@ Fetch prices across different delivery months to determine market structure.
 **Example Tool Calls**:
 
 ```
-fin_deriv({symbol: "RB2501.SHF", query_type: "futures_historical", start_date: "2025-01-20"})
-fin_deriv({symbol: "RB2505.SHF", query_type: "futures_historical", start_date: "2025-01-20"})
-fin_deriv({symbol: "RB2509.SHF", query_type: "futures_historical", start_date: "2025-01-20"})
+# Tushare proxy — futures data
+mcp_datahub.fut_daily({symbol: "RB2501.SHF", start_date: "2025-01-20", provider: "tushare"})
+mcp_datahub.fut_daily({symbol: "RB2505.SHF", start_date: "2025-01-20", provider: "tushare"})
+mcp_datahub.fut_daily({symbol: "RB2509.SHF", start_date: "2025-01-20", provider: "tushare"})
 ```
 
 ### Framework 3: Long/Short Position Analysis
@@ -150,7 +158,7 @@ Analyze top-20 position holders to gauge institutional sentiment.
 
 **Steps**:
 
-1. Fetch position ranking via `futures_holding`
+1. Fetch position ranking via `fut_holding` (Tushare proxy)
 2. Aggregate daily long vs short totals
 3. Calculate long/short ratio and changes
 
@@ -164,7 +172,8 @@ Analyze top-20 position holders to gauge institutional sentiment.
 **Example Tool Call**:
 
 ```
-fin_deriv({symbol: "IF", query_type: "futures_holding", start_date: "20250120", end_date: "20250131"})
+# Tushare proxy — futures holding data
+mcp_datahub.fut_holding({symbol: "IF", start_date: "20250120", end_date: "20250131", provider: "tushare"})
 ```
 
 ### Framework 4: Warehouse Receipt Trend
@@ -177,7 +186,8 @@ Warehouse receipt changes reflect physical supply/demand dynamics.
 **Example Tool Call**:
 
 ```
-fin_deriv({exchange: "SHF", query_type: "futures_warehouse", start_date: "20250101"})
+# Tushare proxy — warehouse receipt data
+mcp_datahub.fut_wsr({exchange: "SHF", start_date: "20250101", provider: "tushare"})
 ```
 
 ### Framework 5: Option IV Smile Curve (US Stocks)
@@ -186,7 +196,7 @@ Construct implied volatility curve across strike prices for a given expiration.
 
 **Steps**:
 
-1. Fetch full option chain via `option_chain`
+1. Fetch full option chain via `derivatives_options_chains`
 2. Group by expiration date
 3. Separate calls and puts
 4. Plot IV by strike price
@@ -200,7 +210,7 @@ Construct implied volatility curve across strike prices for a given expiration.
 **Example Tool Call**:
 
 ```
-fin_deriv({symbol: "AAPL", query_type: "option_chain"})
+mcp_datahub.derivatives_options_chains({symbol: "AAPL"})
 ```
 
 ### Framework 6: Greeks Risk Analysis
@@ -248,9 +258,12 @@ fin_deriv({symbol: "AAPL", query_type: "option_chain"})
 **Example Tool Calls**:
 
 ```
-fin_deriv({query_type: "cb_basic"})
-fin_deriv({symbol: "128041.SZ", query_type: "cb_daily", start_date: "20250101"})
-fin_stock({symbol: "600519.SH", query_type: "historical", start_date: "2025-01-01"})
+# Tushare proxy — convertible bond data
+mcp_datahub.cb_basic({provider: "tushare"})
+mcp_datahub.cb_daily({symbol: "128041.SZ", start_date: "20250101", provider: "tushare"})
+
+# Standard MCP — underlying equity price for conversion value calculation
+mcp_datahub.equity_price_historical({symbol: "600519.SH", start_date: "2025-01-01"})
 ```
 
 ## Output Report Template
@@ -335,7 +348,7 @@ fin_stock({symbol: "600519.SH", query_type: "historical", start_date: "2025-01-0
 
 ## Response Guidelines
 
-- Always identify the dominant contract first when analyzing futures -- use `futures_mapping` before fetching price data.
+- Always identify the dominant contract first when analyzing futures -- use `fut_mapping` (Tushare proxy) before fetching price data.
 - Present basis analysis with clear contango/backwardation labeling and its market implication.
 - For term structure, show at least 3 delivery months to establish the curve shape.
 - Position analysis should highlight changes (not just absolute levels) -- institutional intent is revealed in position changes.

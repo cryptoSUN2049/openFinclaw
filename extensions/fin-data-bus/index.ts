@@ -2,6 +2,8 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { createCryptoAdapter } from "./src/adapters/crypto-adapter.js";
 import type { CcxtExchange } from "./src/adapters/crypto-adapter.js";
+import { createEquityAdapter } from "./src/adapters/equity-adapter.js";
+import type { DataHubGateway } from "./src/adapters/equity-adapter.js";
 import { OHLCVCache } from "./src/ohlcv-cache.js";
 import { RegimeDetector } from "./src/regime-detector.js";
 import type { MarketType } from "./src/types.js";
@@ -53,7 +55,13 @@ const finDataBusPlugin = {
     };
 
     const cryptoAdapter = createCryptoAdapter(cache, getExchangeInstance);
-    const provider = new UnifiedDataProvider(cryptoAdapter, regimeDetector);
+
+    // Try to get equity data gateway from fin-data-hub plugin
+    const runtime = api.runtime as unknown as { services?: Map<string, unknown> };
+    const gateway = runtime.services?.get?.("fin-datahub-gateway") as DataHubGateway | undefined;
+    const equityAdapter = gateway ? createEquityAdapter(cache, gateway) : undefined;
+
+    const provider = new UnifiedDataProvider(cryptoAdapter, regimeDetector, equityAdapter);
 
     // Register services for other plugins to consume
     api.registerService({

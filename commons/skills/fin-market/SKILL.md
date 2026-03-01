@@ -1,7 +1,7 @@
 ---
 name: fin-market
 description: "A股市场全景监控与异动发现 -- 龙虎榜/涨跌停/大宗交易/板块资金流/行业轮动/融资融券/全球快照"
-metadata: { "openclaw": { "emoji": "📡", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata: { "openclaw": { "emoji": "📡", "requires": { "mcp": ["datahub"] } } }
 ---
 
 # Market Radar
@@ -35,71 +35,71 @@ Full-spectrum A-share market monitoring and anomaly detection. Covers institutio
 
 ## Tools
 
-- `fin_market` -- market-wide data (indices, sector flows, Dragon-Tiger, limit lists, block trades, margin, Stock Connect, global indices, concepts)
+MCP tools provided by the `datahub` MCP server:
 
-### Query Types for fin_market
+### Anomaly Detection
 
-#### Anomaly Detection
+| MCP Tool                    | Description                               | Key Fields                                                       |
+| --------------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| `equity_market_top_list`    | Dragon-Tiger list daily detail            | ts_code, name, close, pct_change, amount, reason                 |
+| `equity_market_top_inst`    | Dragon-Tiger institutional seats          | ts_code, exalter, buy, sell, net_buy                             |
+| `equity_market_limit_list`  | Limit-up / limit-down / broken-limit list | ts_code, name, close, pct_chg, fd_amount, first_time, open_times |
+| `equity_market_stock_limit` | Limit price data                          | ts_code, up_limit, down_limit                                    |
 
-| query_type          | Description                               | Key Fields                                                       |
-| ------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
-| `dragon_tiger`      | Dragon-Tiger list daily detail            | ts_code, name, close, pct_change, amount, reason                 |
-| `dragon_tiger_inst` | Dragon-Tiger institutional seats          | ts_code, exalter, buy, sell, net_buy                             |
-| `limit_up`          | Limit-up stocks                           | ts_code, name, close, pct_chg, fd_amount, first_time, open_times |
-| `limit_down`        | Limit-down stocks                         | ts_code, name, close, pct_chg                                    |
-| `limit_broken`      | Broken limit (opened after hitting limit) | ts_code, name, open_times                                        |
+### Block Trades
 
-#### Block Trades
+| MCP Tool                       | Description                            | Key Fields                                 |
+| ------------------------------ | -------------------------------------- | ------------------------------------------ |
+| `equity_moneyflow_block_trade` | Block trade details (by date or stock) | ts_code, price, vol, amount, buyer, seller |
 
-| query_type    | Description                            | Key Fields                                 |
-| ------------- | -------------------------------------- | ------------------------------------------ |
-| `block_trade` | Block trade details (by date or stock) | ts_code, price, vol, amount, buyer, seller |
+### Sector & Industry
 
-#### Sector & Industry
+| MCP Tool                        | Description                                | Key Fields                                                  |
+| ------------------------------- | ------------------------------------------ | ----------------------------------------------------------- |
+| `equity_moneyflow_industry`     | Industry capital flow                      | industry_name, buy_sm, sell_sm, buy_lg, sell_lg, net_amount |
+| `index_classify`                | Shenwan industry classification (L1/L2/L3) | index_code, industry_name, level                            |
+| `equity_concept_concept_list`   | THS concept/industry index list            | ts_code, name, type (N=concept, I=industry)                 |
+| `equity_concept_concept_detail` | THS index daily data                       | ts_code, close, pct_change, vol, turnover_rate              |
 
-| query_type         | Description                                | Key Fields                                                  |
-| ------------------ | ------------------------------------------ | ----------------------------------------------------------- |
-| `sector_flow`      | Industry capital flow                      | industry_name, buy_sm, sell_sm, buy_lg, sell_lg, net_amount |
-| `sw_classify`      | Shenwan industry classification (L1/L2/L3) | index_code, industry_name, level                            |
-| `ths_concept_list` | THS concept/industry index list            | ts_code, name, type (N=concept, I=industry)                 |
-| `ths_daily`        | THS index daily data                       | ts_code, close, pct_change, vol, turnover_rate              |
-| `ths_members`      | THS index constituent stocks               | ts_code, code, name                                         |
+> **Note**: THS member query (constituent stocks of a THS index) does not yet have a standardized MCP route. Use the datahub extension directly if needed.
 
-#### Leverage (Margin Trading)
+### Leverage (Margin Trading)
 
-| query_type      | Description                | Key Fields                                             |
-| --------------- | -------------------------- | ------------------------------------------------------ |
-| `margin_total`  | Market-wide margin summary | rzye (margin balance), rqye, rzmre (margin buy amount) |
-| `margin_detail` | Per-stock margin detail    | ts_code, rzye, rqye, rzmre                             |
+| MCP Tool                | Description                | Key Fields                                             |
+| ----------------------- | -------------------------- | ------------------------------------------------------ |
+| `equity_margin_summary` | Market-wide margin summary | rzye (margin balance), rqye, rzmre (margin buy amount) |
+| `equity_margin_detail`  | Per-stock margin detail    | ts_code, rzye, rqye, rzmre                             |
 
-#### Stock Connect (Cross-Border)
+### Stock Connect (Cross-Border)
 
-| query_type   | Description                              | Key Fields                         |
-| ------------ | ---------------------------------------- | ---------------------------------- |
-| `hsgt_flow`  | Northbound/Southbound daily capital flow | north_money, south_money, hgt, sgt |
-| `hsgt_top10` | Stock Connect top 10 traded              | ts_code, name, amount, net_amount  |
-| `hs_const`   | Stock Connect constituent list           | ts_code, name, hs_type             |
+| MCP Tool                 | Description                              | Key Fields                         |
+| ------------------------ | ---------------------------------------- | ---------------------------------- |
+| `equity_flow_hsgt_flow`  | Northbound/Southbound daily capital flow | north_money, south_money, hgt, sgt |
+| `equity_flow_hsgt_top10` | Stock Connect top 10 traded              | ts_code, name, amount, net_amount  |
+| `equity_flow_hs_const`   | Stock Connect constituent list           | ts_code, name, hs_type             |
 
-#### Global Market
+### Global Market
 
-| query_type        | Description                                                | Key Fields                     |
-| ----------------- | ---------------------------------------------------------- | ------------------------------ |
-| `global_index`    | Global major index quotes (DJIA, NASDAQ, HSI, Nikkei, DAX) | ts_code, name, close, pct_chg  |
-| `market_snapshot` | Full-market snapshot                                       | symbol, last_price, change_pct |
-| `ipo_calendar`    | US IPO calendar                                            | company, date, price_range     |
+| MCP Tool                  | Description                                                | Key Fields                     |
+| ------------------------- | ---------------------------------------------------------- | ------------------------------ |
+| `economy_index_global`    | Global major index quotes (DJIA, NASDAQ, HSI, Nikkei, DAX) | ts_code, name, close, pct_chg  |
+| `equity_market_snapshots` | Full-market snapshot                                       | symbol, last_price, change_pct |
+| `equity_calendar_ipo`     | US IPO calendar                                            | company, date, price_range     |
 
-#### Index Data
+### Index Data
 
-| query_type    | Description                    | Key Fields                           |
-| ------------- | ------------------------------ | ------------------------------------ |
-| `index_daily` | Major A-share index daily data | ts_code, close, pct_chg, vol, amount |
+| MCP Tool               | Description                  | Key Fields                           |
+| ---------------------- | ---------------------------- | ------------------------------------ |
+| `index_daily_basic`    | Major index daily PE/PB data | ts_code, pe, pb, turnover_rate       |
+| `economy_index_global` | Major index daily OHLCV      | ts_code, close, pct_chg, vol, amount |
 
-#### Utilities
+### Utilities
 
-| query_type       | Description      | Key Fields            |
-| ---------------- | ---------------- | --------------------- |
-| `suspend`        | Suspended stocks | ts_code, suspend_type |
-| `trade_calendar` | Trading calendar | cal_date, is_open     |
+| MCP Tool                       | Description            | Key Fields                  |
+| ------------------------------ | ---------------------- | --------------------------- |
+| `equity_market_suspend`        | Suspended stocks       | ts_code, suspend_type       |
+| `equity_market_trade_calendar` | Trading calendar       | cal_date, is_open           |
+| `equity_discovery_new_share`   | New share listing info | ts_code, sub_code, ipo_date |
 
 ## Analysis Frameworks
 
@@ -110,7 +110,8 @@ Systematic review after market close. Execute all 5 steps:
 **Step 1: Market Temperature**
 
 ```
-fin_market({query_type: "index_daily", date: "YYYYMMDD"})
+index_daily_basic({date: "YYYYMMDD", provider: "tushare"})
+economy_index_global({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 Fetch major indices: Shanghai Composite, Shenzhen Component, ChiNext, CSI 300, CSI 500, CSI 1000, STAR 50.
@@ -118,7 +119,7 @@ Fetch major indices: Shanghai Composite, Shenzhen Component, ChiNext, CSI 300, C
 **Step 2: Sector Strength**
 
 ```
-fin_market({query_type: "sector_flow", date: "YYYYMMDD"})
+equity_moneyflow_industry({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 Sort by net_amount to find top 5 inflow and outflow sectors.
@@ -126,11 +127,11 @@ Sort by net_amount to find top 5 inflow and outflow sectors.
 **Step 3: Sentiment Indicators**
 
 ```
-fin_market({query_type: "limit_up", date: "YYYYMMDD"})
-fin_market({query_type: "limit_down", date: "YYYYMMDD"})
-fin_market({query_type: "limit_broken", date: "YYYYMMDD"})
-fin_market({query_type: "margin_total", date: "YYYYMMDD"})
-fin_market({query_type: "hsgt_flow", date: "YYYYMMDD"})
+equity_market_limit_list({date: "YYYYMMDD", limit_type: "U", provider: "tushare"})
+equity_market_limit_list({date: "YYYYMMDD", limit_type: "D", provider: "tushare"})
+equity_market_limit_list({date: "YYYYMMDD", limit_type: "Z", provider: "tushare"})
+equity_margin_summary({date: "YYYYMMDD", provider: "tushare"})
+equity_flow_hsgt_flow({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 Calculate: limit-up/down ratio, seal rate = limit-up / (limit-up + broken).
@@ -138,9 +139,9 @@ Calculate: limit-up/down ratio, seal rate = limit-up / (limit-up + broken).
 **Step 4: Anomaly Detection**
 
 ```
-fin_market({query_type: "dragon_tiger", date: "YYYYMMDD"})
-fin_market({query_type: "dragon_tiger_inst", date: "YYYYMMDD"})
-fin_market({query_type: "block_trade", date: "YYYYMMDD"})
+equity_market_top_list({date: "YYYYMMDD", provider: "tushare"})
+equity_market_top_inst({date: "YYYYMMDD", provider: "tushare"})
+equity_moneyflow_block_trade({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 Focus on institutional net-buy top stocks, block trade premium/discount.
@@ -148,8 +149,8 @@ Focus on institutional net-buy top stocks, block trade premium/discount.
 **Step 5: Hot Concepts**
 
 ```
-fin_market({query_type: "ths_concept_list"})
-fin_market({query_type: "ths_daily", ts_code: "concept_code", start_date: "YYYYMMDD"})
+equity_concept_concept_list({provider: "tushare"})
+equity_concept_concept_detail({ts_code: "concept_code", start_date: "YYYYMMDD", provider: "tushare"})
 ```
 
 Find top 10 concepts by daily return.
@@ -215,20 +216,20 @@ For pre-market and intraday tracking:
 **Step 1: Overnight Global Markets**
 
 ```
-fin_market({query_type: "global_index", date: "YYYYMMDD"})
+economy_index_global({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 **Step 2: A-Share Indices + Northbound Flow**
 
 ```
-fin_market({query_type: "index_daily", date: "YYYYMMDD"})
-fin_market({query_type: "hsgt_flow", date: "YYYYMMDD"})
+index_daily_basic({date: "YYYYMMDD", provider: "tushare"})
+equity_flow_hsgt_flow({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 **Step 3: Leading Sectors**
 
 ```
-fin_market({query_type: "sector_flow", date: "YYYYMMDD"})
+equity_moneyflow_industry({date: "YYYYMMDD", provider: "tushare"})
 ```
 
 ### Framework 3: Industry Rotation Analysis
@@ -283,7 +284,7 @@ Different data sources use different units. The skill normalizes output to billi
 
 ## Date Handling
 
-- If user says "today" but it's a non-trading day, automatically find the most recent trading day using `trade_calendar`.
+- If user says "today" but it's a non-trading day, automatically find the most recent trading day using `equity_market_trade_calendar`.
 - Dragon-Tiger, limit-up/down, and block trade data are only available on trading days.
 - Global indices may have different trading calendars per market.
 

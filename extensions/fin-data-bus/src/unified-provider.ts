@@ -1,4 +1,5 @@
 import type { CryptoAdapter } from "./adapters/crypto-adapter.js";
+import type { EquityAdapter } from "./adapters/equity-adapter.js";
 import type { RegimeDetector } from "./regime-detector.js";
 import type { MarketInfo, MarketRegime, MarketType, OHLCV, Ticker } from "./types.js";
 
@@ -6,6 +7,7 @@ export class UnifiedDataProvider {
   constructor(
     private cryptoAdapter: CryptoAdapter,
     private regimeDetector: RegimeDetector,
+    private equityAdapter?: EquityAdapter,
   ) {}
 
   async getOHLCV(params: {
@@ -15,17 +17,29 @@ export class UnifiedDataProvider {
     since?: number;
     limit?: number;
   }): Promise<OHLCV[]> {
-    if (params.market !== "crypto") {
-      throw new Error(`Market "${params.market}" not yet supported. Phase 1 supports crypto only.`);
+    if (params.market === "crypto") {
+      return this.cryptoAdapter.getOHLCV(params);
     }
-    return this.cryptoAdapter.getOHLCV(params);
+    if (params.market === "equity") {
+      if (!this.equityAdapter) {
+        throw new Error("Equity adapter not available. Ensure fin-data-hub plugin is loaded.");
+      }
+      return this.equityAdapter.getOHLCV(params);
+    }
+    throw new Error(`Market "${params.market}" not yet supported.`);
   }
 
   async getTicker(symbol: string, market: MarketType): Promise<Ticker> {
-    if (market !== "crypto") {
-      throw new Error(`Market "${market}" not yet supported. Phase 1 supports crypto only.`);
+    if (market === "crypto") {
+      return this.cryptoAdapter.getTicker(symbol);
     }
-    return this.cryptoAdapter.getTicker(symbol);
+    if (market === "equity") {
+      if (!this.equityAdapter) {
+        throw new Error("Equity adapter not available. Ensure fin-data-hub plugin is loaded.");
+      }
+      return this.equityAdapter.getTicker(symbol);
+    }
+    throw new Error(`Market "${market}" not yet supported.`);
   }
 
   async detectRegime(params: {
@@ -45,7 +59,7 @@ export class UnifiedDataProvider {
   getSupportedMarkets(): MarketInfo[] {
     return [
       { market: "crypto", symbols: [], available: true },
-      { market: "equity", symbols: [], available: false },
+      { market: "equity", symbols: [], available: !!this.equityAdapter },
       { market: "commodity", symbols: [], available: false },
     ];
   }

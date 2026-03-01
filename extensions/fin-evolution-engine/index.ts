@@ -12,7 +12,14 @@ import { Type } from "@sinclair/typebox";
 import type { OpenClawPluginApi } from "openfinclaw/plugin-sdk";
 import { EvolutionStore } from "./src/evolution-store.ts";
 import { createLlmMutator } from "./src/llm-mutator.ts";
-import { runRdavdCycle, type BacktestEngineLike, type RdavdDeps } from "./src/rdavd.ts";
+import {
+  runRdavdCycle,
+  type BacktestEngineLike,
+  type PaperEngineLike,
+  type RegimeDetectorLike,
+  type DataProviderLike,
+  type RdavdDeps,
+} from "./src/rdavd.ts";
 import type {
   EvolutionNode,
   EvolutionStatsResponse,
@@ -176,7 +183,27 @@ const plugin = {
       const backtestEngine = runtime.services?.get?.("fin-backtest-engine") as
         | BacktestEngineLike
         | undefined;
-      return { store, backtestEngine, llmMutator };
+      const paperEngine = runtime.services?.get?.("fin-paper-engine") as
+        | PaperEngineLike
+        | undefined;
+      const regimeDetector = runtime.services?.get?.("fin-regime-detector") as
+        | RegimeDetectorLike
+        | undefined;
+      const dataProvider = runtime.services?.get?.("fin-data-provider") as
+        | DataProviderLike
+        | undefined;
+      const registry = runtime.services?.get?.("fin-strategy-registry") as
+        | import("./src/rdavd.ts").StrategyRegistryLike
+        | undefined;
+      return {
+        store,
+        registry,
+        backtestEngine,
+        llmMutator,
+        paperEngine,
+        regimeDetector,
+        dataProvider,
+      };
     }
 
     // ── AI Tool: fin_evolve_trigger ──

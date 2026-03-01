@@ -1,7 +1,7 @@
 ---
 name: fin-index
 description: "基金ETF和指数深度研究 -- 指数成分/估值百分位/行业轮动、ETF套利、基金经理评价/持仓分析、同花顺概念追踪"
-metadata: { "openclaw": { "emoji": "📈", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata: { "openclaw": { "emoji": "📈", "requires": { "mcp": ["datahub"] } } }
 ---
 
 # 基金/ETF/指数深度研究
@@ -36,38 +36,40 @@ metadata: { "openclaw": { "emoji": "📈", "requires": { "extensions": ["fin-dat
 
 ## Tools
 
-- `fin_index` -- index data (historical, constituents, valuation, sector classification)
-- `fin_fund` -- fund/ETF data (NAV, manager, portfolio, share changes, dividends)
-- `fin_market` -- supplement with sector-level data when needed
+MCP tools provided by the `datahub` MCP server for index data:
 
-### Query Types for fin_index
+### Index MCP Tools
 
-| query_type     | Description                             | Key Fields                              |
-| -------------- | --------------------------------------- | --------------------------------------- |
-| `historical`   | Index daily OHLCV                       | open, high, low, close, vol, amount     |
-| `info`         | Index basic information                 | ts_code, name, market                   |
-| `constituents` | Index constituent stocks with weights   | con_code, con_name, weight              |
-| `valuation`    | Daily PE/PB/turnover (index_dailybasic) | pe, pb, turnover_rate, total_mv         |
-| `member`       | Index member changes                    | index_code, con_code, in_date, out_date |
-| `global`       | Global major index daily data           | ts_code, trade_date, close, pct_chg     |
-| `ths_list`     | THS concept/industry index list         | ts_code, name, type (N/I/S)             |
-| `ths_daily`    | THS index daily data                    | ts_code, close, pct_change              |
-| `ths_member`   | THS index constituents                  | ts_code, code, name                     |
-| `classify`     | SW industry classification (L1/L2/L3)   | index_code, industry_name, level        |
+| MCP Tool                        | Description                           | Key Fields                              |
+| ------------------------------- | ------------------------------------- | --------------------------------------- |
+| `index_info`                    | Index basic information               | ts_code, name, market                   |
+| `index_constituents`            | Index constituent stocks with weights | con_code, con_name, weight              |
+| `index_daily_basic`             | Daily PE/PB/turnover (valuation)      | pe, pb, turnover_rate, total_mv         |
+| `index_members`                 | Index member changes                  | index_code, con_code, in_date, out_date |
+| `index_global_index`            | Global major index daily data         | ts_code, trade_date, close, pct_chg     |
+| `equity_concept_concept_list`   | THS concept/industry index list       | ts_code, name, type (N/I/S)             |
+| `equity_concept_concept_detail` | THS index daily data                  | ts_code, close, pct_change              |
+| `index_classify`                | SW industry classification (L1/L2/L3) | index_code, industry_name, level        |
 
-### Query Types for fin_fund
+> **Note**: Index historical OHLCV can be fetched via `economy_index_global` (for global indices) or the datahub extension's index history endpoint. THS member query (constituent stocks of a THS index) does not yet have a standardized MCP route.
 
-| query_type       | Description              | Key Fields                          |
-| ---------------- | ------------------------ | ----------------------------------- |
-| `etf_historical` | ETF daily OHLCV          | open, high, low, close, vol         |
-| `etf_info`       | ETF basic information    | ts_code, name, fund_type            |
-| `etf_search`     | ETF search by keyword    | ts_code, name                       |
-| `nav`            | Fund/ETF net asset value | end_date, unit_nav, accum_nav       |
-| `manager`        | Fund manager info        | ts_code, name, begin_date, end_date |
-| `portfolio`      | Fund holdings detail     | symbol, mkv, amount, stk_mkv_ratio  |
-| `share`          | Fund share changes       | end_date, fd_share                  |
-| `dividend`       | Fund dividend records    | --                                  |
-| `adj_factor`     | Fund adjustment factor   | adj_factor                          |
+### Fund/ETF Tools
+
+Fund tools do not have standard MCP routes yet. Use `fin_fund(...)` from the fin-data-hub extension:
+
+| Tool Call                                  | Description              | Key Fields                          |
+| ------------------------------------------ | ------------------------ | ----------------------------------- |
+| `fin_fund({query_type: "etf_historical"})` | ETF daily OHLCV          | open, high, low, close, vol         |
+| `fin_fund({query_type: "etf_info"})`       | ETF basic information    | ts_code, name, fund_type            |
+| `fin_fund({query_type: "etf_search"})`     | ETF search by keyword    | ts_code, name                       |
+| `fin_fund({query_type: "nav"})`            | Fund/ETF net asset value | end_date, unit_nav, accum_nav       |
+| `fin_fund({query_type: "manager"})`        | Fund manager info        | ts_code, name, begin_date, end_date |
+| `fin_fund({query_type: "portfolio"})`      | Fund holdings detail     | symbol, mkv, amount, stk_mkv_ratio  |
+| `fin_fund({query_type: "share"})`          | Fund share changes       | end_date, fd_share                  |
+| `fin_fund({query_type: "dividend"})`       | Fund dividend records    | --                                  |
+| `fin_fund({query_type: "adj_factor"})`     | Fund adjustment factor   | adj_factor                          |
+
+> **Note**: `fin_fund` tools are provided by the fin-data-hub extension, not via the datahub MCP server. Standard MCP routes for fund data are pending.
 
 ## Code Format Conventions
 
@@ -80,7 +82,7 @@ metadata: { "openclaw": { "emoji": "📈", "requires": { "extensions": ["fin-dat
 | CSI 1000     | `000852.SH` |                                                     |
 | SSE ETF      | `XXXXXX.SH` | `510050.SH` (50ETF), `510300.SH` (300ETF)           |
 | SZSE ETF     | `XXXXXX.SZ` | `159919.SZ` (CSI 300 ETF)                           |
-| THS Index    | `XXXXXX.TI` | from `ths_list` query                               |
+| THS Index    | `XXXXXX.TI` | from `equity_concept_concept_list` query            |
 | Global Index | `I:XXX`     | `I:SPX` (S&P 500), `I:DJI` (Dow Jones)              |
 | Fund         | `XXXXXX.OF` | `110011.OF`                                         |
 
@@ -105,7 +107,7 @@ metadata: { "openclaw": { "emoji": "📈", "requires": { "extensions": ["fin-dat
 
 **Purpose**: Determine where current valuation sits in historical distribution to support timing decisions.
 
-**Data**: `valuation` query type (PE/PB/turnover/market cap)
+**Data**: `index_daily_basic` (PE/PB/turnover/market cap)
 
 **Steps**:
 
@@ -126,19 +128,19 @@ metadata: { "openclaw": { "emoji": "📈", "requires": { "extensions": ["fin-dat
 **Example Tool Call**:
 
 ```
-fin_index({symbol: "000300.SH", query_type: "valuation", start_date: "20190101", end_date: "20240301"})
+index_daily_basic({symbol: "000300.SH", start_date: "20190101", end_date: "20240301", provider: "tushare"})
 ```
 
 ### Framework 2: Sector Rotation Tracking
 
 **Purpose**: Identify capital rotation direction and sector opportunities.
 
-**Data**: `ths_list` (type=I for industries) + `ths_daily` for each industry index
+**Data**: `equity_concept_concept_list` (type=I for industries) + `equity_concept_concept_detail` for each industry index
 
 **Steps**:
 
-1. Fetch all industry indices via `ths_list` (type=I)
-2. Batch fetch recent performance via `ths_daily`
+1. Fetch all industry indices via `equity_concept_concept_list` (type=I)
+2. Batch fetch recent performance via `equity_concept_concept_detail`
 3. Sort by 5-day / 20-day / 60-day performance
 4. Analyze rotation trends
 
@@ -151,8 +153,8 @@ fin_index({symbol: "000300.SH", query_type: "valuation", start_date: "20190101",
 **Example Tool Calls**:
 
 ```
-fin_index({query_type: "ths_list", exchange: "A", type: "I"})
-fin_index({symbol: "885760.TI", query_type: "ths_daily", start_date: "20240101"})
+equity_concept_concept_list({exchange: "A", type: "I", provider: "tushare"})
+equity_concept_concept_detail({ts_code: "885760.TI", start_date: "20240101", provider: "tushare"})
 ```
 
 ### Framework 3: Fund Manager Evaluation
@@ -161,13 +163,13 @@ fin_index({symbol: "885760.TI", query_type: "ths_daily", start_date: "20240101"}
 
 **Evaluation Dimensions**:
 
-| Dimension         | Data Source | Metrics                                         |
-| ----------------- | ----------- | ----------------------------------------------- |
-| Performance       | `nav`       | Annualized return / max drawdown / Sharpe ratio |
-| Scale             | `manager`   | Total AUM across managed funds                  |
-| Style             | `portfolio` | Concentration / sector distribution / turnover  |
-| Market Acceptance | `share`     | Net subscription/redemption trend               |
-| Experience        | `manager`   | Tenure years / historical fund count            |
+| Dimension         | Data Source                           | Metrics                                         |
+| ----------------- | ------------------------------------- | ----------------------------------------------- |
+| Performance       | `fin_fund({query_type: "nav"})`       | Annualized return / max drawdown / Sharpe ratio |
+| Scale             | `fin_fund({query_type: "manager"})`   | Total AUM across managed funds                  |
+| Style             | `fin_fund({query_type: "portfolio"})` | Concentration / sector distribution / turnover  |
+| Market Acceptance | `fin_fund({query_type: "share"})`     | Net subscription/redemption trend               |
+| Experience        | `fin_fund({query_type: "manager"})`   | Tenure years / historical fund count            |
 
 **Evaluation Standards**:
 
@@ -192,9 +194,9 @@ fin_fund({symbol: "110011.OF", query_type: "share", start_date: "20230101"})
 
 **Steps**:
 
-1. Fetch ETF market price via `etf_historical`
-2. Fetch tracking index data via `historical`
-3. Fetch ETF NAV via `nav`
+1. Fetch ETF market price via `fin_fund({query_type: "etf_historical"})`
+2. Fetch tracking index data via `index_daily_basic` or `index_global_index`
+3. Fetch ETF NAV via `fin_fund({query_type: "nav"})`
 4. Calculate: Premium/Discount Rate = (ETF Price / IOPV - 1) x 100%
 
 **Arbitrage Signals**:
@@ -209,7 +211,7 @@ fin_fund({symbol: "110011.OF", query_type: "share", start_date: "20230101"})
 
 ```
 fin_fund({symbol: "510050.SH", query_type: "etf_historical", start_date: "2024-01-01"})
-fin_index({symbol: "000016.SH", query_type: "historical", start_date: "2024-01-01"})
+index_daily_basic({symbol: "000016.SH", start_date: "20240101", provider: "tushare"})
 fin_fund({symbol: "510050.SH", query_type: "nav", start_date: "20240101"})
 ```
 
@@ -223,20 +225,20 @@ When a user inputs an index/fund/ETF code or name:
    - Chinese name: Search first, then determine type
    - I:XXX: Global index
 
-2. **Fetch basic info**: `info` / `etf_info` / `manager`
+2. **Fetch basic info**: `index_info` / `fin_fund({query_type: "etf_info"})` / `fin_fund({query_type: "manager"})`
 
 3. **Price and valuation**:
-   - Index: `valuation` (PE/PB) + `historical` (OHLCV)
-   - ETF: `etf_historical` (OHLCV) + `nav` (NAV)
-   - Fund: `nav` (NAV)
+   - Index: `index_daily_basic` (PE/PB) + `index_global_index` or datahub history (OHLCV)
+   - ETF: `fin_fund({query_type: "etf_historical"})` (OHLCV) + `fin_fund({query_type: "nav"})` (NAV)
+   - Fund: `fin_fund({query_type: "nav"})` (NAV)
 
 4. **Constituents/Holdings**:
-   - Index: `constituents` or `member`
-   - Fund: `portfolio`
+   - Index: `index_constituents` or `index_members`
+   - Fund: `fin_fund({query_type: "portfolio"})`
 
-5. **Sector/Concept**: `ths_list` + `ths_daily` for sector rotation
+5. **Sector/Concept**: `equity_concept_concept_list` + `equity_concept_concept_detail` for sector rotation
 
-6. **Global comparison**: Global data for S&P 500 / Dow Jones etc.
+6. **Global comparison**: `index_global_index` for S&P 500 / Dow Jones etc.
 
 7. **Generate report**: Organize per output template
 

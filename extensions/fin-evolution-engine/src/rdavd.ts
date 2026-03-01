@@ -60,6 +60,55 @@ export interface StrategyMemoryLike {
   }>;
 }
 
+export interface PaperEngineLike {
+  getMetrics(strategyId: string):
+    | {
+        consecutiveLossDays: number;
+        rolling30dSharpe: number;
+        baseline90dSharpe: number;
+        maxDrawdown: number;
+      }
+    | undefined;
+  getAccountState(strategyId: string):
+    | {
+        equity: number;
+        cash: number;
+        positions: Array<{ currentPrice: number; quantity: number }>;
+      }
+    | undefined;
+}
+
+export interface RegimeDetectorLike {
+  detect(
+    ohlcv: Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>,
+  ): "bull" | "bear" | "sideways" | "volatile" | "crisis";
+}
+
+export interface DataProviderLike {
+  getOHLCV(params: {
+    symbol: string;
+    market: string;
+    timeframe: string;
+    limit?: number;
+  }): Promise<
+    Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >;
+}
+
 // ─── RDAVD Orchestrator ─────────────────────────────────────────────
 
 export interface RdavdDeps {
@@ -68,6 +117,9 @@ export interface RdavdDeps {
   backtestEngine?: BacktestEngineLike;
   memory?: StrategyMemoryLike;
   llmMutator?: LlmMutator;
+  paperEngine?: PaperEngineLike;
+  regimeDetector?: RegimeDetectorLike;
+  dataProvider?: DataProviderLike;
 }
 
 export type RdavdTrigger = "decay" | "regime_change" | "scheduled" | "manual";
@@ -141,10 +193,14 @@ export async function runRdavdCycle(
 
   // ─── [R] Retrieve: assess survival ────────────────────────────────
 
+  // Fetch live paper-trading metrics when available
+  const paperMetrics = deps.paperEngine?.getMetrics(strategyId);
+
   const decaySignal = detectDecay({
-    rollingSharpe30d: currentNode.paperSharpe ?? currentNode.backtestSharpe ?? 0,
-    baselineSharpe90d: currentNode.backtestSharpe ?? 0,
-    consecutiveLossDays: 0, // would come from paper trading in production
+    rollingSharpe30d:
+      paperMetrics?.rolling30dSharpe ?? currentNode.paperSharpe ?? currentNode.backtestSharpe ?? 0,
+    baselineSharpe90d: paperMetrics?.baseline90dSharpe ?? currentNode.backtestSharpe ?? 0,
+    consecutiveLossDays: paperMetrics?.consecutiveLossDays ?? 0,
   });
 
   const assessment = assessSurvival({
@@ -290,16 +346,33 @@ export async function runRdavdCycle(
     return { cycle };
   }
 
-  // Check constitution
+  // Check constitution — use live account state when available
+  const accountState = deps.paperEngine?.getAccountState(strategyId);
+  let leverage = 1.0;
+  let positionPct = 0.1;
+  if (accountState && accountState.equity > 0) {
+    const maxPosValue = Math.max(
+      0,
+      ...accountState.positions.map((p) => p.currentPrice * p.quantity),
+    );
+    positionPct = maxPosValue / accountState.equity;
+    // Leverage = total exposure / equity (simplified: sum of position values / equity)
+    const totalExposure = accountState.positions.reduce(
+      (sum, p) => sum + Math.abs(p.currentPrice * p.quantity),
+      0,
+    );
+    leverage = totalExposure / accountState.equity;
+  }
+
   const constitutionCtx: ConstitutionContext = {
-    leverage: 1.0,
-    positionPct: 0.1,
-    drawdown: Math.abs(currentNode.maxDrawdown ?? 0),
+    leverage,
+    positionPct,
+    drawdown: Math.abs(paperMetrics?.maxDrawdown ?? currentNode.maxDrawdown ?? 0),
     tradeCount: currentNode.totalTrades ?? 50,
     forbiddenAssets: [],
     symbols: currentNode.genes.filter((g) => g.type === "signal").map((g) => g.name),
     mutationsToday: todayCount,
-    sharpe: currentNode.backtestSharpe ?? 0,
+    sharpe: paperMetrics?.rolling30dSharpe ?? currentNode.backtestSharpe ?? 0,
   };
   const constitutionVerdict = enforceConstitution(constitutionCtx);
 
@@ -454,16 +527,34 @@ export async function runRdavdCycle(
     createdAt: now,
   });
 
-  // ─── [D] Distill: extract experience + log audit ──────────────────
+  // ─── [D] Distill: extract experience + detect current regime ─────
+
+  let regime: "bull" | "bear" | "sideways" | "volatile" | "crisis" = "sideways";
+  if (deps.dataProvider && deps.regimeDetector) {
+    const strategyDef = deps.registry?.get(strategyId);
+    const symbol = strategyDef?.definition?.symbols?.[0] ?? "BTC/USDT";
+    const market = symbol.includes("/") ? "crypto" : "equity";
+    try {
+      const ohlcv = await deps.dataProvider.getOHLCV({
+        symbol,
+        market,
+        timeframe: "4h",
+        limit: 300,
+      });
+      regime = deps.regimeDetector.detect(ohlcv);
+    } catch {
+      // Fallback to sideways on data fetch failure
+    }
+  }
 
   const distillResult: DistillResult = deps.llmMutator
-    ? deps.llmMutator.buildDistillResult(true, "sideways", validateResult.improvement)
+    ? deps.llmMutator.buildDistillResult(true, regime, validateResult.improvement)
     : {
         errorPatterns: [],
         successPatterns: [
           {
             pattern: `Successful ${mutationType} adaptation`,
-            regime: "sideways" as const,
+            regime,
             avgReturn: Math.max(0, validateResult.improvement),
             occurrences: 1,
           },

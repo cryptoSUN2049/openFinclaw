@@ -1,7 +1,11 @@
 ---
 name: fin-crypto
 description: "加密货币和DeFi数据分析 -- CEX行情/深度/资金费率、DeFi TVL/收益率/稳定币/DEX、市值排名/热搜/板块轮动"
-metadata: { "openclaw": { "emoji": "🪙", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata:
+  {
+    "openclaw":
+      { "emoji": "🪙", "requires": { "mcp": ["datahub"], "extensions": ["fin-data-bus"] } },
+  }
 ---
 
 # 加密货币与 DeFi 数据分析
@@ -38,29 +42,48 @@ metadata: { "openclaw": { "emoji": "🪙", "requires": { "extensions": ["fin-dat
 
 ## Tools
 
-- `fin_crypto` -- CEX exchange data (OHLCV, ticker, orderbook, trades, funding rate, markets)
-- `fin_defi` -- DeFi on-chain data (protocols, TVL, yields, stablecoins, bridges, fees, DEX volumes, token prices)
-- `fin_market_crypto` -- crypto market overview (market cap ranking, coin info, categories, trending, global stats)
+### Category 1: OpenBB MCP Tools (via DataHub MCP Server)
 
-### Query Types for fin_crypto (CEX Data)
+These tools are provided by the DataHub MCP server (`datahub`) and follow OpenBB standard routes.
 
-| query_type     | Description                     | Key Fields                                    |
-| -------------- | ------------------------------- | --------------------------------------------- |
-| `ohlcv`        | K-line / OHLCV data             | timestamp, open, high, low, close, volume     |
-| `ticker`       | Single pair real-time quote     | last, bid, ask, high, low, volume, percentage |
-| `tickers`      | All-market quote snapshot       | Array of ticker objects                       |
-| `orderbook`    | Order book depth                | bids, asks (price, amount arrays)             |
-| `trades`       | Recent trade records            | side (buy/sell), price, amount                |
-| `funding_rate` | Perpetual contract funding rate | fundingRate, markPrice, nextFundingTimestamp  |
-| `markets`      | Available trading pairs list    | symbol, base, quote, type                     |
+| Tool                      | Description                   | Use Case                                       |
+| ------------------------- | ----------------------------- | ---------------------------------------------- |
+| `crypto_price_historical` | Historical OHLCV price data   | K-line charts, technical analysis, backtesting |
+| `crypto_search`           | Search available crypto pairs | Discover tradeable symbols, exchange listings  |
 
-**Supported Exchanges**: binance, okx, bybit, gate, huobi, coinbase, kraken, bitfinex, kucoin, mexc, and 100+ more.
+**Providers**: fmp, polygon, yfinance (specified via `provider` parameter).
+
+### Category 2: fin-data-bus Tools (CCXT Direct Exchange Access)
+
+These tools connect directly to CEX exchanges via CCXT through the `fin-data-bus` extension. They provide real-time data with exchange-specific access.
+
+| Tool              | Description                 | Key Fields                                    | Exchange Param |
+| ----------------- | --------------------------- | --------------------------------------------- | -------------- |
+| `fin_data_ohlcv`  | K-line / OHLCV data         | timestamp, open, high, low, close, volume     | Required       |
+| `fin_data_ticker` | Single pair real-time quote | last, bid, ask, high, low, volume, percentage | Required       |
+
+Additional CCXT-direct capabilities available through fin-data-bus (no dedicated named tool -- accessed via bus query interface):
+
+| Data Type      | Description                     | Key Fields                                   |
+| -------------- | ------------------------------- | -------------------------------------------- |
+| `tickers`      | All-market quote snapshot       | Array of ticker objects                      |
+| `orderbook`    | Order book depth                | bids, asks (price, amount arrays)            |
+| `trades`       | Recent trade records            | side (buy/sell), price, amount               |
+| `funding_rate` | Perpetual contract funding rate | fundingRate, markPrice, nextFundingTimestamp |
+
+**Supported Exchanges**: binance, okx, bybit, gate, huobi, coinbase, kraken, bitfinex, kucoin, mexc, and 100+ more (all CCXT-supported exchanges).
 
 **Symbol Format**: Use slash notation -- `BTC/USDT`, `ETH/USDT`, `SOL/USDT`. For perpetual contracts on some exchanges, append `:USDT` -- e.g., `BTC/USDT:USDT`.
 
-### Query Types for fin_defi (DeFi Data)
+**Exchange Parameter**: All fin-data-bus tools require an `exchange` parameter (e.g., `"binance"`, `"okx"`) specifying which CEX to query.
 
-| query_type          | Description                     | Key Fields                                        |
+### Category 3: External APIs (Direct)
+
+These data sources do not have standard OpenBB routes and are accessed via direct API calls.
+
+#### DeFi Data (DefiLlama API)
+
+| Query Type          | Description                     | Key Fields                                        |
 | ------------------- | ------------------------------- | ------------------------------------------------- |
 | `protocols`         | All DeFi protocol list with TVL | name, tvl, chains, category, change_1d, change_7d |
 | `protocol_tvl`      | Single protocol TVL history     | tvl, chainTvls, historical TVL array              |
@@ -73,9 +96,11 @@ metadata: { "openclaw": { "emoji": "🪙", "requires": { "extensions": ["fin-dat
 | `dex_volumes`       | DEX trading volume              | name, total24h, total7d, chains                   |
 | `token_prices`      | Token price lookup              | price, symbol, confidence                         |
 
-### Query Types for fin_market_crypto (Market Overview)
+API base: `https://api.llama.fi` (protocols, TVL), `https://yields.llama.fi` (yields), `https://stablecoins.llama.fi` (stablecoins), `https://bridges.llama.fi` (bridges).
 
-| query_type     | Description                   | Key Fields                                                         |
+#### Crypto Market Overview (CoinGecko API)
+
+| Query Type     | Description                   | Key Fields                                                         |
 | -------------- | ----------------------------- | ------------------------------------------------------------------ |
 | `market_cap`   | Market cap ranking            | name, current_price, market_cap, market_cap_rank, price_change_24h |
 | `coin_history` | Historical price/mcap/volume  | prices, market_caps, total_volumes                                 |
@@ -86,6 +111,19 @@ metadata: { "openclaw": { "emoji": "🪙", "requires": { "extensions": ["fin-dat
 
 **Coin ID**: Uses slug format (`bitcoin`, `ethereum`, `aave`), not ticker symbol (`BTC`, `ETH`).
 
+API base: `https://api.coingecko.com/api/v3`
+
+## OHLCV Data: Choosing the Right Tool
+
+For historical OHLCV (candlestick) data, two paths are available:
+
+| Scenario                                  | Recommended Tool          | Reason                                            |
+| ----------------------------------------- | ------------------------- | ------------------------------------------------- |
+| General historical analysis / backtesting | `crypto_price_historical` | OpenBB MCP, multi-provider, standardized output   |
+| Exchange-specific real-time OHLCV         | `fin_data_ohlcv`          | CCXT direct, lowest latency, exchange-native data |
+| Need data from a specific CEX             | `fin_data_ohlcv`          | Specify `exchange` param for exact exchange data  |
+| Provider-agnostic historical data         | `crypto_price_historical` | Aggregated from fmp/polygon/yfinance              |
+
 ## Six-Step Crypto Market Analysis Framework
 
 ### Step 1: Market Overview -- Macro Sentiment
@@ -95,7 +133,8 @@ metadata: { "openclaw": { "emoji": "🪙", "requires": { "extensions": ["fin-dat
 **Tool Calls**:
 
 ```
-fin_market_crypto({query_type: "global"})
+# CoinGecko global market data
+CoinGecko API: GET /api/v3/global
 ```
 
 **Key Metrics**:
@@ -117,8 +156,11 @@ fin_market_crypto({query_type: "global"})
 **Tool Calls**:
 
 ```
-fin_market_crypto({query_type: "categories"})
-fin_market_crypto({query_type: "trending"})
+# CoinGecko sector categories
+CoinGecko API: GET /api/v3/coins/categories
+
+# CoinGecko trending coins
+CoinGecko API: GET /api/v3/search/trending
 ```
 
 **Key Sectors**: DeFi, Layer 1, Layer 2, Meme, AI, Gaming, Privacy, Stablecoins, RWA, DePin.
@@ -132,9 +174,14 @@ Sort by 24h market cap change to find momentum leaders.
 **Tool Calls**:
 
 ```
-fin_defi({query_type: "chains"})
-fin_defi({query_type: "protocols"})
-fin_defi({slug: "aave", query_type: "protocol_tvl"})
+# DefiLlama chain TVL ranking
+DefiLlama API: GET https://api.llama.fi/v2/chains
+
+# DefiLlama all protocols
+DefiLlama API: GET https://api.llama.fi/protocols
+
+# DefiLlama single protocol TVL (e.g., Aave)
+DefiLlama API: GET https://api.llama.fi/protocol/aave
 ```
 
 **Analysis**:
@@ -150,7 +197,8 @@ fin_defi({slug: "aave", query_type: "protocol_tvl"})
 **Tool Call**:
 
 ```
-fin_defi({query_type: "yields"})
+# DefiLlama yield pools
+DefiLlama API: GET https://yields.llama.fi/pools
 ```
 
 **Filtering Criteria**:
@@ -173,7 +221,8 @@ fin_defi({query_type: "yields"})
 **Tool Call**:
 
 ```
-fin_defi({query_type: "stablecoins"})
+# DefiLlama stablecoin supply
+DefiLlama API: GET https://stablecoins.llama.fi/stablecoins
 ```
 
 **Interpretation**:
@@ -188,23 +237,24 @@ fin_defi({query_type: "stablecoins"})
 
 #### Cross-Exchange Price Spread
 
-**Tool Calls**:
+**Tool Calls** (fin-data-bus, CCXT direct):
 
 ```
-fin_crypto({symbol: "BTC/USDT", exchange: "binance", query_type: "ticker"})
-fin_crypto({symbol: "BTC/USDT", exchange: "okx", query_type: "ticker"})
-fin_crypto({symbol: "BTC/USDT", exchange: "bybit", query_type: "ticker"})
+fin_data_ticker({symbol: "BTC/USDT", exchange: "binance"})
+fin_data_ticker({symbol: "BTC/USDT", exchange: "okx"})
+fin_data_ticker({symbol: "BTC/USDT", exchange: "bybit"})
 ```
 
 Compare last/bid/ask across exchanges. Spread > 0.1% may indicate arbitrage opportunity (after accounting for transfer fees and time).
 
 #### Funding Rate Comparison
 
-**Tool Calls**:
+**Tool Calls** (fin-data-bus, CCXT direct):
 
 ```
-fin_crypto({symbol: "BTC/USDT", exchange: "binance", query_type: "funding_rate"})
-fin_crypto({symbol: "BTC/USDT:USDT", exchange: "okx", query_type: "funding_rate"})
+# Query funding rate via fin-data-bus CCXT interface
+fin-data-bus: funding_rate({symbol: "BTC/USDT", exchange: "binance"})
+fin-data-bus: funding_rate({symbol: "BTC/USDT:USDT", exchange: "okx"})
 ```
 
 **Funding Rate Interpretation**:
@@ -308,6 +358,8 @@ fin_crypto({symbol: "BTC/USDT:USDT", exchange: "okx", query_type: "funding_rate"
 - Stablecoin supply changes are a leading indicator -- highlight minting/burning trends prominently.
 - Use sector rotation data to identify narrative momentum, not as standalone trading signals.
 - Include order book depth analysis for large-cap coins to assess market microstructure.
+- For OHLCV data, prefer `crypto_price_historical` (MCP) for historical analysis and `fin_data_ohlcv` (CCXT) for exchange-specific real-time data.
+- Always specify the `exchange` parameter when using fin-data-bus tools.
 
 ## Risk Disclosures
 

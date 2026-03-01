@@ -1,7 +1,7 @@
 ---
 name: fin-global
 description: "港股/美股跨境投资研究 -- HK/US equity analysis, cross-border capital flow (Stock Connect), AH premium, options chains"
-metadata: { "openclaw": { "emoji": "🌏", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata: { "openclaw": { "emoji": "🌏", "requires": { "mcp": ["datahub"] } } }
 ---
 
 # Global Equity Research (HK & US)
@@ -31,56 +31,64 @@ Cross-border investment research covering Hong Kong and US equities. Includes pr
 - User asks about crypto -- use fin-crypto
 - User wants fund/ETF analysis -- use fin-fund
 
-## Tools
+## Tools (DataHub MCP)
 
-- `fin_global` -- HK/US equity data (price, financials, Stock Connect flows, options)
-- `fin_stock` -- supplement with A-share data when doing AH premium comparison
+All data is accessed via the `datahub` MCP server. The following MCP tools are used by this skill:
 
-### Query Types for fin_global
+- For A-share supplementary data (AH premium comparison), refer to the fin-stock skill's MCP tools.
 
-#### HK Stock Data
+### HK Stock Data
 
-| query_type          | Description                           | Key Fields                                      |
-| ------------------- | ------------------------------------- | ----------------------------------------------- |
-| `hk_basic`          | HK stock basic info                   | ts_code, name, list_date, industry              |
-| `hk_daily`          | HK daily OHLCV                        | open, high, low, close, vol, amount             |
-| `hk_daily_adj`      | HK adjusted daily prices              | adjusted OHLCV                                  |
-| `hk_income`         | HK income statement (pivot format)    | ind_name, ind_value (Revenue, Net Profit, etc.) |
-| `hk_balance`        | HK balance sheet (pivot format)       | ind_name, ind_value (Total Assets, etc.)        |
-| `hk_cashflow`       | HK cash flow statement (pivot format) | ind_name, ind_value                             |
-| `hk_fina_indicator` | HK financial indicators               | ROE, margins, ratios                            |
+| MCP Tool                   | Description                           | Key Fields                                      |
+| -------------------------- | ------------------------------------- | ----------------------------------------------- |
+| `equity_hk_basic`          | HK stock basic info                   | ts_code, name, list_date, industry              |
+| `equity_price_historical`  | HK daily OHLCV (auto-detects .HK)     | open, high, low, close, vol, amount             |
+| `equity_hk_adj_factor`     | HK adjustment factor                  | adj_factor                                      |
+| `equity_hk_income`         | HK income statement (pivot format)    | ind_name, ind_value (Revenue, Net Profit, etc.) |
+| `equity_hk_balancesheet`   | HK balance sheet (pivot format)       | ind_name, ind_value (Total Assets, etc.)        |
+| `equity_hk_cashflow`       | HK cash flow statement (pivot format) | ind_name, ind_value                             |
+| `equity_hk_fina_indicator` | HK financial indicators               | ROE, margins, ratios                            |
+| `equity_hk_trade_cal`      | HK trading calendar                   | cal_date, is_open                               |
+| `equity_hk_hold`           | Southbound holdings detail            | vol, ratio (holding ratio change)               |
 
-#### US Stock Data
+### US Stock Data
 
-| query_type          | Description                           | Key Fields                                 |
-| ------------------- | ------------------------------------- | ------------------------------------------ |
-| `us_basic`          | US stock basic info                   | ts_code, name, classify (NYSE/NASDAQ)      |
-| `us_daily`          | US daily prices with PE/PB            | close, pe, pb, turnover_rate               |
-| `us_daily_adj`      | US adjusted daily prices              | adjusted OHLCV                             |
-| `us_income`         | US income statement (pivot format)    | ind_name, ind_value                        |
-| `us_balance`        | US balance sheet (pivot format)       | ind_name, ind_value                        |
-| `us_cashflow`       | US cash flow statement (pivot format) | ind_name, ind_value                        |
-| `us_fina_indicator` | US financial indicators               | ROE, net profit growth, etc.               |
-| `us_income_xbrl`    | US income (XBRL structured)           | standard accounting fields                 |
-| `us_balance_xbrl`   | US balance sheet (XBRL)               | standard accounting fields                 |
-| `us_cashflow_xbrl`  | US cash flow (XBRL)                   | standard accounting fields                 |
-| `us_options`        | US options chain with Greeks          | strike, expiry, bid, ask, delta, gamma, iv |
-| `us_profile`        | Company profile                       | description, sector, market_cap            |
-| `us_news`           | Company news                          | title, published, url                      |
-| `us_dividends`      | Dividend history                      | ex_date, amount, frequency                 |
-| `us_splits`         | Historical splits                     | date, split_ratio                          |
+| MCP Tool                               | Description                                | Key Fields                                 |
+| -------------------------------------- | ------------------------------------------ | ------------------------------------------ |
+| `equity_us_basic`                      | US stock basic info                        | ts_code, name, classify (NYSE/NASDAQ)      |
+| `equity_price_historical`              | US daily OHLCV (auto-detects plain ticker) | close, vol, amount                         |
+| `equity_us_adj_factor`                 | US adjustment factor                       | adj_factor                                 |
+| `equity_us_income`                     | US income statement (pivot)                | ind_name, ind_value                        |
+| `equity_us_balancesheet`               | US balance sheet (pivot)                   | ind_name, ind_value                        |
+| `equity_us_cashflow`                   | US cash flow statement                     | ind_name, ind_value                        |
+| `equity_us_fina_indicator`             | US financial indicators                    | ROE, net profit growth, etc.               |
+| `equity_us_trade_cal`                  | US trading calendar                        | cal_date, is_open                          |
+| `derivatives_options_chains`           | US options chain with Greeks               | strike, expiry, bid, ask, delta, gamma, iv |
+| `equity_profile`                       | Company profile                            | description, sector, market_cap            |
+| `news_company`                         | Company news                               | title, published, url                      |
+| `equity_fundamental_dividends`         | Dividend history                           | ex_date, amount, frequency                 |
+| `equity_fundamental_historical_splits` | Historical splits                          | date, split_ratio                          |
 
-#### Stock Connect (Cross-Border Capital Flow)
+### Stock Connect (Cross-Border Capital Flow)
 
-| query_type    | Description                              | Key Fields                          |
-| ------------- | ---------------------------------------- | ----------------------------------- |
-| `hsgt_flow`   | Daily northbound/southbound capital flow | north_money, south_money, hgt, sgt  |
-| `hsgt_top10`  | Stock Connect top 10 traded stocks       | ts_code, name, amount, net_amount   |
-| `hk_hold`     | Southbound holdings detail for HK stock  | vol, ratio (holding ratio change)   |
-| `hs_const`    | Stock Connect constituent list           | ts_code, name, hs_type (SH/SZ)      |
-| `ggt_daily`   | HK Connect daily capital flow            | buy_amount, sell_amount, net_amount |
-| `ggt_monthly` | HK Connect monthly capital flow          | month, buy_amount, sell_amount      |
-| `ggt_top10`   | HK Connect top 10 daily                  | ts_code, name, amount               |
+| MCP Tool                  | Description                              | Key Fields                          |
+| ------------------------- | ---------------------------------------- | ----------------------------------- |
+| `equity_flow_hsgt_flow`   | Daily northbound/southbound capital flow | north_money, south_money, hgt, sgt  |
+| `equity_flow_hsgt_top10`  | Stock Connect top 10 traded stocks       | ts_code, name, amount, net_amount   |
+| `equity_flow_hs_const`    | Stock Connect constituent list           | ts_code, name, hs_type (SH/SZ)      |
+| `equity_flow_ggt_daily`   | HK Connect daily capital flow            | buy_amount, sell_amount, net_amount |
+| `equity_flow_ggt_monthly` | HK Connect monthly capital flow          | month, buy_amount, sell_amount      |
+| `equity_flow_ggt_top10`   | HK Connect top 10 daily                  | ts_code, name, amount               |
+
+### Note on `equity_price_historical`
+
+`equity_price_historical` is the standard OHLCV route for all markets. The provider auto-detects the market based on symbol format:
+
+- HK stocks: pass `symbol: "00700.HK"` -- auto-routes to HK data
+- US stocks: pass `symbol: "AAPL"` -- auto-routes to US data
+- A-shares: pass `symbol: "600519.SH"` -- auto-routes to A-share data
+
+You can also explicitly set `provider: "tushare"` or other providers as needed.
 
 ## Code Format Conventions
 
@@ -101,8 +109,8 @@ HK and US financial statements (income/balance/cashflow) may return data in **in
 
 For companies dual-listed on A-share and H-share markets:
 
-1. Fetch A-share daily price via `fin_stock`
-2. Fetch H-share daily price via `fin_global({query_type: "hk_daily"})`
+1. Fetch A-share daily price via `equity_price_historical({symbol: "601318.SH", provider: "tushare"})`
+2. Fetch H-share daily price via `equity_price_historical({symbol: "02318.HK", provider: "tushare"})`
 3. Apply FX conversion (HKDCNY)
 4. Compute: AH Premium = (A-price / H-price _ FX - 1) _ 100%
 5. Compare PE/PB differentials to judge relative value
@@ -111,9 +119,9 @@ For companies dual-listed on A-share and H-share markets:
 
 ### Framework 2: Northbound Capital Signal Tracking
 
-1. `fin_global({query_type: "hsgt_flow"})` -- recent northbound net inflow trend
-2. `fin_global({query_type: "hsgt_top10"})` -- today's top 10 bought/sold stocks
-3. `fin_global({query_type: "hk_hold"})` -- track specific stock's Stock Connect holding changes
+1. `equity_flow_hsgt_flow({provider: "tushare"})` -- recent northbound net inflow trend
+2. `equity_flow_hsgt_top10({provider: "tushare"})` -- today's top 10 bought/sold stocks
+3. `equity_hk_hold({symbol: "00700.HK", provider: "tushare"})` -- track specific stock's Stock Connect holding changes
 4. Signal interpretation:
    - Sustained net inflow > 5 bn/day -- strong bullish signal
    - Top 10 concentrated in one sector -- sector rotation signal
@@ -121,17 +129,17 @@ For companies dual-listed on A-share and H-share markets:
 
 ### Framework 3: Chinese ADR Assessment
 
-1. `fin_global({query_type: "us_basic"})` -- list Chinese ADRs
-2. `fin_global({query_type: "us_daily"})` -- valuation data (PE/PB/turnover)
-3. `fin_global({query_type: "us_fina_indicator"})` -- ROE, net profit growth
-4. `fin_global({query_type: "us_income"})` -- detailed financials (pivot)
+1. `equity_us_basic({provider: "tushare"})` -- list Chinese ADRs
+2. `equity_price_historical({symbol: "BABA", provider: "tushare"})` -- price and valuation data
+3. `equity_us_fina_indicator({symbol: "BABA", provider: "tushare"})` -- ROE, net profit growth
+4. `equity_us_income({symbol: "BABA", provider: "tushare"})` -- detailed financials (pivot)
 5. Compare against US sector peers
 
 ### Framework 4: HK Connect Holding Analysis
 
-1. `fin_global({query_type: "hk_hold"})` -- southbound holding history for a HK stock
-2. `fin_global({query_type: "ggt_daily"})` or `ggt_monthly` -- overall southbound trend
-3. `fin_global({query_type: "ggt_top10"})` -- daily top 10 southbound
+1. `equity_hk_hold({symbol: "00700.HK", provider: "tushare"})` -- southbound holding history for a HK stock
+2. `equity_flow_ggt_daily({provider: "tushare"})` or `equity_flow_ggt_monthly` -- overall southbound trend
+3. `equity_flow_ggt_top10({provider: "tushare"})` -- daily top 10 southbound
 4. Calculate holding ratio change rate to gauge southbound sentiment
 
 ## Report Template
@@ -187,11 +195,11 @@ For companies dual-listed on A-share and H-share markets:
 ## Execution Flow
 
 1. **Identify Market**: Determine HK (.HK) / US (ticker) / or search by name
-2. **Fetch Basic Info**: `hk_basic` or `us_basic`
-3. **Fetch Price Data**: Daily prices; minute-level if needed
-4. **Fetch Financials**: Indicator-style or XBRL-structured data depending on query type
-5. **Capital Flow**: Stock Connect APIs for cross-border flow analysis
-6. **Options Data**: Options chain for US stocks
+2. **Fetch Basic Info**: `equity_hk_basic` or `equity_us_basic`
+3. **Fetch Price Data**: `equity_price_historical` (auto-detects market by symbol format)
+4. **Fetch Financials**: Market-specific financial tools (e.g., `equity_hk_income`, `equity_us_income`)
+5. **Capital Flow**: Stock Connect tools (`equity_flow_hsgt_flow`, `equity_flow_ggt_daily`, etc.)
+6. **Options Data**: `derivatives_options_chains` for US stocks
 7. **Generate Report**: Compile and output per template
 
 ## Response Guidelines

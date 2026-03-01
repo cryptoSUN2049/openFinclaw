@@ -1,7 +1,7 @@
 ---
 name: fin-stock
 description: "A股个股深度分析 -- 行情/财务/资金/股东/事件全景研究，五维分析法评级"
-metadata: { "openclaw": { "emoji": "📊", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata: { "openclaw": { "emoji": "📊", "requires": { "mcp": ["datahub"] } } }
 ---
 
 # A股个股深度分析
@@ -32,42 +32,40 @@ metadata: { "openclaw": { "emoji": "📊", "requires": { "extensions": ["fin-dat
 - User asks about futures, options, or convertible bonds -- use fin-deriv
 - User asks about crypto or DeFi -- use fin-crypto
 
-## Tools
+## Tools (DataHub MCP)
 
-- `fin_stock` -- A stock individual equity data (quote, historical, fundamentals, money flow, holders, events)
-- `fin_market` -- supplement with sector comparison or index data when needed
+All data is accessed via the `datahub` MCP server. The following MCP tools are used by this skill:
 
-### Query Types for fin_stock
-
-| query_type         | Description                            | Key Fields                                                   |
-| ------------------ | -------------------------------------- | ------------------------------------------------------------ |
-| `quote`            | Latest quote / price snapshot          | close, vol, pct_chg                                          |
-| `historical`       | Daily OHLCV history                    | open, high, low, close, vol, amount                          |
-| `valuation`        | PE / PB / market cap / turnover        | pe, pb, total_mv, circ_mv, turnover_rate                     |
-| `income`           | Income statement                       | revenue, n_income, operate_profit                            |
-| `balance`          | Balance sheet                          | total_assets, total_liab, total_hldr_eqy_exc_min_int         |
-| `cashflow`         | Cash flow statement                    | n_cashflow_act, n_cashflow_inv_act, n_cash_flows_fnc_act     |
-| `ratios`           | Financial ratios                       | roe, grossprofit_margin, netprofit_margin, debt_to_assets    |
-| `income_vip`       | VIP income statement (extended fields) | --                                                           |
-| `balance_vip`      | VIP balance sheet (extended fields)    | --                                                           |
-| `cashflow_vip`     | VIP cash flow (extended fields)        | --                                                           |
-| `forecast`         | Earnings forecast / pre-announcement   | type, p_change_min, p_change_max                             |
-| `express`          | Earnings express report                | revenue, operate_profit, n_income                            |
-| `revenue_segment`  | Revenue breakdown by product/region    | bz_item, bz_sales, bz_profit                                 |
-| `moneyflow`        | Intraday money flow (by order size)    | buy_sm_vol, sell_sm_vol, buy_lg_vol, sell_lg_vol, net_mf_vol |
-| `block_trade`      | Block trades                           | price, vol, amount, buyer, seller                            |
-| `margin`           | Margin trading detail                  | rzye, rqye, rzmre, rzche                                     |
-| `top10_holders`    | Top 10 shareholders                    | holder_name, hold_amount, hold_ratio                         |
-| `top10_float`      | Top 10 float shareholders              | holder_name, hold_amount                                     |
-| `holder_number`    | Shareholder count trend                | holder_num                                                   |
-| `holder_trade`     | Major shareholder trades               | holder_name, change_vol, after_share                         |
-| `pledge`           | Pledge statistics                      | pledge_ratio, pledge_count                                   |
-| `dividend`         | Dividend history                       | --                                                           |
-| `share_float`      | Lock-up share release schedule         | --                                                           |
-| `factor`           | Technical factors                      | turnover_rate, volume_ratio                                  |
-| `adj_factor`       | Adjustment factor for price            | adj_factor                                                   |
-| `audit`            | Financial audit opinion                | audit_result                                                 |
-| `analyst_forecast` | Broker earnings estimates              | eps_avg, rating                                              |
+| MCP Tool                                 | Description                            | Key Fields                                                   |
+| ---------------------------------------- | -------------------------------------- | ------------------------------------------------------------ |
+| `equity_price_quote`                     | Latest quote / price snapshot          | close, vol, pct_chg                                          |
+| `equity_price_historical`                | Daily OHLCV history                    | open, high, low, close, vol, amount                          |
+| `equity_fundamental_backup_daily`        | PE / PB / market cap / turnover        | pe, pb, total_mv, circ_mv, turnover_rate                     |
+| `equity_fundamental_income`              | Income statement                       | revenue, n_income, operate_profit                            |
+| `equity_fundamental_balance`             | Balance sheet                          | total_assets, total_liab, total_hldr_eqy_exc_min_int         |
+| `equity_fundamental_cash`                | Cash flow statement                    | n_cashflow_act, n_cashflow_inv_act, n_cash_flows_fnc_act     |
+| `equity_fundamental_ratios`              | Financial ratios                       | roe, grossprofit_margin, netprofit_margin, debt_to_assets    |
+| `equity_fundamental_income_vip`          | VIP income statement (extended fields) | --                                                           |
+| `equity_fundamental_balance_vip`         | VIP balance sheet (extended fields)    | --                                                           |
+| `equity_fundamental_cashflow_vip`        | VIP cash flow (extended fields)        | --                                                           |
+| `equity_fundamental_forecast_vip`        | Earnings forecast / pre-announcement   | type, p_change_min, p_change_max                             |
+| `equity_fundamental_financial_express`   | Earnings express report                | revenue, operate_profit, n_income                            |
+| `equity_fundamental_revenue_segment_vip` | Revenue breakdown by product/region    | bz_item, bz_sales, bz_profit                                 |
+| `equity_moneyflow_individual`            | Intraday money flow (by order size)    | buy_sm_vol, sell_sm_vol, buy_lg_vol, sell_lg_vol, net_mf_vol |
+| `equity_moneyflow_block_trade`           | Block trades                           | price, vol, amount, buyer, seller                            |
+| `equity_margin_trading`                  | Margin trading detail                  | rzye, rqye, rzmre, rzche                                     |
+| `equity_ownership_top10_holders`         | Top 10 shareholders                    | holder_name, hold_amount, hold_ratio                         |
+| `equity_ownership_top10_float_holders`   | Top 10 float shareholders              | holder_name, hold_amount                                     |
+| `equity_ownership_holder_number`         | Shareholder count trend                | holder_num                                                   |
+| `equity_ownership_shareholder_trade`     | Major shareholder trades               | holder_name, change_vol, after_share                         |
+| `equity_pledge_detail`                   | Pledge statistics                      | pledge_ratio, pledge_count                                   |
+| `equity_fundamental_dividend_detail`     | Dividend history                       | --                                                           |
+| `equity_ownership_share_float`           | Lock-up share release schedule         | --                                                           |
+| `equity_fundamental_stock_factor`        | Technical factors                      | turnover_rate, volume_ratio                                  |
+| `equity_fundamental_adj_factor`          | Adjustment factor for price            | adj_factor                                                   |
+| `equity_fundamental_financial_audit`     | Financial audit opinion                | audit_result                                                 |
+| `equity_fundamental_earnings_forecast`   | Broker earnings estimates              | eps_avg, rating                                              |
+| `equity_ownership_repurchase`            | Share repurchase records               | --                                                           |
 
 ## Five-Dimension Analysis Framework
 
@@ -75,7 +73,7 @@ For any A-share stock, execute the following systematic analysis:
 
 ### Dimension 1: Valuation Snapshot
 
-**Data**: `fin_stock({symbol, query_type: "valuation"})` + historical valuation series
+**Data**: `equity_fundamental_backup_daily({symbol, provider: "tushare"})` + historical valuation series
 
 **Core Metrics**: PE (TTM), PB, total market cap, float market cap, turnover rate
 
@@ -99,7 +97,7 @@ Valuation Snapshot
 
 ### Dimension 2: Profitability
 
-**Data**: `fin_stock({symbol, query_type: "ratios"})` (recent 8 quarters)
+**Data**: `equity_fundamental_ratios({symbol, provider: "tushare"})` (recent 8 quarters)
 
 **Core Metrics**: ROE, gross margin, net margin, debt-to-assets ratio
 
@@ -123,7 +121,7 @@ Profitability
 
 ### Dimension 3: Growth
 
-**Data**: `fin_stock({symbol, query_type: "income"})` + `fin_stock({symbol, query_type: "forecast"})`
+**Data**: `equity_fundamental_income({symbol, provider: "tushare"})` + `equity_fundamental_forecast_vip({symbol, provider: "tushare"})`
 
 **Core Metrics**: Revenue YoY, net profit YoY, earnings forecast
 
@@ -147,7 +145,7 @@ Growth
 
 ### Dimension 4: Capital Flow
 
-**Data**: `fin_stock({symbol, query_type: "moneyflow"})` + `fin_stock({symbol, query_type: "margin"})`
+**Data**: `equity_moneyflow_individual({symbol, provider: "tushare"})` + `equity_margin_trading({symbol, provider: "tushare"})`
 
 **Core Metrics**: Net institutional inflow, retail flow direction, margin balance change
 
@@ -172,7 +170,7 @@ Capital Flow
 
 ### Dimension 5: Shareholder Structure
 
-**Data**: `fin_stock({symbol, query_type: "top10_holders"})` + `fin_stock({symbol, query_type: "holder_number"})` + `fin_stock({symbol, query_type: "pledge"})`
+**Data**: `equity_ownership_top10_holders({symbol, provider: "tushare"})` + `equity_ownership_holder_number({symbol, provider: "tushare"})` + `equity_pledge_detail({symbol, provider: "tushare"})`
 
 **Core Metrics**: Institutional holding changes, shareholder count trend, pledge ratio
 
@@ -267,7 +265,7 @@ Shareholder Structure
 ## Execution Flow
 
 1. **Parse Code**: Identify or search for stock code (if user provides name, search first)
-2. **Parallel Data Fetch**: Call all five dimensions concurrently via `fin_stock`
+2. **Parallel Data Fetch**: Call all five dimensions concurrently via DataHub MCP tools
 3. **Compute Derived Metrics**: YoY growth, percentiles, net flow totals
 4. **Generate Report**: Output standardized five-dimension report
 5. **Risk Alerts**: Auto-flag risks (high pledge, declining earnings, capital outflow, etc.)

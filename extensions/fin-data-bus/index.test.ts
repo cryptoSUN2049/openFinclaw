@@ -149,14 +149,13 @@ describe("fin-data-bus plugin", () => {
       expect((result.candles as unknown[]).length).toBe(2);
     });
 
-    it("returns error for unsupported market", async () => {
+    it("returns error when equity adapter is not available", async () => {
       const tool = tools.get("fin_data_ohlcv")!;
       const result = parseResult(
         await tool.execute("call-2", { symbol: "AAPL", market: "equity" }),
       ) as Record<string, unknown>;
 
-      expect(result.error).toContain("equity");
-      expect(result.error).toContain("not yet supported");
+      expect(result.error).toContain("Equity adapter not available");
     });
 
     it("returns error on exchange failure", async () => {
@@ -195,14 +194,13 @@ describe("fin-data-bus plugin", () => {
       expect(["bull", "bear", "sideways", "volatile", "crisis"]).toContain(result.regime);
     });
 
-    it("returns error for unsupported market", async () => {
+    it("returns error when equity adapter is not available", async () => {
       const tool = tools.get("fin_data_regime")!;
       const result = parseResult(
         await tool.execute("call-5", { symbol: "AAPL", market: "equity" }),
       ) as Record<string, unknown>;
 
-      expect(result.error).toContain("equity");
-      expect(result.error).toContain("not yet supported");
+      expect(result.error).toContain("Equity adapter not available");
     });
   });
 

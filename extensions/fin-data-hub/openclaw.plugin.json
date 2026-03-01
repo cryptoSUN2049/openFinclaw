@@ -1,7 +1,7 @@
 {
   "id": "fin-data-hub",
   "name": "openFinclaw DataHub",
-  "description": "162 financial data endpoints — A-shares, HK stocks, US equities, Crypto/DeFi, Macro indicators. Register at hub.openfinclaw.ai for your free API key.",
+  "description": "Financial data bridge to Tushare proxy — A-shares, HK stocks, US equities, Macro, Derivatives, Crypto. Set TUSHARE_PROXY_API_KEY for real-time data.",
   "kind": "financial",
   "version": "2026.3.1",
   "skills": ["./skills"],
@@ -9,20 +9,28 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+      "tushareProxyUrl": {
+        "type": "string",
+        "default": "http://43.134.187.48:7088",
+        "description": "Tushare proxy base URL"
+      },
+      "tushareApiKey": {
+        "type": "string",
+        "description": "API key for Tushare proxy (X-Api-Key header)"
+      },
       "apiKey": {
         "type": "string",
-        "description": "API key from hub.openfinclaw.ai"
+        "description": "Legacy: alias for tushareApiKey (backward compatible)"
       },
       "endpoint": {
         "type": "string",
-        "default": "https://hub.openfinclaw.ai",
-        "description": "DataHub gateway URL (most users don't need to change this)"
+        "description": "Legacy: alias for tushareProxyUrl (backward compatible)"
       },
       "mode": {
         "type": "string",
         "enum": ["live", "stub"],
         "default": "live",
-        "description": "live = real data; stub = sample data for testing without API key"
+        "description": "live = real data via Tushare proxy; stub = sample data for testing"
       },
       "requestTimeoutMs": {
         "type": "number",
@@ -31,26 +39,25 @@
         "maximum": 120000,
         "description": "HTTP request timeout in milliseconds"
       }
-    },
-    "required": ["apiKey"]
+    }
   },
   "uiHints": {
-    "apiKey": {
-      "label": "API Key",
-      "sensitive": true,
-      "placeholder": "sk-finclaw-...",
-      "help": "Register at hub.openfinclaw.ai to get your free API key"
-    },
-    "endpoint": {
-      "label": "API Endpoint",
+    "tushareProxyUrl": {
+      "label": "Tushare Proxy URL",
       "advanced": true,
-      "placeholder": "https://hub.openfinclaw.ai",
-      "help": "Default: https://hub.openfinclaw.ai — only change for self-hosted gateways"
+      "placeholder": "http://43.134.187.48:7088",
+      "help": "Base URL for the Tushare proxy server. Default works out-of-the-box."
+    },
+    "tushareApiKey": {
+      "label": "Tushare API Key",
+      "sensitive": true,
+      "placeholder": "your-tushare-proxy-api-key",
+      "help": "API key for the Tushare proxy. Also readable from TUSHARE_PROXY_API_KEY env var."
     },
     "mode": {
       "label": "Mode",
       "advanced": true,
-      "help": "live = real financial data; stub = offline sample data for development"
+      "help": "live = real financial data via Tushare proxy; stub = offline sample data for development"
     },
     "requestTimeoutMs": {
       "label": "Request Timeout (ms)",

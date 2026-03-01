@@ -1,7 +1,7 @@
 ---
 name: fin-macro
 description: "宏观经济与利率监控 -- GDP/CPI/PPI/PMI/M2/社融、全球利率(Shibor/LPR/Libor/国债)、世界银行全球数据、汇率"
-metadata: { "openclaw": { "emoji": "🏛️", "requires": { "extensions": ["fin-data-hub"] } } }
+metadata: { "openclaw": { "emoji": "🏛️", "requires": { "mcp": ["datahub"] } } }
 ---
 
 # Macro Economy & Interest Rate Monitor
@@ -34,61 +34,62 @@ Comprehensive macroeconomic analysis covering China's key economic indicators (G
 - User wants to backtest a strategy -- use fin-backtest
 - User wants earnings calendar or event impact -- use fin-macro-calendar
 
-## Tools
+## Tools (DataHub MCP)
 
-- `fin_macro` -- macroeconomic indicators, interest rates, FX, and World Bank data
+### China Economic Indicators
 
-### Query Types for fin_macro
+| MCP Tool                   | Description                      | Key Fields                                |
+| -------------------------- | -------------------------------- | ----------------------------------------- |
+| `economy_indicators`       | GDP real growth (China)          | quarter, gdp, gdp_yoy                     |
+| `economy_cpi`              | Consumer Price Index             | month, cpi_yoy, cpi_mom                   |
+| `economy_ppi`              | Producer Price Index             | month, ppi_yoy                            |
+| `economy_pmi`              | Purchasing Managers' Index       | month, pmi, pmi_new_order, pmi_production |
+| `economy_money_supply`     | Money supply (M0/M1/M2)          | month, m0_yoy, m1_yoy, m2_yoy             |
+| `economy_social_financing` | Social financing scale (monthly) | month, total, loan, bond, equity          |
 
-#### China Economic Indicators
+### China Interest Rates
 
-| query_type         | Description                      | Key Fields                                |
-| ------------------ | -------------------------------- | ----------------------------------------- |
-| `gdp`              | GDP real growth                  | quarter, gdp, gdp_yoy                     |
-| `cpi`              | Consumer Price Index             | month, cpi_yoy, cpi_mom                   |
-| `ppi`              | Producer Price Index             | month, ppi_yoy                            |
-| `pmi`              | Purchasing Managers' Index       | month, pmi, pmi_new_order, pmi_production |
-| `money_supply`     | Money supply (M0/M1/M2)          | month, m0_yoy, m1_yoy, m2_yoy             |
-| `social_financing` | Social financing scale (monthly) | month, total, loan, bond, equity          |
+| MCP Tool                      | Description                     | Key Fields                               |
+| ----------------------------- | ------------------------------- | ---------------------------------------- |
+| `fixedincome_rate_shibor`     | Shanghai Interbank Offered Rate | date, on (overnight), 1w, 1m, 3m, 6m, 1y |
+| `economy_shibor_quote`        | Shibor quoting bank details     | date, bank, rate                         |
+| `fixedincome_rate_shibor_lpr` | Loan Prime Rate                 | date, 1y, 5y                             |
+| `economy_treasury_cn`         | China treasury yield curve      | date, 1y, 2y, 5y, 7y, 10y, 30y           |
+| `economy_wz_index`            | Wenzhou private lending rate    | date, rate                               |
 
-#### China Interest Rates
+### Global Interest Rates
 
-| query_type     | Description                     | Key Fields                               |
-| -------------- | ------------------------------- | ---------------------------------------- |
-| `shibor`       | Shanghai Interbank Offered Rate | date, on (overnight), 1w, 1m, 3m, 6m, 1y |
-| `shibor_quote` | Shibor quoting bank details     | date, bank, rate                         |
-| `lpr`          | Loan Prime Rate                 | date, 1y, 5y                             |
-| `cn_treasury`  | China treasury yield curve      | date, 1y, 2y, 5y, 7y, 10y, 30y           |
-| `wz_index`     | Wenzhou private lending rate    | date, rate                               |
+| MCP Tool                 | Description                      | Key Fields                             |
+| ------------------------ | -------------------------------- | -------------------------------------- |
+| `fixedincome_rate_hibor` | Hong Kong Interbank Offered Rate | date, on, 1w, 1m, 3m, 6m, 1y           |
+| `fixedincome_rate_libor` | London Interbank Offered Rate    | date, on, 1w, 1m, 3m, 6m, 1y           |
+| `economy_treasury_us`    | US treasury yield curve          | date, 1m, 3m, 6m, 1y, 2y, 5y, 10y, 30y |
 
-#### Global Interest Rates
+### World Bank Data
 
-| query_type    | Description                      | Key Fields                             |
-| ------------- | -------------------------------- | -------------------------------------- |
-| `hibor`       | Hong Kong Interbank Offered Rate | date, on, 1w, 1m, 3m, 6m, 1y           |
-| `libor`       | London Interbank Offered Rate    | date, on, 1w, 1m, 3m, 6m, 1y           |
-| `us_treasury` | US treasury yield curve          | date, 1m, 3m, 6m, 1y, 2y, 5y, 10y, 30y |
+| MCP Tool             | Description                                 | Key Fields                      | Notes                                |
+| -------------------- | ------------------------------------------- | ------------------------------- | ------------------------------------ |
+| `economy_indicators` | GDP (current USD) by country                | country, year, value            | Use `indicator: "NY.GDP.MKTP.CD"`    |
+| `economy_indicators` | GDP growth rate (annual %)                  | country, year, value            | Use `indicator: "NY.GDP.MKTP.KD.ZG"` |
+| `economy_indicators` | GDP per capita (current USD)                | country, year, value            | Use `indicator: "NY.GDP.PCAP.CD"`    |
+| `economy_indicators` | Total population                            | country, year, value            | Use `indicator: "SP.POP.TOTL"`       |
+| `economy_indicators` | CPI inflation rate (annual %)               | country, year, value            | Use `indicator: "FP.CPI.TOTL.ZG"`    |
+| `economy_indicators` | Unemployment rate (%)                       | country, year, value            | Use `indicator: "SL.UEM.TOTL.ZS"`    |
+| `economy_indicators` | Trade as % of GDP                           | country, year, value            | Use `indicator: "NE.TRD.GNFS.ZS"`    |
+| `economy_indicators` | Foreign direct investment net inflows (USD) | country, year, value            | Use `indicator: "BX.KLT.DINV.CD.WD"` |
+| `economy_indicators` | Custom indicator query                      | country, year, value, indicator | Use any World Bank indicator code    |
 
-#### World Bank Data
+### FX Rates
 
-| query_type          | Description                                 | Key Fields                      |
-| ------------------- | ------------------------------------------- | ------------------------------- |
-| `wb_gdp`            | GDP (current USD) by country                | country, year, value            |
-| `wb_gdp_growth`     | GDP growth rate (annual %)                  | country, year, value            |
-| `wb_gdp_per_capita` | GDP per capita (current USD)                | country, year, value            |
-| `wb_population`     | Total population                            | country, year, value            |
-| `wb_cpi`            | CPI inflation rate (annual %)               | country, year, value            |
-| `wb_unemployment`   | Unemployment rate (%)                       | country, year, value            |
-| `wb_trade`          | Trade as % of GDP                           | country, year, value            |
-| `wb_fdi`            | Foreign direct investment net inflows (USD) | country, year, value            |
-| `wb_custom`         | Custom indicator query                      | country, year, value, indicator |
+| MCP Tool             | Description                      | Key Fields                   | Notes                                       |
+| -------------------- | -------------------------------- | ---------------------------- | ------------------------------------------- |
+| `currency_snapshots` | USDCNH (offshore RMB) historical | date, open, high, low, close | Or Tushare proxy with `provider: "tushare"` |
 
-#### FX Rates
+### Economic Calendar
 
-| query_type | Description                      | Key Fields                   |
-| ---------- | -------------------------------- | ---------------------------- |
-| `fx_cnh`   | USDCNH (offshore RMB) historical | date, open, high, low, close |
-| `fx_pair`  | Any currency pair                | date, open, high, low, close |
+| MCP Tool           | Description             | Key Fields                                    |
+| ------------------ | ----------------------- | --------------------------------------------- |
+| `economy_calendar` | Economic event calendar | date, event, country, actual, forecast, prior |
 
 ## Macro Cycle 5-Step Framework
 
@@ -97,8 +98,8 @@ Comprehensive macroeconomic analysis covering China's key economic indicators (G
 **Data**:
 
 ```
-fin_macro({query_type: "gdp"})
-fin_macro({query_type: "pmi", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.economy_indicators({country: "CN", indicator: "NY.GDP.MKTP.KD.ZG"})
+mcp_datahub.economy_pmi({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
 ```
 
 **Analysis Logic**:
@@ -122,8 +123,8 @@ fin_macro({query_type: "pmi", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
 **Data**:
 
 ```
-fin_macro({query_type: "cpi"})
-fin_macro({query_type: "ppi", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.economy_cpi()
+mcp_datahub.economy_ppi({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
 ```
 
 **Analysis Logic**:
@@ -147,8 +148,8 @@ fin_macro({query_type: "ppi", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
 **Data**:
 
 ```
-fin_macro({query_type: "money_supply", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
-fin_macro({query_type: "social_financing", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.economy_money_supply({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.economy_social_financing({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
 ```
 
 **Analysis Logic**:
@@ -169,10 +170,10 @@ fin_macro({query_type: "social_financing", start_date: "YYYYMMDD", end_date: "YY
 **Data**:
 
 ```
-fin_macro({query_type: "shibor", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
-fin_macro({query_type: "lpr", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
-fin_macro({query_type: "cn_treasury", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
-fin_macro({query_type: "us_treasury", start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.fixedincome_rate_shibor({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.fixedincome_rate_shibor_lpr({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.economy_treasury_cn({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
+mcp_datahub.economy_treasury_us({start_date: "YYYYMMDD", end_date: "YYYYMMDD"})
 ```
 
 **Interest Rate Transmission Chain**:
@@ -202,7 +203,7 @@ PBOC Policy Rate
 **Data**:
 
 ```
-fin_macro({query_type: "fx_cnh", start_date: "YYYY-MM-DD", end_date: "YYYY-MM-DD"})
+mcp_datahub.currency_snapshots({symbol: "USDCNH", start_date: "YYYY-MM-DD", end_date: "YYYY-MM-DD"})
 ```
 
 **Analysis Logic**:
@@ -228,13 +229,13 @@ fin_macro({query_type: "fx_cnh", start_date: "YYYY-MM-DD", end_date: "YYYY-MM-DD
 
 ```
 # Compare China-US-Japan-Germany GDP
-fin_macro({query_type: "wb_gdp", countries: "CN;US;JP;DE", date_range: "2000:2023"})
+mcp_datahub.economy_indicators({countries: "CN;US;JP;DE", indicator: "NY.GDP.MKTP.CD", date_range: "2000:2023"})
 
 # BRICS population comparison
-fin_macro({query_type: "wb_population", countries: "CN;IN;BR;RU;ZA", date_range: "2000:2023"})
+mcp_datahub.economy_indicators({countries: "CN;IN;BR;RU;ZA", indicator: "SP.POP.TOTL", date_range: "2000:2023"})
 
 # Global major economy inflation rates
-fin_macro({query_type: "wb_cpi", countries: "CN;US;JP;DE;GB;IN", date_range: "2010:2023"})
+mcp_datahub.economy_indicators({countries: "CN;US;JP;DE;GB;IN", indicator: "FP.CPI.TOTL.ZG", date_range: "2010:2023"})
 ```
 
 ## Report Template
@@ -304,9 +305,9 @@ fin_macro({query_type: "wb_cpi", countries: "CN;US;JP;DE;GB;IN", date_range: "20
 ## Execution Flow
 
 1. **Determine Scope**: China macro / global rates / cross-country comparison / specific indicator
-2. **Fetch Latest Data**: Call appropriate query types based on scope
+2. **Fetch Latest Data**: Call appropriate MCP tools based on scope
 3. **5-Step Analysis**: Growth -> Inflation -> Liquidity -> Rates -> FX (for comprehensive requests)
-4. **Cross-Country Comparison**: Supplement with World Bank data for global context
+4. **Cross-Country Comparison**: Supplement with `economy_indicators` (World Bank) for global context
 5. **Generate Report**: Output per template
 
 ## Response Guidelines

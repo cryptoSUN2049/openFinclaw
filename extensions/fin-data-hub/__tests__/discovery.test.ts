@@ -3,7 +3,7 @@
  *
  * Validates that:
  *   1. The target tool exists and is callable
- *   2. The expected query_type/indicator is in the tool's enum
+ *   2. The expected enum value exists in the tool's parameters (or param exists for free-form fields)
  *   3. The tool description contains relevant routing keywords
  *
  * Run: npx vitest run extensions/fin-data-hub/__tests__/discovery.test.ts
@@ -74,7 +74,7 @@ interface DiscoveryCase {
   /** Expected tool name */
   tool: string;
   /** Expected discriminator field */
-  field: "query_type" | "indicator" | "source";
+  field: "query_type" | "indicator" | "api_name";
   /** Expected value */
   value: string;
   /** Keywords that should appear in the tool description */
@@ -82,7 +82,7 @@ interface DiscoveryCase {
 }
 
 const DISCOVERY_CASES: DiscoveryCase[] = [
-  // --- Stock (A-share) ---
+  // --- Stock (A-share / HK / US) ---
   {
     query: "茅台股价",
     tool: "fin_stock",
@@ -123,7 +123,7 @@ const DISCOVERY_CASES: DiscoveryCase[] = [
     tool: "fin_stock",
     field: "query_type",
     value: "ratios",
-    descriptionKeywords: ["financials"],
+    descriptionKeywords: ["financial ratios"],
   },
   {
     query: "茅台资金流向",
@@ -270,11 +270,11 @@ const DISCOVERY_CASES: DiscoveryCase[] = [
     descriptionKeywords: ["treasury yields"],
   },
   {
-    query: "世界GDP对比",
+    query: "经济日历事件",
     tool: "fin_macro",
     field: "indicator",
-    value: "wb_gdp",
-    descriptionKeywords: ["world bank"],
+    value: "calendar",
+    descriptionKeywords: ["calendar"],
   },
 
   // --- Derivatives ---
@@ -378,8 +378,8 @@ const DISCOVERY_CASES: DiscoveryCase[] = [
   {
     query: "通用A股查询",
     tool: "fin_query",
-    field: "source",
-    value: "china_equity",
+    field: "api_name",
+    value: "daily",
     descriptionKeywords: ["fallback", "162"],
   },
 ];
@@ -403,22 +403,31 @@ describe("self-discovery routing (41 cases)", () => {
         expect(typeof tool!.execute).toBe("function");
       });
 
-      it(`${tc.field}="${tc.value}" is in tool's enum`, () => {
+      it(`${tc.field}="${tc.value}" is valid for tool`, () => {
         const tool = tools.get(tc.tool)!;
         if (tc.tool === "fin_query") {
-          // fin_query uses "source" enum
-          const sourceEnum = extractEnumValues(tool, "source");
-          expect(sourceEnum, "source enum should exist").toBeDefined();
-          expect(sourceEnum).toContain(tc.value);
+          // fin_query has free-form api_name (Type.String), verify param exists
+          const paramProps = (tool.parameters as { properties?: Record<string, { type?: string }> })
+            .properties;
+          expect(paramProps?.api_name, "api_name param should exist").toBeDefined();
+          expect(paramProps!.api_name.type, "api_name should be string type").toBe("string");
         } else if (tc.field === "indicator") {
-          // fin_macro uses indicator in the parameter description string, not a strict enum
+          // fin_macro uses indicator as free-form Type.String — verify param exists
+          // and that the indicator value is a recognized key in the macro mapping
           const paramProps = (
-            tool.parameters as { properties?: Record<string, { description?: string }> }
+            tool.parameters as {
+              properties?: Record<string, { type?: string; description?: string }>;
+            }
           ).properties;
-          const indicatorDesc = (paramProps?.indicator?.description ?? "").toLowerCase();
+          expect(paramProps?.indicator, "indicator param should exist").toBeDefined();
+          expect(paramProps!.indicator.type, "indicator should be string type").toBe("string");
+          // Verify the value is documented in the indicator description or the tool description
+          const indicatorDesc = (paramProps!.indicator.description ?? "").toLowerCase();
+          const toolDesc = tool.description.toLowerCase();
+          const valueInDesc = indicatorDesc.includes(tc.value) || toolDesc.includes(tc.value);
           expect(
-            indicatorDesc.includes(tc.value),
-            `indicator description should contain "${tc.value}"`,
+            valueInDesc,
+            `indicator "${tc.value}" should be documented in param or tool description`,
           ).toBe(true);
         } else {
           const enumValues = extractEnumValues(tool, "query_type");
