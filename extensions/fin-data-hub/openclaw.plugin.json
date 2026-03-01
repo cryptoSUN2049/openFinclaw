@@ -1,30 +1,61 @@
 {
   "id": "fin-data-hub",
-  "name": "openFinclaw-DataHub",
-  "description": "Financial data from 162 endpoints — A-shares, HK stocks, US equities, Crypto/DeFi, Macro indicators",
+  "name": "openFinclaw DataHub",
+  "description": "162 financial data endpoints — A-shares, HK stocks, US equities, Crypto/DeFi, Macro indicators. Register at hub.openfinclaw.ai for your free API key.",
   "kind": "financial",
+  "version": "2026.3.1",
   "configSchema": {
     "type": "object",
+    "additionalProperties": false,
     "properties": {
-      "mode": {
+      "apiKey": {
         "type": "string",
-        "enum": ["stub", "live"],
-        "default": "stub",
-        "description": "stub = sample data; live = call real gateway endpoint"
+        "description": "API key from hub.openfinclaw.ai"
       },
-      "apiKey": { "type": "string", "description": "Gateway API key for authentication" },
       "endpoint": {
         "type": "string",
-        "description": "Gateway base URL, e.g. https://data.example.com"
+        "default": "https://hub.openfinclaw.ai",
+        "description": "DataHub gateway URL (most users don't need to change this)"
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["live", "stub"],
+        "default": "live",
+        "description": "live = real data; stub = sample data for testing without API key"
       },
       "requestTimeoutMs": {
         "type": "number",
         "default": 30000,
+        "minimum": 1000,
+        "maximum": 120000,
         "description": "HTTP request timeout in milliseconds"
       }
-    }
+    },
+    "required": ["apiKey"]
   },
   "uiHints": {
-    "apiKey": { "label": "openFinclaw-DataHub API Key", "sensitive": true }
+    "apiKey": {
+      "label": "API Key",
+      "sensitive": true,
+      "placeholder": "sk-finclaw-...",
+      "help": "Register at hub.openfinclaw.ai to get your free API key"
+    },
+    "endpoint": {
+      "label": "API Endpoint",
+      "advanced": true,
+      "placeholder": "https://hub.openfinclaw.ai",
+      "help": "Default: https://hub.openfinclaw.ai — only change for self-hosted gateways"
+    },
+    "mode": {
+      "label": "Mode",
+      "advanced": true,
+      "help": "live = real financial data; stub = offline sample data for development"
+    },
+    "requestTimeoutMs": {
+      "label": "Request Timeout (ms)",
+      "advanced": true,
+      "placeholder": "30000",
+      "help": "Timeout for each API request (default 30s, max 120s)"
+    }
   }
 }

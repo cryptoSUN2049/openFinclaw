@@ -1,8 +1,20 @@
 {
   "name": "@openfinclaw/fin-data-hub",
-  "version": "2026.2.28",
-  "private": true,
-  "description": "openFinclaw-DataHub — 162 financial data endpoints (A-shares, HK, US, Crypto, DeFi, Macro)",
+  "version": "2026.3.1",
+  "description": "openFinclaw DataHub — 162 financial data endpoints (A-shares, HK, US, Crypto, DeFi, Macro). Register at hub.openfinclaw.ai for your API key.",
+  "keywords": [
+    "crypto",
+    "data-hub",
+    "defi",
+    "finance",
+    "macro",
+    "openclaw",
+    "openfinclaw",
+    "stock",
+    "tushare"
+  ],
+  "homepage": "https://hub.openfinclaw.ai",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "openfinclaw": "workspace:*"
@@ -13,6 +25,11 @@
   "openclaw": {
     "extensions": [
       "./index.ts"
-    ]
+    ],
+    "install": {
+      "npmSpec": "@openfinclaw/fin-data-hub",
+      "localPath": "extensions/fin-data-hub",
+      "defaultChoice": "npm"
+    }
   }
 }

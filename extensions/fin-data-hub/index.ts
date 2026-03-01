@@ -8,10 +8,12 @@ const json = (payload: unknown) => ({
   details: payload,
 });
 
+const DEFAULT_ENDPOINT = "https://hub.openfinclaw.ai";
+
 type DataHubConfig = {
   mode: "stub" | "live";
   apiKey?: string;
-  endpoint?: string;
+  endpoint: string;
   requestTimeoutMs: number;
 };
 
@@ -35,14 +37,22 @@ function resolveConfig(api: OpenClawPluginApi): DataHubConfig {
     readEnv(["OPENFINCLAW_FIN_DATA_HUB_TIMEOUT_MS", "FIN_DATA_HUB_TIMEOUT_MS"]);
   const timeout = Number(timeoutRaw);
 
+  const apiKey =
+    (typeof raw?.apiKey === "string" ? raw.apiKey : undefined) ??
+    readEnv(["OPENFINCLAW_FIN_DATA_HUB_API_KEY", "FIN_DATA_HUB_API_KEY"]);
+
+  const endpoint =
+    (typeof raw?.endpoint === "string" ? raw.endpoint : undefined) ??
+    readEnv(["OPENFINCLAW_FIN_DATA_HUB_ENDPOINT", "FIN_DATA_HUB_ENDPOINT"]) ??
+    DEFAULT_ENDPOINT;
+
+  // Default to live mode when apiKey is available, stub otherwise
+  const mode = modeRaw === "stub" ? "stub" : modeRaw === "live" ? "live" : apiKey ? "live" : "stub";
+
   return {
-    mode: modeRaw === "live" ? "live" : "stub",
-    apiKey:
-      (typeof raw?.apiKey === "string" ? raw.apiKey : undefined) ??
-      readEnv(["OPENFINCLAW_FIN_DATA_HUB_API_KEY", "FIN_DATA_HUB_API_KEY"]),
-    endpoint:
-      (typeof raw?.endpoint === "string" ? raw.endpoint : undefined) ??
-      readEnv(["OPENFINCLAW_FIN_DATA_HUB_ENDPOINT", "FIN_DATA_HUB_ENDPOINT"]),
+    mode,
+    apiKey,
+    endpoint,
     requestTimeoutMs: Number.isFinite(timeout) && timeout >= 1000 ? Math.floor(timeout) : 30_000,
   };
 }
@@ -61,21 +71,22 @@ async function gatewayRequest(
       path,
       body,
       message:
-        "openFinclaw-DataHub running in stub mode. Set FIN_DATA_HUB_MODE=live and configure FIN_DATA_HUB_ENDPOINT to call the real gateway.",
+        "Running in stub mode. To access real data, configure your API key from hub.openfinclaw.ai.",
     };
   }
 
-  if (!config.endpoint) {
+  if (!config.apiKey) {
     throw new Error(
-      "Data Hub gateway endpoint not configured. Set FIN_DATA_HUB_ENDPOINT environment variable.",
+      "API key not configured. Register at hub.openfinclaw.ai to get your free API key, " +
+        "then set it via plugin config or FIN_DATA_HUB_API_KEY environment variable.",
     );
   }
 
   const url = new URL(path, config.endpoint).toString();
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (config.apiKey) {
-    headers["Authorization"] = `Bearer ${config.apiKey}`;
-  }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${config.apiKey}`,
+  };
 
   const response = await fetch(url, {
     method: "POST",
@@ -111,9 +122,10 @@ async function gatewayRequest(
 
 const finDataHubPlugin = {
   id: "fin-data-hub",
-  name: "openFinclaw-DataHub",
+  name: "openFinclaw DataHub",
   description:
-    "Financial data from 162 endpoints — A-shares, HK, US, Crypto/DeFi, Macro indicators",
+    "162 financial data endpoints — A-shares, HK stocks, US equities, Crypto/DeFi, Macro. " +
+    "Register at hub.openfinclaw.ai for your free API key.",
   kind: "financial" as const,
 
   register(api: OpenClawPluginApi) {
