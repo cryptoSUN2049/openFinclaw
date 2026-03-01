@@ -4,6 +4,7 @@
   "description": "162 financial data endpoints — A-shares, HK stocks, US equities, Crypto/DeFi, Macro indicators. Register at hub.openfinclaw.ai for your free API key.",
   "kind": "financial",
   "version": "2026.3.1",
+  "skills": ["./skills"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
